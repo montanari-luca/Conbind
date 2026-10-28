@@ -1,4 +1,4 @@
-import { ExtensionContext, extensionBridge } from '../../../../../asyar-sdk/src/worker';
+import { ExtensionContext, extensionBridge } from '../../../../../conbind-sdk/src/worker';
 import manifest from '../manifest.json';
 const context = new ExtensionContext();
 context.setExtensionId(manifest.id);
@@ -8,7 +8,7 @@ const status = {
   actions: 0,
   preferences: context.preferences.values,
   dom: typeof document,
-  role: (self as any).__ASYAR_ROLE__,
+  role: (self as any).__CONBIND_ROLE__,
   permitted: false,
   denied: '',
 };

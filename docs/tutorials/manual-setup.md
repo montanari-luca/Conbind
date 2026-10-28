@@ -28,11 +28,11 @@ com.yourname.hello-world/
   "id": "com.yourname.hello-world",
   "name": "Hello World",
   "version": "1.0.0",
-  "description": "A minimal Asyar extension that says hello.",
+  "description": "A minimal Conbind extension that says hello.",
   "author": "Your Name",
   "icon": "👋",
   "type": "extension",
-  "asyarSdk": "^2.7.0",
+  "conbindSdk": "^2.7.0",
   "commands": [
     {
       "id": "open",
@@ -50,9 +50,9 @@ com.yourname.hello-world/
 ```typescript
 import { mount } from 'svelte';
 import DefaultView from './DefaultView.svelte';
-import { ExtensionContext, type ILogService } from 'asyar-sdk';
+import { ExtensionContext, type ILogService } from 'conbind-sdk';
 
-// The hostname of the asyar-extension:// URL is always your extension ID.
+// The hostname of the conbind-extension:// URL is always your extension ID.
 const extensionId = window.location.hostname || 'com.yourname.hello-world';
 
 // 1. Create ONE context for the entire iframe lifetime.
@@ -62,7 +62,7 @@ context.setExtensionId(extensionId);
 
 // 2. Signal readiness to the host. Without this, the host will not
 //    route actions or service calls to this iframe.
-window.parent.postMessage({ type: 'asyar:extension:loaded', extensionId }, '*');
+window.parent.postMessage({ type: 'conbind:extension:loaded', extensionId }, '*');
 
 // 3. Forward ⌘K to the host so the Action Drawer opens from inside the iframe.
 window.addEventListener('keydown', (event) => {
@@ -71,7 +71,7 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault();
     window.parent.postMessage(
       {
-        type: 'asyar:extension:keydown',
+        type: 'conbind:extension:keydown',
         payload: {
           key: event.key,
           metaKey: event.metaKey,
@@ -103,7 +103,7 @@ if (viewName === 'DefaultView') {
 
 ```svelte
 <script lang="ts">
-  import type { ILogService } from 'asyar-sdk';
+  import type { ILogService } from 'conbind-sdk';
 
   interface Props {
     logger: ILogService;
@@ -119,7 +119,7 @@ if (viewName === 'DefaultView') {
 </script>
 
 <div class="container">
-  <h1>Hello from Asyar!</h1>
+  <h1>Hello from Conbind!</h1>
   <p>Your first extension is running inside a sandboxed iframe.</p>
   <button onclick={handleClick}>
     Clicked {count} times
@@ -164,7 +164,7 @@ if (viewName === 'DefaultView') {
 #### `src/index.ts`
 
 ```typescript
-import type { Extension, ExtensionContext, IExtensionManager } from 'asyar-sdk';
+import type { Extension, ExtensionContext, IExtensionManager } from 'conbind-sdk';
 import DefaultView from './DefaultView.svelte';
 
 class HelloWorldExtension implements Extension {
@@ -220,7 +220,7 @@ import { existsSync } from 'fs';
 import { resolve } from 'path';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const localSdkEntry = resolve(__dirname, '../../asyar-sdk/src/index.ts');
+const localSdkEntry = resolve(__dirname, '../../conbind-sdk/src/index.ts');
 
 export default defineConfig(({ mode }) => ({
   plugins: [svelte()],
@@ -229,7 +229,7 @@ export default defineConfig(({ mode }) => ({
     // In production, this alias is absent and the installed npm package is used.
     alias:
       mode === 'development' && existsSync(localSdkEntry)
-        ? { 'asyar-sdk': localSdkEntry }
+        ? { 'conbind-sdk': localSdkEntry }
         : undefined,
   },
 }));
@@ -244,13 +244,13 @@ export default defineConfig(({ mode }) => ({
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
-    "build": "asyar build",
-    "validate": "asyar validate",
-    "link": "asyar link",
-    "publish": "asyar publish"
+    "build": "conbind build",
+    "validate": "conbind validate",
+    "link": "conbind link",
+    "publish": "conbind publish"
   },
   "dependencies": {
-    "asyar-sdk": "^3.1.0",
+    "conbind-sdk": "^3.1.0",
     "svelte": "^5.0.0"
   },
   "devDependencies": {
@@ -264,11 +264,11 @@ export default defineConfig(({ mode }) => ({
 #### Register and run
 
 ```bash
-# Register the project path with Asyar (only needed for manually created extensions)
-asyar link
+# Register the project path with Conbind (only needed for manually created extensions)
+conbind link
 
 # Start the file watcher — rebuild on every save
 pnpm dev
 ```
 
-Open Asyar, type `Open Hello World`, press Enter. The panel renders.
+Open Conbind, type `Open Hello World`, press Enter. The panel renders.

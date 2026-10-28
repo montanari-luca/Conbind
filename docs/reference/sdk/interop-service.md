@@ -30,12 +30,12 @@ export interface IInteropService {
 **Minimal usage:**
 
 ```typescript
-import type { IInteropService } from 'asyar-sdk';
+import type { IInteropService } from 'conbind-sdk';
 
 const interop = context.getService<IInteropService>('interop');
 
 // Open the clipboard-history extension's default view
-await interop.launchCommand('org.asyar.clipboard', 'show-clipboard');
+await interop.launchCommand('org.conbind.clipboard', 'show-clipboard');
 
 // Pass arguments to the target command
 await interop.launchCommand('com.example.calc', 'run', { query: '5+3' });
@@ -107,7 +107,7 @@ try {
 
 #### Availability
 
-The target command must be **registered** — i.e. the target extension must be loaded and active. Built-in features (`org.asyar.*`) are always available. Third-party extensions are available after first activation (which happens on first search or explicit launch).
+The target command must be **registered** — i.e. the target extension must be loaded and active. Built-in features (`org.conbind.*`) are always available. Third-party extensions are available after first activation (which happens on first search or explicit launch).
 
 #### Security
 

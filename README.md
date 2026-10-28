@@ -5,15 +5,17 @@
   <p>A fast, native Rust & Tauri launcher for macOS, Windows, and Linux.</p>
 </div>
 
- ---
- 
- _Independent fork of Xoshbin's Asyar._
+---
 
- I took the core, stripped down some features many won't need, and... coming soon 😉.
+_Developed and maintained by **MintFlow Technologies, Luca Montanari**._
+
+_Independent fork of Xoshbin's Asyar. The original core owner is **Khoshbin Ali ([Xoshbin](https://github.com/Xoshbin))**._
+
+I took the core, stripped down some features many won't need, and... coming soon 😉.
 
 ## Tiny Footprint. Native Performance.
 
-Asyar is built with **Tauri + Rust** instead of Electron. That means:
+Conbind is built with **Tauri + Rust** instead of Electron. That means:
 
 - **Significantly less RAM** — no bundled Chromium, no V8 runtime sitting idle
 - **Instant startup** — the Rust backend initializes in milliseconds
@@ -26,22 +28,22 @@ Asyar is built with **Tauri + Rust** instead of Electron. That means:
 
 <!-- benchmarks:start -->
 
-| Metric                                 | Asyar 0.1.1-49 | Raycast 2.6.2.0 |
-| -------------------------------------- | -------------: | --------------: |
-| Hotkey → window visible (median of 15) |        13.9 ms |         22.2 ms |
-| Hotkey → window visible (p95)          |        17.3 ms |         32.0 ms |
-| Hotkey → window visible (p99)          |        20.5 ms |         32.5 ms |
-| Keystroke → results painted (p50)      |            n/a |             n/a |
-| Keystroke → results painted (p95)      |            n/a |             n/a |
-| Cold start → usable                    |         585 ms |         2129 ms |
-| Memory footprint, idle (all processes) |       419.2 MB |        451.5 MB |
-| CPU while idle (30s average)           |         0.64 % |          1.44 % |
-| CPU deep idle (60s, after 120s quiet)  |         0.10 % |          1.41 % |
-| Memory deep idle                       |       664.4 MB |        680.4 MB |
-| CPU ms/s (powermetrics, deep idle)     |           1.02 |           13.92 |
-| Idle wakeups/s (deep idle)             |          11.82 |           46.33 |
-| Idle disk write ops (60s)              |              0 |              96 |
-| App size on disk                       |          68 MB |          223 MB |
+| Metric                                 | Conbind 0.1.1-49 | Raycast 2.6.2.0 |
+| -------------------------------------- | ---------------: | --------------: |
+| Hotkey → window visible (median of 15) |          13.9 ms |         22.2 ms |
+| Hotkey → window visible (p95)          |          17.3 ms |         32.0 ms |
+| Hotkey → window visible (p99)          |          20.5 ms |         32.5 ms |
+| Keystroke → results painted (p50)      |              n/a |             n/a |
+| Keystroke → results painted (p95)      |              n/a |             n/a |
+| Cold start → usable                    |           585 ms |         2129 ms |
+| Memory footprint, idle (all processes) |         419.2 MB |        451.5 MB |
+| CPU while idle (30s average)           |           0.64 % |          1.44 % |
+| CPU deep idle (60s, after 120s quiet)  |           0.10 % |          1.41 % |
+| Memory deep idle                       |         664.4 MB |        680.4 MB |
+| CPU ms/s (powermetrics, deep idle)     |             1.02 |           13.92 |
+| Idle wakeups/s (deep idle)             |            11.82 |           46.33 |
+| Idle disk write ops (60s)              |                0 |              96 |
+| App size on disk                       |            68 MB |          223 MB |
 
 <sub>Measured 2026-10-04 on a Apple M4 Max (36 GB RAM), macOS 27.0.1, each app
 as installed, summoned by its own registered global hotkey, one at a time on a
@@ -50,11 +52,11 @@ on screen. Reproduce with [`benchmarks/bench.sh`](benchmarks/README.md).</sub>
 
 <!-- benchmarks:end -->
 
-Don't take my word for it: [`benchmarks/bench.sh`](benchmarks/README.md) measures Asyar against Raycast black-box on your own machine — hotkey-to-window latency, cold start, full-process-group memory, idle CPU and wakeups, idle disk writes, and app size — and regenerates this table with `--update-readme`. Raycast Beta is included automatically when it is installed; the run above was made on a machine without it. The three privileged rows (CPU ms/s, idle wakeups, idle disk writes) need passwordless `sudo` for `powermetrics` and `fs_usage` and report `n/a` without it — see [`benchmarks/README.md`](benchmarks/README.md#optional-passwordless-measurement-tools).
+Don't take my word for it: [`benchmarks/bench.sh`](benchmarks/README.md) measures Conbind against Raycast black-box on your own machine — hotkey-to-window latency, cold start, full-process-group memory, idle CPU and wakeups, idle disk writes, and app size — and regenerates this table with `--update-readme`. Raycast Beta is included automatically when it is installed; the run above was made on a machine without it. The three privileged rows (CPU ms/s, idle wakeups, idle disk writes) need passwordless `sudo` for `powermetrics` and `fs_usage` and report `n/a` without it — see [`benchmarks/README.md`](benchmarks/README.md#optional-passwordless-measurement-tools).
 
 ---
 
-![Asyar launcher](docs/images/getting-started-hero.png)
+![Conbind launcher](docs/images/getting-started-hero.png)
 
 ---
 
@@ -82,36 +84,36 @@ Don't take my word for it: [`benchmarks/bench.sh`](benchmarks/README.md) measure
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Xoshbin/asyar/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/montanari-luca/Conbind/main/install.sh | sh
 ```
 
 **macOS, via Homebrew:**
 
 ```bash
-brew tap Xoshbin/asyar
-brew trust --tap xoshbin/asyar   # one-time — Homebrew 6+ requires trusting third-party taps
-brew install --cask asyar
+brew tap montanari-luca/conbind
+brew trust --tap montanari-luca/Conbind   # one-time — Homebrew 6+ requires trusting third-party taps
+brew install --cask conbind
 ```
 
 **Windows, or a manual download for any OS:** grab the installer for your platform from
-[Releases](https://github.com/Xoshbin/asyar/releases).
+[Releases](https://github.com/montanari-luca/Conbind/releases).
 
 **Linux (Wayland) Shortcut Setup:**
 
-The Linux installer places the AppImage at `~/.local/bin/asyar` and a lightweight summon command beside it at `~/.local/bin/asyar-summon`. Wayland protocol security prevents background applications from intercepting global keyboard shortcuts directly, so bind your preferred shortcut in your desktop environment or window manager to execute `asyar-summon`:
+The Linux installer places the AppImage at `~/.local/bin/conbind` and a lightweight summon command beside it at `~/.local/bin/conbind-summon`. Wayland protocol security prevents background applications from intercepting global keyboard shortcuts directly, so bind your preferred shortcut in your desktop environment or window manager to execute `conbind-summon`:
 
-- **GNOME:** Open **Settings** → **Keyboard** → **View and Customize Shortcuts** → **Custom Shortcuts**, click **+**, set Name to `Asyar`, Command to `asyar-summon`, and assign your shortcut (e.g. `Ctrl+Space` or `Super+Space`).
-- **KDE Plasma:** Open **System Settings** → **Shortcuts** → **Custom Shortcuts** (or **Command/URL**), add a new global shortcut for `asyar-summon`, and set your trigger key (e.g. `Alt+Space` or `Meta+Space`).
-- **Hyprland:** Add `bind = ALT, SPACE, exec, asyar-summon` to `~/.config/hypr/hyprland.conf`.
-- **Sway:** Add `bindsym Mod1+space exec asyar-summon` to `~/.config/sway/config`.
+- **GNOME:** Open **Settings** → **Keyboard** → **View and Customize Shortcuts** → **Custom Shortcuts**, click **+**, set Name to `Conbind`, Command to `conbind-summon`, and assign your shortcut (e.g. `Ctrl+Space` or `Super+Space`).
+- **KDE Plasma:** Open **System Settings** → **Shortcuts** → **Custom Shortcuts** (or **Command/URL**), add a new global shortcut for `conbind-summon`, and set your trigger key (e.g. `Alt+Space` or `Meta+Space`).
+- **Hyprland:** Add `bind = ALT, SPACE, exec, conbind-summon` to `~/.config/hypr/hyprland.conf`.
+- **Sway:** Add `bindsym Mod1+space exec conbind-summon` to `~/.config/sway/config`.
 
 ---
 
 ### Switching from Raycast?
 
-If you are moving over from Raycast, you don't have to rebuild your configuration from scratch. I built an instant importer directly into Asyar so you can carry over your setup in seconds:
+If you are moving over from Raycast, you don't have to rebuild your configuration from scratch. I built an instant importer directly into Conbind so you can carry over your setup in seconds:
 
-- **1-Click Migration:** Export your data from Raycast (**Export Settings & Data** ➔ `.rayconfig`), summon Asyar, and search **Import from Raycast** (or click the button on the Welcome onboarding screen).
+- **1-Click Migration:** Export your data from Raycast (**Export Settings & Data** ➔ `.rayconfig`), summon Conbind, and search **Import from Raycast** (or click the button on the Welcome onboarding screen).
 - **What Carries Over:** Snippets (with keywords and dynamic expansions), Quicklinks (mapped directly to Portals with `{query}` support), and App Hotkeys/Aliases.
 - **Privacy & Safety First:** Duplicate items are skipped cleanly, your Raycast setup is never altered, and imported data is protected locally with AES-256-GCM encryption backed by your OS Keychain.
 
@@ -119,9 +121,9 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 
 ---
 
-## Asyar vs. The Alternatives
+## Conbind vs. The Alternatives
 
-|                                                               |       **Asyar**        |               Raycast               |       Alfred        |
+|                                                               |      **Conbind**       |               Raycast               |       Alfred        |
 | ------------------------------------------------------------- | :--------------------: | :---------------------------------: | :-----------------: |
 | **Open Source**                                               |      ✅ (GPL/MIT)      |                 ❌                  |         ❌          |
 | **100% Offline & Local-First** (data never leaves device)     |           ✅           |                 ❌                  |         ✅          |
@@ -148,11 +150,11 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 ## Features
 
 - **Application Launcher** — Find and launch any installed application instantly
-- **AI Agents with Tool Calling** — Build custom AI agents with persistent threads and tool calling, backed by your choice of provider (OpenAI, Anthropic, Google, Ollama, OpenRouter, or any OpenAI-compatible endpoint). **Asyar Assistant** is built in — press `Tab` from the empty launcher to summon it. Streaming responses, LaTeX math, syntax highlighting, and Mermaid diagrams included.
+- **AI Agents with Tool Calling** — Build custom AI agents with persistent threads and tool calling, backed by your choice of provider (OpenAI, Anthropic, Google, Ollama, OpenRouter, or any OpenAI-compatible endpoint). **Conbind Assistant** is built in — press `Tab` from the empty launcher to summon it. Streaming responses, LaTeX math, syntax highlighting, and Mermaid diagrams included.
 - **Silent AI Commands** — Mark any agent as silent, point it at your selection (or clipboard, or a one-shot argument), and have the response **replace the text in place** in whatever app you were typing in. No launcher window, no chat view, no confirm dialog. Perfect for "fix grammar", "translate this", "make it shorter", or any other one-shot transform you run dozens of times a day.
 - **Built-in Tools for Agents** — Eight tools your agents can use out of the box: calculator, clipboard read/write, file read/write, shell execution, web fetch, and launcher search. Extensions can register their own tools too.
 - **MCP (Model Context Protocol)** — Connect any MCP-compatible server. Auto-detects existing configs from Claude Desktop, Cursor, Cline, Continue, and Zed; bundled `bun` and `uv` let `npx`/`uvx`-based servers run without a local Node.js or Python install. First-call permission prompts gate write and exec tools per agent.
-- **Scripts** — Run shell scripts from the launcher. Add metadata headers (`@asyar.title`, `@asyar.icon`, `@asyar.argument:N`) so your script gets a name, icon, and prompted arguments. Live progress surfaces as a run row.
+- **Scripts** — Run shell scripts from the launcher. Add metadata headers (`@conbind.title`, `@conbind.icon`, `@conbind.argument:N`) so your script gets a name, icon, and prompted arguments. Live progress surfaces as a run row.
 - **Run Tracking** — Long-running work — agents and scripts — shows live status dots in the launcher. Failed runs stay until dismissed; succeeded agent threads stay until you close them, so you can pick a conversation back up at any time.
 - **Calculator** — Instant math evaluation with currency conversion, directly in the search bar
 - **Clipboard History** — Search and reuse anything you've copied, with rich markdown, syntax highlighting, and LaTeX rendering for text items. Cmd/Ctrl-click (or Cmd/Ctrl+↑/↓) to select several items, then Enter merges them into a single paste
@@ -163,13 +165,13 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 - **Window Management** — 17 built-in layout presets (halves, quarters, thirds, maximize, center) plus custom saved layouts; undo the last move with "Restore Previous"; works on macOS, Windows, and Linux
 - **Context Modes** — Type prefixes (`ask ai`, a URL, etc.) to switch the launcher into a specialized mode; visual chips indicate the active context
 - **Create Extension** — Scaffold a new extension from a template without leaving the launcher
-- **AI Extension Builder** — Describe an extension in plain language (_"build an extension for Notion"_) and an AI agent scaffolds, codes, builds, and verifies it for you — gating feasibility up front, asking clarifying questions via notifications, and dropping a working extension into `~/AsyarExtensions`. Uses your own Anthropic key (BYOK, no Asyar account). Browse and one-click-publish everything you've built from the **My Extensions** view.
+- **AI Extension Builder** — Describe an extension in plain language (_"build an extension for Notion"_) and an AI agent scaffolds, codes, builds, and verifies it for you — gating feasibility up front, asking clarifying questions via notifications, and dropping a working extension into `~/ConbindExtensions`. Uses your own Anthropic key (BYOK, no Conbind account). Browse and one-click-publish everything you've built from the **My Extensions** view.
 - **Themes** — Customize the launcher's appearance with built-in themes or create your own
 - **Backup & Restore** — Export and import your data locally; optional password encryption for sensitive fields
 - **Privacy by Default** — Clipboard items the OS or source app marks private (NSPasteboard concealed/transient/auto-generated, Windows clipboard-history opt-out) are never stored; password managers (1Password, Bitwarden, KeePassXC, Dashlane, Enpass, LastPass, Apple Keychain Access) are denylisted by default. Known secret formats (AWS keys, GitHub/GitLab/Stripe/Slack/OpenAI/Anthropic tokens, JWTs, PEM private keys, Luhn-validated credit cards) are redacted in place across clipboard, snippets, and AI conversations — including before the AI provider sees them.
 - **Extension Store** — Browse and install extensions from [asyar.org](https://asyar.org)
 - **Root-Search Extension Actions** — Extensions declare ⌘K actions directly in `manifest.json` at two scopes: extension-level (any command selected) and command-level (only that command). Both scopes stack automatically.
-- **Deep Link Integration** — Trigger any extension command from a browser, terminal, or script via `asyar://extensions/{extensionId}/{commandId}?param=value` URLs
+- **Deep Link Integration** — Trigger any extension command from a browser, terminal, or script via `conbind://extensions/{extensionId}/{commandId}?param=value` URLs
 - **Reactive Live Subtitles** — Extensions push real-time data into search result subtitles without re-running a search; used by the built-in calculator and available to any extension via `updateCommandMetadata()`
 - **Background Scheduling** — Commands declare a `schedule` interval in `manifest.json` (1 min – 24 h) to run background tasks automatically, even when the launcher is closed
 - **HUD Notifications** — Lightweight, auto-dismissing heads-up messages for instant feedback (e.g., layout name after a window move, "Copied" after a snippet paste)
@@ -188,48 +190,46 @@ The launcher interface follows your system language and is available in:
 - 简体中文 (Simplified Chinese)
 - 繁體中文 (Traditional Chinese)
 
-Want Asyar in your language? See [Contributing a Localization](CONTRIBUTING.md#internationalization-i18n--translations).
+Want Conbind in your language? See [Contributing a Localization](CONTRIBUTING.md#internationalization-i18n--translations).
 
 ---
 
 ## Privacy Scorecard
 
-|                                                                                | Asyar |
-| ------------------------------------------------------------------------------ | :---: |
-| Data stored locally only                                                       |  ✅   |
-| Works fully offline                                                            |  ✅   |
-| No telemetry by default                                                        |  ✅   |
-| No account or login required                                                   |  ✅   |
-| No subscription to unlock features                                             |  ✅   |
-| Extensions run in sandboxed iframes                                            |  ✅   |
-| Sensitive backup fields encrypted                                              |  ✅   |
-| Honors OS "do not capture" clipboard flags                                     |  ✅   |
-| Configurable password-manager denylist                                         |  ✅   |
-| Auto-redacts known secret formats (API keys, JWTs, private keys)               |  ✅   |
-| AI provider receives redacted user messages, not raw secrets                   |  ✅   |
-| Local encryption at rest with OS-keychain key                                  |  ✅   |
-| Cloud sync uploads only what changed                                           |  ✅   |
-| Optional end-to-end encrypted cloud sync (passphrase + Argon2id + AES-256-GCM) |  ✅   |
+|                                                                  | Conbind |
+| ---------------------------------------------------------------- | :-----: |
+| Data stored locally only                                         |   ✅    |
+| Works fully offline                                              |   ✅    |
+| No telemetry by default                                          |   ✅    |
+| No account or login required                                     |   ✅    |
+| No subscription to unlock features                               |   ✅    |
+| Extensions run in sandboxed iframes                              |   ✅    |
+| Sensitive backup fields encrypted                                |   ✅    |
+| Honors OS "do not capture" clipboard flags                       |   ✅    |
+| Configurable password-manager denylist                           |   ✅    |
+| Auto-redacts known secret formats (API keys, JWTs, private keys) |   ✅    |
+| AI provider receives redacted user messages, not raw secrets     |   ✅    |
+| Local encryption at rest with OS-keychain key                    |   ✅    |
 
 ---
 
 ## Privacy Defenses
 
-Asyar's privacy work is layered — each layer protects a different boundary, and the layers compose.
+Conbind's privacy work is layered — each layer protects a different boundary, and the layers compose.
 
 ### Layer 1 — Capture-time exclusion
 
-When a clipboard event arrives, Asyar inspects the OS pasteboard's type identifiers and the source app's bundle id **before** writing anything to disk. Items match any of the following are dropped at the door:
+When a clipboard event arrives, Conbind inspects the OS pasteboard's type identifiers and the source app's bundle id **before** writing anything to disk. Items match any of the following are dropped at the door:
 
 - **macOS** — pasteboards carrying `org.nspasteboard.ConcealedType`, `TransientType`, `AutoGeneratedType`, or Apple's auto-generated promised type.
 - **Windows** — pasteboards registered with `CanIncludeInClipboardHistory` or `ExcludeClipboardContentFromMonitorProcessing`.
 - **All platforms** — a configurable source-app denylist. Defaults cover 1Password, Bitwarden, KeePassXC, Dashlane, Enpass, LastPass, and Apple Keychain Access. Users add their own apps in **Settings → Privacy → Clipboard Privacy**.
 
-Items rejected at this layer never reach SQLite, so they cannot leak via local disk theft, the diagnostics channel, or cloud sync.
+Items rejected at this layer never reach SQLite, so they cannot leak via local disk theft or the diagnostics channel.
 
 ### Layer 2 — Pattern-based secret redaction
 
-For everything that _does_ get stored, Asyar runs a regex-based detector over clipboard items (text / HTML / RTF), snippet expansions, and AI conversation messages. Each match is replaced in place with `[redacted: <kind>]` — items still appear in history but the secret value is gone.
+For everything that _does_ get stored, Conbind runs a regex-based detector over clipboard items (text / HTML / RTF), snippet expansions, and AI conversation messages. Each match is replaced in place with `[redacted: <kind>]` — items still appear in history but the secret value is gone.
 
 Bundled detector kinds (false-positive rate near zero on plain-English text):
 
@@ -249,25 +249,13 @@ The user can disable redaction globally or per-category in **Settings → Privac
 
 Clipboard `content` / `preview`, snippet `expansion`, AI conversation message bodies, and encrypted extension preferences are stored as AES-256-GCM ciphertext on disk. The 32-byte master key lives in the OS keychain — Keychain Services on macOS, Credential Manager on Windows, freedesktop Secret Service on Linux. An offline disk image alone is no longer sufficient to read your data; the attacker also needs an unlocked session keychain.
 
-On Linux without Secret Service (headless, minimal WM, DBus-less containers) Asyar falls back to a `0600` file-backed key and surfaces a warning in **Settings → Privacy → Encryption at Rest**, telling you to install gnome-keyring or KWallet for full protection. macOS / Windows treat keychain unavailability as fatal — the keychain is part of the OS install, so failure is exceptional and refusing to start is safer than silent degradation.
+On Linux without Secret Service (headless, minimal WM, DBus-less containers) Conbind falls back to a `0600` file-backed key and surfaces a warning in **Settings → Privacy → Encryption at Rest**, telling you to install gnome-keyring or KWallet for full protection. macOS / Windows treat keychain unavailability as fatal — the keychain is part of the OS install, so failure is exceptional and refusing to start is safer than silent degradation.
 
-### Layer 4a — Minimal cloud sync
-
-Cloud sync (when enabled) is built around a simple privacy promise: **the less data on the wire, the smaller the surface for any potential breach.** Asyar uploads only what you've actually changed since your last sync — never your whole history, never on a fixed schedule. An idle launcher moves zero bytes. Editing one snippet syncs one snippet. Concurrent edits on different devices coexist instead of overwriting each other.
-
-### Layer 4b/4c — Optional end-to-end encrypted cloud sync
-
-Opt-in passphrase-based E2EE on top of the per-item sync layer. Default OFF. Enable in **Settings → Account → Encrypted Sync**.
-
-- Passphrase → Argon2id → 32-byte sync key → AES-256-GCM per item.
-- Passphrase entered once at enrolment; derived key cached in the OS keychain — daily UX has zero friction.
-- 24-word BIP-39 recovery phrase issued at enrolment. Passphrase loss without the recovery phrase means data loss; Asyar.org cannot reset it.
-
-### Layer 5 — Retention & automatic eviction
+### Layer 4 — Retention & automatic eviction
 
 - **Clipboard History TTL** — Configurable retention window (1 min to 90 days) with favourite protection (**Settings → Privacy → Clipboard Privacy**).
 - **AI Conversation Retention Cap** — Maximum retained threads (Unlimited, 25, 50, 100 [default], or custom) with pinned thread protection (**Settings → AI → Behavior**).
-- **Snippet Private Tag (Local-Only Sync Opt-Out)** — Mark sensitive snippets as private; they remain strictly local and are never included in cloud sync payloads or tombstones.
+- **Snippet Private Tag** — Mark sensitive snippets as private; they remain strictly local and are never included in settings backups.
 
 See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy.md) for the full design.
 
@@ -304,7 +292,7 @@ See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy
 
 ### Detailed Platform Compatibility
 
-_(Asyar is fully tested and verified on **macOS**, **Windows 11**, and **Debian**)_
+_(Conbind is fully tested and verified on **macOS**, **Windows 11**, and **Debian**)_
 
 - **macOS:** Fully supported and tested. Global features like Snippets require Accessibility permissions.
 - **Windows:** Fully tested on Windows 11. Supported on Windows 10 out-of-the-box.
@@ -326,17 +314,17 @@ _(Asyar is fully tested and verified on **macOS**, **Windows 11**, and **Debian*
 
 ## How Extensions Work
 
-Asyar's power comes from its extension system. Extensions add commands to the launcher, contribute live search results, and open rich UI panels.
+Conbind's power comes from its extension system. Extensions add commands to the launcher, contribute live search results, and open rich UI panels.
 
 - **Built-in extensions** run natively alongside the app for maximum speed
 - **Installed extensions** run in secure sandboxes — they can't crash the app or access other extensions' data
-- **Build your own** with the [Asyar SDK](asyar-sdk/) using any web framework (Svelte, React, Vue, or vanilla JS)
+- **Build your own** with the [Conbind SDK](conbind-sdk/) using any web framework (Svelte, React, Vue, or vanilla JS)
 
 ---
 
 ## Extension Security Model
 
-Raycast gives every extension full Node.js access — filesystem, network, child processes — with no restrictions. Asyar takes a different approach: **extensions only get the permissions they declare, enforced at two layers.**
+Raycast gives every extension full Node.js access — filesystem, network, child processes — with no restrictions. Conbind takes a different approach: **extensions only get the permissions they declare, enforced at two layers.**
 
 Every installed extension declares the permissions it needs in its `manifest.json`. At runtime, those declarations are enforced twice:
 
@@ -363,15 +351,15 @@ On top of permission gating, each installed extension runs in an **isolated ifra
 
 ## AI Agents
 
-Asyar agents are first-class command targets — type the agent's name, press `Enter`, and chat in a persistent thread. Each agent has its own provider, model, system prompt, and toolset.
+Conbind agents are first-class command targets — type the agent's name, press `Enter`, and chat in a persistent thread. Each agent has its own provider, model, system prompt, and toolset.
 
-- **Asyar Assistant (built in)** — A default agent appears the moment you configure any provider. Press `Tab` from the empty launcher to summon it, or type `ask ai`.
-- **BYOK across 6 providers** — OpenAI, Anthropic, Google, Ollama, OpenRouter, or any OpenAI-compatible endpoint. API keys live in the OS keychain; no Asyar account or AI subscription needed.
+- **Conbind Assistant (built in)** — A default agent appears the moment you configure any provider. Press `Tab` from the empty launcher to summon it, or type `ask ai`.
+- **BYOK across 6 providers** — OpenAI, Anthropic, Google, Ollama, OpenRouter, or any OpenAI-compatible endpoint. API keys live in the OS keychain; no Conbind account or AI subscription needed.
 - **Tool calling on every provider** — All six supported providers can invoke tools — the 8 built-in tools (calculator, clipboard, file I/O, shell, web fetch, launcher search), tools contributed by installed extensions, or tools served by any MCP server.
 - **Persistent threads** — Conversations are saved locally in SQLite. Start a new thread or resume an existing one from the agent's `⌘K` menu; succeeded threads remain visible in the launcher until you dismiss them.
 - **MCP integration** — Add Model Context Protocol servers from **Settings → MCP**, or auto-import existing configs from Claude Desktop, Cursor, Cline, Continue, or Zed. Bundled `bun` and `uv` sidecars run `npx`/`uvx`-based servers without system installs.
 - **Streaming + cancellation** — Replies stream word-by-word; cancel mid-response.
-- **Your key, your data** — requests go directly from your device to your provider; nothing routes through Asyar servers.
+- **Your key, your data** — requests go directly from your device to your provider; nothing routes through Conbind servers.
 
 ---
 
@@ -408,10 +396,10 @@ See [`docs/reference/silent-agents.md`](docs/reference/silent-agents.md) for the
 
 Typing certain prefixes transforms the launcher into a specialized mode:
 
-| Prefix                  | Mode                       |
-| ----------------------- | -------------------------- |
-| `ask ai`, `ai`, `chat`  | Asyar Assistant (AI Agent) |
-| A URL or portal trigger | Portal / web view          |
+| Prefix                  | Mode                         |
+| ----------------------- | ---------------------------- |
+| `ask ai`, `ai`, `chat`  | Conbind Assistant (AI Agent) |
+| A URL or portal trigger | Portal / web view            |
 
 An active context is shown as a chip in the search bar. Press `Escape` to exit the current context and return to normal search.
 
@@ -433,7 +421,7 @@ See the [File Search guide](docs/guide/features/file-search.md) for the full wal
 
 ## Window Management
 
-Asyar includes a built-in window management extension that lets you snap and resize any window without leaving the keyboard.
+Conbind includes a built-in window management extension that lets you snap and resize any window without leaving the keyboard.
 
 - **17 layout presets** — left/right halves, top/bottom halves, all four corners, thirds (left, center, right), two-thirds, maximize, and center
 - **Custom layouts** — save the current window position and size as a named preset, then recall it any time
@@ -474,7 +462,7 @@ The scheduler (backed by Tokio) fires the command every `interval` seconds (60 s
 
 ## Backup & Restore
 
-Asyar lets you export and import your data locally — no account required.
+Conbind lets you export and import your data locally — no account required.
 
 Go to **Settings → Backup** to:
 
@@ -483,22 +471,21 @@ Go to **Settings → Backup** to:
 
 **How sensitive data is handled:** if a backup contains sensitive fields and no password is set, those fields are stripped from the export automatically. When a password is provided, the archive is encrypted and the password is required to restore it.
 
-Cloud sync and account-based backup are intentionally out of scope — they will live in a future **Account** tab.
+Conbind has no accounts and no cloud sync: backups are plain local files you move between machines yourself.
 
 ---
 
 ## Build an Extension
 
 ```bash
-npm install -g asyar-sdk
+npm install -g conbind-sdk
 ```
 
-The `asyar` CLI handles the full workflow — scaffolding, development, building, and publishing:
+The `conbind` CLI handles the full workflow — scaffolding, development, and building:
 
 ```bash
-asyar dev        # development mode with hot reload
-asyar build      # production build
-asyar publish    # package and publish to the store
+conbind dev        # development mode with hot reload
+conbind build      # production build
 ```
 
 See the [developer documentation](docs/) for the full walkthrough — start with the [tutorials](docs/tutorials/).
@@ -508,7 +495,7 @@ See the [developer documentation](docs/) for the full walkthrough — start with
 You don't have to leave the launcher to make an extension:
 
 - **Create Extension** — scaffold from a template.
-- **Build Extension with AI** — describe it in plain language and let an AI agent build a working extension for you (BYOK Anthropic key). It uses its own knowledge of Asyar's capabilities and limits, tells you up front if a request isn't possible, and notifies you when the build is done.
+- **Build Extension with AI** — describe it in plain language and let an AI agent build a working extension for you (BYOK Anthropic key). It uses its own knowledge of Conbind's capabilities and limits, tells you up front if a request isn't possible, and notifies you when the build is done.
 - **My Extensions** — browse everything you've built, open it in your editor, or publish it to the store (`⌘K`).
 
 See [Use the Create Extension tool](docs/how-to/use-create-extension-tool.md) for the in-app flow, and the [AI Extension Builder explanation](docs/explanation/ai-extension-builder.md) for how it works under the hood.
@@ -517,27 +504,27 @@ See [Use the Create Extension tool](docs/how-to/use-create-extension-tool.md) fo
 
 ## Contributing
 
-Contributions are always welcome! Check out the [Contributing Guide](CONTRIBUTING.md) to get started, or join the [Discord Community](https://discord.gg/vvYRXrs7Xa) to discuss ideas.
+Contributions are always welcome! Check out the [Contributing Guide](CONTRIBUTING.md) to get started, or open a [Discussion](https://github.com/montanari-luca/Conbind/discussions) to talk through ideas.
 
 To set up the full development environment:
 
 ```bash
-git clone https://github.com/Xoshbin/asyar.git
-cd asyar
+git clone https://github.com/montanari-luca/Conbind.git
+cd conbind
 node setup.mjs
 ```
 
-`setup.mjs` installs workspace dependencies, builds the SDK, clones any optional Tier 2 sample extensions (like `sdk-playground`) into `extensions/`, and runs `asyar doctor` to verify the setup.
+`setup.mjs` installs workspace dependencies, builds the SDK, clones any optional Tier 2 sample extensions (like `sdk-playground`) into `extensions/`, and runs `conbind doctor` to verify the setup.
 
 ### Runtime downloads (bun / uv / claude)
 
-Asyar no longer bundles `bun`, `uv`, or `claude` at build time. Instead, each is
+Conbind no longer bundles `bun`, `uv`, or `claude` at build time. Instead, each is
 downloaded on demand the first time a feature actually needs it (an MCP server
 without a system Node.js/Python, or the AI Extension Builder), behind a consent
 dialog, verified against a pinned sha256. See
-[`asyar-launcher/src-tauri/src/runtimes/`](asyar-launcher/src-tauri/src/runtimes/)
+[`conbind-launcher/src-tauri/src/runtimes/`](conbind-launcher/src-tauri/src/runtimes/)
 for the download/verify/install machinery, and
-[`asyar-launcher/src-tauri/binaries/README.md`](asyar-launcher/src-tauri/binaries/README.md)
+[`conbind-launcher/src-tauri/binaries/README.md`](conbind-launcher/src-tauri/binaries/README.md)
 if you want to place a runtime manually for local `tauri dev` testing.
 
 For architecture details, see the [explanation docs](docs/explanation/).
@@ -551,4 +538,4 @@ For release procedures (both launcher and SDK), see [`RELEASING.md`](RELEASING.m
 
 ## Licensing
 
-This repository uses a split-licensing model. The core application (`asyar-launcher`) is licensed under the GPL-3.0 license. The SDK and extension tooling (`asyar-sdk`, `asyar-ext-builder`) are licensed under the MIT license. See the respective directories for full details.
+This repository uses a split-licensing model. The core application (`conbind-launcher`) is licensed under the GPL-3.0 license. The SDK and extension tooling (`conbind-sdk`, `conbind-ext-builder`) are licensed under the MIT license. See the respective directories for full details.

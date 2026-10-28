@@ -50,7 +50,7 @@ pr-draft*
 .env
 .env.local
 .env.*.local
-.vscode/Asyar-Project.code-workspace
+.vscode/Conbind-Project.code-workspace
 .agents/*
 !.agents/skills/
 !.agents/rules/

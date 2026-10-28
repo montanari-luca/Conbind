@@ -6,7 +6,7 @@ order: 8
 
 **No permission or manifest flag required.** Every command in an enabled extension is automatically reachable via deep links.
 
-Any external source — browser, terminal, automation tool, another app — can invoke an extension command by opening an `asyar://extensions/{extensionId}/{commandId}` URL. The only requirement is that the extension is installed and enabled.
+Any external source — browser, terminal, automation tool, another app — can invoke an extension command by opening an `conbind://extensions/{extensionId}/{commandId}` URL. The only requirement is that the extension is installed and enabled.
 
 ---
 
@@ -15,14 +15,14 @@ Any external source — browser, terminal, automation tool, another app — can 
 Trigger a command from a terminal:
 
 ```bash
-open "asyar://extensions/com.example.currency/convert?from=USD&to=EUR&amount=100"
+open "conbind://extensions/com.example.currency/convert?from=USD&to=EUR&amount=100"
 ```
 
 Generate a deeplink from inside your extension:
 
 ```typescript
 const url = context.createDeeplink('convert', { from: 'USD', to: 'EUR', amount: '100' });
-// → "asyar://extensions/com.example.currency/convert?from=USD&to=EUR&amount=100"
+// → "conbind://extensions/com.example.currency/convert?from=USD&to=EUR&amount=100"
 ```
 
 ---
@@ -30,7 +30,7 @@ const url = context.createDeeplink('convert', { from: 'USD', to: 'EUR', amount: 
 ## URL format
 
 ```
-asyar://extensions/{extensionId}/{commandId}?key=value&key2=value2
+conbind://extensions/{extensionId}/{commandId}?key=value&key2=value2
 ```
 
 | Segment       | Description                                                                                          |
@@ -49,7 +49,7 @@ asyar://extensions/{extensionId}/{commandId}?key=value&key2=value2
 
 ## Receiving deeplink calls
 
-When a deeplink fires, Asyar calls your extension's `executeCommand` method:
+When a deeplink fires, Conbind calls your extension's `executeCommand` method:
 
 ```typescript
 class MyCurrencyExtension implements Extension {
@@ -104,7 +104,7 @@ class TaskManager implements Extension {
   async createTask(title: string): Promise<void> {
     const taskId = await this.saveTask(title);
     const link = this.context.createDeeplink('open-task', { id: taskId });
-    // link = "asyar://extensions/com.example.tasks/open-task?id=abc123"
+    // link = "conbind://extensions/com.example.tasks/open-task?id=abc123"
 
     await this.context.proxies.feedback.sendBackground({
       title: 'Task created',
@@ -133,13 +133,13 @@ Deeplink invocations bypass the required-preferences prompt — there is no user
 
 ## Use case examples
 
-### Browser → Asyar ("Save this page")
+### Browser → Conbind ("Save this page")
 
 A bookmarklet or browser extension passes the current page URL:
 
 ```javascript
 window.open(
-  `asyar://extensions/com.example.bookmarks/save?url=${encodeURIComponent(location.href)}&title=${encodeURIComponent(document.title)}`,
+  `conbind://extensions/com.example.bookmarks/save?url=${encodeURIComponent(location.href)}&title=${encodeURIComponent(document.title)}`,
 );
 ```
 
@@ -148,12 +148,12 @@ window.open(
 A shell alias triggers a command silently:
 
 ```bash
-alias weather='open "asyar://extensions/com.example.weather/check?city=Berlin"'
+alias weather='open "conbind://extensions/com.example.weather/check?city=Berlin"'
 ```
 
 ### macOS Shortcuts / Automations
 
-A Shortcuts workflow opens an `asyar://` URL as its action. Any extension command becomes a callable automation step — no app scripting or AppleScript required.
+A Shortcuts workflow opens an `conbind://` URL as its action. Any extension command becomes a callable automation step — no app scripting or AppleScript required.
 
 ### Webhook → local action
 
@@ -161,7 +161,7 @@ A local webhook receiver (e.g. a small HTTP server) opens a deeplink in response
 
 ```python
 import subprocess
-subprocess.run(["open", "asyar://extensions/com.example.deploy/notify?env=staging&status=success"])
+subprocess.run(["open", "conbind://extensions/com.example.deploy/notify?env=staging&status=success"])
 ```
 
 ### Sharing runnable commands
@@ -169,7 +169,7 @@ subprocess.run(["open", "asyar://extensions/com.example.deploy/notify?env=stagin
 Share a deeplink in a team doc or Slack message. Anyone with the extension installed can click it to run the command:
 
 ```
-Run our staging health check: asyar://extensions/com.example.devtools/health-check?env=staging
+Run our staging health check: conbind://extensions/com.example.devtools/health-check?env=staging
 ```
 
 ### Extension-generated links
@@ -200,16 +200,16 @@ All validation happens before `executeCommand` is called. Invalid deep links are
 ## How it works under the hood
 
 ```
-External source opens asyar://extensions/com.example.ext/cmd?arg=val
+External source opens conbind://extensions/com.example.ext/cmd?arg=val
 
 Rust (tauri-plugin-deep-link)         TS host                    Extension (iframe)
 ───────────────────────────────────────────────────────────────────────────────────
 on_open_url fires
-URL starts with "asyar://extensions/"
+URL starts with "conbind://extensions/"
   → parse_extension_deeplink()
     validates extensionId + commandId
     collects query params
-  → emit "asyar:deeplink:extension"
+  → emit "conbind:deeplink:extension"
     { extensionId, commandId, args }
                                       DeeplinkService listens
                                       handleExtensionDeeplink():
@@ -225,7 +225,7 @@ URL starts with "asyar://extensions/"
                                         ──────────────────────────────────────►
                                         for Tier 2 (iframe) extensions:
                                           postMessage to iframe:
-                                          { type: 'asyar:command:execute',
+                                          { type: 'conbind:command:execute',
                                             payload: { commandId, args } }
                                                                            ExtensionBridge
                                                                            calls extension

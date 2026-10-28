@@ -345,7 +345,7 @@ For deeplink arguments, see [Deeplink triggering](./deeplink-triggering.md).
 ## Delivery guarantees
 
 Argument-mode submissions for Tier 2 extensions flow through the same
-lifecycle registry as every other `asyar:command:execute` delivery. If the
+lifecycle registry as every other `conbind:command:execute` delivery. If the
 extension's iframe is dormant when the user hits Enter, the host mounts
 it on demand, queues the message, and delivers it once the iframe signals
 ready. You do not need to keep the iframe alive — the launcher handles it.
@@ -380,6 +380,6 @@ ids cannot collide with manifest ids.
 For commands whose set is determined by the user's environment (Apple
 Shortcuts, SSH hosts, scripts in directories), see
 [Dynamic Commands](./dynamic-commands.md). For shell scripts specifically —
-which declare their argument schema via `# @asyar.argument:N` comment
+which declare their argument schema via `# @conbind.argument:N` comment
 directives instead of a manifest entry — see
 [Script Headers](./script-headers.md).

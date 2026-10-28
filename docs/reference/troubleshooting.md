@@ -12,7 +12,7 @@ Yes. Any framework that builds to static HTML/JS/CSS works. Install the framewor
 
 **Q: Can I use `localStorage` for storage?**
 
-Yes, `localStorage` is scoped to the `asyar-extension://` origin within your extension's iframe. Data persists across sessions and is completely isolated from other extensions. Use it freely for transient local state. For data that should survive extension updates and be backed by SQLite, use `StorageService` instead (requires `storage:read`/`storage:write` permissions). Use `SettingsService` when you need reactive subscription support.
+Yes, `localStorage` is scoped to the `conbind-extension://` origin within your extension's iframe. Data persists across sessions and is completely isolated from other extensions. Use it freely for transient local state. For data that should survive extension updates and be backed by SQLite, use `StorageService` instead (requires `storage:read`/`storage:write` permissions). Use `SettingsService` when you need reactive subscription support.
 
 **Q: Can I open a URL in the system browser?**
 
@@ -21,7 +21,7 @@ Yes, declare `"shell:open-url"` in your permissions and send a raw postMessage:
 ```typescript
 window.parent.postMessage(
   {
-    type: 'asyar:api:opener:open',
+    type: 'conbind:api:opener:open',
     url: 'https://example.com',
   },
   '*',
@@ -34,14 +34,14 @@ The recommended approach is URL query parameters: encode your context into the `
 
 For larger or more complex state, use `localStorage`, `StorageService`, or `SettingsService`. The entire extension runs in one iframe (the URL changes but the iframe document is reloaded each time `navigateToView` is called), so `localStorage` is the simplest cross-view store. Use `StorageService` if you need data to survive extension updates and be backed by SQLite.
 
-**Q: My extension shows in Asyar but the view is blank.**
+**Q: My extension shows in Conbind but the view is blank.**
 
 1. Open DevTools (right-click → Inspect Element in your extension's panel area).
 2. Check the Console for JavaScript errors.
-3. Confirm `window.parent.postMessage({ type: 'asyar:extension:loaded', extensionId }, '*')` is called in `main.ts`. Without this signal, the host will not consider the iframe initialized.
+3. Confirm `window.parent.postMessage({ type: 'conbind:extension:loaded', extensionId }, '*')` is called in `main.ts`. Without this signal, the host will not consider the iframe initialized.
 4. Check that `index.html` has `<div id="app"></div>` and the `<script>` tag pointing to `src/main.ts`.
 
-**Q: The `asyar:extension:loaded` signal — is it required?**
+**Q: The `conbind:extension:loaded` signal — is it required?**
 
 Yes. The host waits for this specific postMessage before routing any service calls or action triggers to your iframe. Without it, your extension appears loaded in the panel but service calls from the host (like search queries or command invocations) never arrive.
 
@@ -51,7 +51,7 @@ Yes. Define multiple components (e.g., `DefaultView.svelte`, `DetailView.svelte`
 
 **Q: My search results' `action` function is not called when the user selects a result.**
 
-This is expected for Tier 2 (installed) extensions. The `action` closure cannot be serialized over `postMessage`. Set `viewPath` on your results instead, and Asyar will navigate there automatically when the user selects the result.
+This is expected for Tier 2 (installed) extensions. The `action` closure cannot be serialized over `postMessage`. Set `viewPath` on your results instead, and Conbind will navigate there automatically when the user selects the result.
 
 **Q: What happens when my extension is uninstalled?**
 
@@ -75,9 +75,9 @@ code .   # from within your extension directory
 
 Or open the folder manually in your IDE. The `dev_extensions.json` registration persists — you never need to re-link.
 
-**Q: Does `asyar link` work with production release builds of Asyar?**
+**Q: Does `conbind link` work with production release builds of Conbind?**
 
-Yes. When you run `asyar link`, the CLI both creates a symlink in `$APPDATA/extensions/<id>` and registers your extension's absolute source directory in `$APPDATA/dev_extensions.json`. Asyar's custom protocol handler (`asyar-extension://`) reads this registry to allow local file access on production release builds without 403 access violations. To clean up the registration and symlink, run `asyar unlink`.
+Yes. When you run `conbind link`, the CLI both creates a symlink in `$APPDATA/extensions/<id>` and registers your extension's absolute source directory in `$APPDATA/dev_extensions.json`. Conbind's custom protocol handler (`conbind-extension://`) reads this registry to allow local file access on production release builds without 403 access violations. To clean up the registration and symlink, run `conbind unlink`.
 
 **Q: How do I make my extension macOS-only (or any specific OS)?**
 
@@ -93,11 +93,11 @@ Valid values are `"macos"`, `"windows"`, and `"linux"`. You can list any combina
 "platforms": ["macos", "linux"]
 ```
 
-**Omit the field entirely for a universal extension** — that is the default and the most common case. Extensions with an incompatible `platforms` list are hidden in the store on unsupported OSes and blocked from loading by the host. The `asyar validate` CLI command will reject unknown platform values.
+**Omit the field entirely for a universal extension** — that is the default and the most common case. Extensions with an incompatible `platforms` list are hidden in the store on unsupported OSes and blocked from loading by the host. The `conbind validate` CLI command will reject unknown platform values.
 
-**Q: What is `asyarSdk` in the manifest for?**
+**Q: What is `conbindSdk` in the manifest for?**
 
-It declares the minimum SDK version your extension requires. Asyar checks this against the app's bundled SDK version at discovery time. If the app's SDK is older than your requirement, the extension is marked incompatible and will not load. Set it to the version you developed against: `"asyarSdk": "^1.3.3"`.
+It declares the minimum SDK version your extension requires. Conbind checks this against the app's bundled SDK version at discovery time. If the app's SDK is older than your requirement, the extension is marked incompatible and will not load. Set it to the version you developed against: `"conbindSdk": "^1.3.3"`.
 
 **Q: Can my extension communicate with another extension?**
 
@@ -114,8 +114,8 @@ const res = await network.fetch(url, options);
 logger.debug(`HTTP ${res.status} ${url} → ${res.body.slice(0, 200)}`);
 ```
 
-Check the Asyar developer log for these messages.
+Check the Conbind developer log for these messages.
 
 ---
 
-_This document is maintained alongside the `asyar-sdk` package. For bug reports, feature requests, or corrections, open an issue in the Asyar project repository._
+_This document is maintained alongside the `conbind-sdk` package. For bug reports, feature requests, or corrections, open an issue in the Conbind project repository._

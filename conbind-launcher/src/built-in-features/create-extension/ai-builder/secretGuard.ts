@@ -1,0 +1,19 @@
+import { scanExtensionForSecret } from '../../../lib/ipc/extensionBuilderCommands';
+
+export type SecretScanResult = { leaked: false } | { leaked: true; path: string };
+
+// Ask Rust to scan a built extension directory for a build-time secret that
+// leaked into source. The scan runs in Rust because the build output lives at
+// $HOME/ConbindExtensions/<id>, which the frontend Tauri fs allowlist does not
+// cover. Fails closed: a non-empty secret found in any file returns `leaked`,
+// and a scan that errors outright is also treated as `leaked` rather than
+// silently passing.
+export async function scanForSecret(path: string, secret: string): Promise<SecretScanResult> {
+  if (secret.trim().length === 0) return { leaked: false };
+  try {
+    const result = await scanExtensionForSecret(path, secret);
+    return result ? { leaked: true, path: result } : { leaked: false };
+  } catch {
+    return { leaked: true, path };
+  }
+}

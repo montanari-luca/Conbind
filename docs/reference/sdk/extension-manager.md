@@ -54,7 +54,7 @@ manager.setActiveViewSubtitle(null); // clear when leaving the view
 The `viewPath` string follows the pattern `<extensionId>/<ViewComponentName>`. The host translates this to:
 
 ```
-asyar-extension://<extensionId>/index.html?view=<ViewComponentName>
+conbind-extension://<extensionId>/index.html?view=<ViewComponentName>
 ```
 
 Any additional `?key=value` parameters you append to `viewPath` are passed through to the iframe URL and are readable via `new URLSearchParams(window.location.search)`.

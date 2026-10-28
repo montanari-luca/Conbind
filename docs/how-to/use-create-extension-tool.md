@@ -4,11 +4,11 @@ order: 1
 
 ## 11. The "Create Extension" Built-in Tool
 
-The fastest and most reliable way to scaffold a new extension is the **Create Extension** feature built into Asyar itself. It is available as a command in the launcher.
+The fastest and most reliable way to scaffold a new extension is the **Create Extension** feature built into Conbind itself. It is available as a command in the launcher.
 
 ### How to open it
 
-Open Asyar → type **"Create Extension"** → press Enter.
+Open Conbind → type **"Create Extension"** → press Enter.
 
 ### The three scaffolded types
 
@@ -21,14 +21,14 @@ Open Asyar → type **"Create Extension"** → press Enter.
 ### What the scaffolder does
 
 1. **Prompts you** for: name, ID, description, save location, extension type.
-2. **Resolves the latest SDK version** from the npm registry (`npm view asyar-sdk version`). Falls back to `^3.1.0` if offline.
+2. **Resolves the latest SDK version** from the npm registry (`npm view conbind-sdk version`). Falls back to `^3.1.0` if offline.
 3. **Writes all project files** from templates, replacing `{{EXTENSION_NAME}}`, `{{EXTENSION_ID}}`, `{{EXTENSION_DESC}}`, and `{{SDK_VERSION}}` placeholders.
 4. **Runs `pnpm install`** to install all dependencies.
 5. **Runs `pnpm run build`** to produce the initial `dist/`.
-6. **Calls `register_dev_extension`** — stores your project path in `dev_extensions.json` so Asyar resolves the `asyar-extension://` protocol to your local directory. **No `asyar link` needed**.
+6. **Calls `register_dev_extension`** — stores your project path in `dev_extensions.json` so Conbind resolves the `conbind-extension://` protocol to your local directory. **No `conbind link` needed**.
 7. **Opens VS Code** (or falls back to your default file manager).
 
-After generation, your extension is **immediately active** in Asyar. Open the launcher, type your command name, press Enter.
+After generation, your extension is **immediately active** in Conbind. Open the launcher, type your command name, press Enter.
 
 ### Template file reference
 
@@ -52,7 +52,7 @@ Every scaffolded project includes these files:
 The same built-in feature also offers an AI path that turns a plain-language
 prompt into a working extension.
 
-Open Asyar → type **"Build Extension with AI"** → describe what you want
+Open Conbind → type **"Build Extension with AI"** → describe what you want
 (e.g. _"create an extension for Notion"_).
 
 **Prerequisites**
@@ -60,14 +60,14 @@ Open Asyar → type **"Build Extension with AI"** → describe what you want
 - An **Anthropic API key** in **Settings → AI → Anthropic** (the feature uses your
   own key; it refuses to start without one).
 - The coding runtime (the `claude` binary the builder drives) is **not** bundled with
-  Asyar. The first time you run the AI builder it downloads the runtime on demand, once,
+  Conbind. The first time you run the AI builder it downloads the runtime on demand, once,
   behind a consent dialog that shows the download size — no manual install, and later
   builds reuse it.
 
 **What happens**
 
 1. **Feasibility gate.** Before writing anything, the agent checks the request
-   against Asyar's capability list and tells you plainly if it's impossible
+   against Conbind's capability list and tells you plainly if it's impossible
    (and suggests the nearest thing it _can_ build) — so you never wait on a build
    that can't work.
 2. **Async build.** For feasible requests it builds in the background. You can
@@ -77,7 +77,7 @@ Open Asyar → type **"Build Extension with AI"** → describe what you want
    notification — click it to answer, and the build resumes.
 4. **Verified done.** On success the extension is registered and activated
    automatically, the same as the manual scaffolder. It lands in
-   `~/AsyarExtensions/<id>/`.
+   `~/ConbindExtensions/<id>/`.
 
 > **Safety note.** The build runs the `package.json` scripts the AI writes
 > (`pnpm install`, `pnpm run build`) — i.e. it executes generated code on your
@@ -87,18 +87,18 @@ Open Asyar → type **"Build Extension with AI"** → describe what you want
 
 ### Browse your extensions: "My Extensions"
 
-Open Asyar → type **"My Extensions"** → browse everything in `~/AsyarExtensions/`.
+Open Conbind → type **"My Extensions"** → browse everything in `~/ConbindExtensions/`.
 
 - Type to filter by name, ID, or description.
 - **Enter** opens the selected extension in your editor.
-- **⌘K** (the action panel) offers **Open in editor** and **Publish to Asyar Store**.
+- **⌘K** (the action panel) offers **Open in editor** and **Publish to Conbind Store**.
 
-### Publish to the Asyar Store
+### Publish to the Conbind Store
 
 From the AI builder's done screen _or_ from **My Extensions**, the action panel
-(**⌘K**) has **Publish to Asyar Store**. It confirms first (publishing creates a
+(**⌘K**) has **Publish to Conbind Store**. It confirms first (publishing creates a
 **public GitHub repo** under your account and submits for review), then opens a
-terminal running [`asyar publish`](./publishing.md) in the extension's directory.
+terminal running [`conbind publish`](./publishing.md) in the extension's directory.
 The CLI handles the rest — GitHub sign-in (in your browser, first time only),
 release, and store submission. See **[Publishing an extension](./publishing.md)**
 for the full flow and what gets created.

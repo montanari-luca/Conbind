@@ -1,8 +1,8 @@
-# Asyar Browser Bridge — Protocol Specification
+# Conbind Browser Bridge — Protocol Specification
 
 > Version 1. Stable wire contract for browser-side companion extensions.
 
-The Asyar launcher hosts a local HTTP + WebSocket server bound to `127.0.0.1`
+The Conbind launcher hosts a local HTTP + WebSocket server bound to `127.0.0.1`
 on the first available port in the range 54300–54320. Companion browser extensions discover the port, request
 pairing, await user approval inside the launcher, then maintain a persistent
 WebSocket connection authenticated by a token.
@@ -11,12 +11,12 @@ WebSocket connection authenticated by a token.
 
 ```
 GET http://127.0.0.1:<port>/discover
-→ { "name": "asyar", "version": "<launcher version>" }
+→ { "name": "conbind", "version": "<launcher version>" }
 ```
 
 The launcher binds the first available port in the range 54300–54320, which is
 exactly why probing that range finds it. Probe the range in parallel with
-short-timeout fetches. The first port returning a `name == "asyar"`
+short-timeout fetches. The first port returning a `name == "conbind"`
 response is the running launcher. Cache the port in extension storage; retry
 discovery if the cached port stops responding.
 
@@ -59,17 +59,17 @@ The token may be supplied two ways:
    must use channel 2.
 
 2. **`Sec-WebSocket-Protocol` subprotocol** (browser companions) — offer two
-   subprotocols: the marker `asyar.v1` and `bearer.<token>`:
+   subprotocols: the marker `conbind.v1` and `bearer.<token>`:
 
    ```js
    new WebSocket(`ws://127.0.0.1:${port}/bridge?family=chromium&variant=chrome`, [
-     'asyar.v1',
+     'conbind.v1',
      `bearer.${token}`,
    ]);
    ```
 
    The launcher extracts the token from the `bearer.` entry and echoes back
-   `asyar.v1` as the selected subprotocol. (Browsers close the socket if the
+   `conbind.v1` as the selected subprotocol. (Browsers close the socket if the
    server does not select one of the offered subprotocols.)
 
 Send `hello` as the first message:

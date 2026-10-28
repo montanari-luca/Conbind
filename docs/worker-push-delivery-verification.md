@@ -35,7 +35,7 @@ the linked directory and bundle timestamps.
 ## Maintainer acceptance script
 
 1. Build the SDK Playground with the current SDK and link it. For a deliberate
-   `asyar link --no-build` run, first verify that `dist/worker.js` and its imported
+   `conbind link --no-build` run, first verify that `dist/worker.js` and its imported
    assets are from that build. Start your usual `pnpm run dev` session.
 2. Open the Playground Application Service page. Toggle Launched, Terminated,
    and Frontmost Changed subscriptions off and on. Open a harmless GUI app,

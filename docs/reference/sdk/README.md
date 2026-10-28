@@ -7,8 +7,8 @@ owns its own `ExtensionContext`. Services are accessed through
 
 ```typescript
 // Worker iframe — src/main.worker.ts
-import { ExtensionContext } from 'asyar-sdk/worker';
-import type { IFeedbackService } from 'asyar-sdk/contracts';
+import { ExtensionContext } from 'conbind-sdk/worker';
+import type { IFeedbackService } from 'conbind-sdk/contracts';
 
 const context = new ExtensionContext();
 context.setExtensionId(extensionId);
@@ -18,8 +18,8 @@ const feedback = context.getService<IFeedbackService>('feedback');
 
 ```typescript
 // View iframe — src/main.view.ts
-import { ExtensionContext } from 'asyar-sdk/view';
-import type { IFeedbackService } from 'asyar-sdk/contracts';
+import { ExtensionContext } from 'conbind-sdk/view';
+import type { IFeedbackService } from 'conbind-sdk/contracts';
 
 const context = new ExtensionContext();
 context.setExtensionId(extensionId);
@@ -27,8 +27,8 @@ context.setExtensionId(extensionId);
 const feedback = context.getService<IFeedbackService>('feedback');
 ```
 
-The role assertion (`window.__ASYAR_ROLE__`) is checked at module load —
-importing `asyar-sdk/view` from a worker bundle (or vice-versa) fails
+The role assertion (`window.__CONBIND_ROLE__`) is checked at module load —
+importing `conbind-sdk/view` from a worker bundle (or vice-versa) fails
 fast with a clear error.
 
 > ⚠️ **Create exactly one `ExtensionContext` per iframe.** The constructor attaches `focusin`/`focusout` listeners for input-focus tracking. Creating a second context (e.g. inside a Svelte component's `onMount`) attaches duplicate listeners, causes double IPC calls, and can break the ⌘K shortcut detection. Worker and view each get their own — that's expected — but each role should only ever instantiate one.
@@ -76,8 +76,8 @@ expands the placement guidance.
 | `RunService`               | `IRunService`               | worker                         | `runs:track`                                      | Track long-running work in the launcher's runs UI and compact HUD badge                                                                |
 | `FilesService`             | `IFilesService`             | both                           | `files:search`                                    | Search the same bounded, cached local file index that backs the host's "Search Files" view                                             |
 | `ScreenService`            | `IScreenService`            | both                           | `screen:pick-color`, `screen:capture`             | Sample screen pixel colors with native eyedropper and extract screen text with on-device OCR                                           |
-| `CalculatorService`        | `ICalculatorService`        | both                           | `calculator:evaluate`                             | Evaluate math expressions, unit conversions, and currency conversions via Asyar's calculation engine                                   |
-| `BrowserService`           | `IBrowserService`           | both                           | `browser:*` (per method)                          | Read bookmarks / history / open tabs and drive page content in paired browsers — requires the Asyar browser companion                  |
+| `CalculatorService`        | `ICalculatorService`        | both                           | `calculator:evaluate`                             | Evaluate math expressions, unit conversions, and currency conversions via Conbind's calculation engine                                 |
+| `BrowserService`           | `IBrowserService`           | both                           | `browser:*` (per method)                          | Read bookmarks / history / open tabs and drive page content in paired browsers — requires the Conbind browser companion                |
 | `OpenerService`            | `IOpenerService`            | both                           | `shell:open-url`, `shell:open-path`, `fs:read`    | Open URLs, local paths in external applications, or reveal files/folders in the system file manager                                    |
 | `OnboardingService`        | `IOnboardingService`        | both                           | None (implicit)                                   | Signal first-run onboarding completion and trigger automatic re-dispatch of pending commands                                           |
 | `AiService`                | `IAiService`                | both                           | `ai`                                              | Prompt the host's configured AI model for one-shot completions or streamed responses                                                   |

@@ -7,7 +7,7 @@ worker.
 **Permission required:** None.
 
 Every top-level `IStatusBarItem` an extension registers becomes its own
-independent menu-bar tray icon. Asyar's own tray icon stays separate.
+independent menu-bar tray icon. Conbind's own tray icon stays separate.
 
 Optional `title` displays up to 32 Unicode characters next to a top-level icon
 (no control characters or newlines; submenu children cannot have titles).

@@ -1,0 +1,403 @@
+//! Local-first usage recording. Owns a dedicated `usage.db`.
+//! Recording always runs locally; nothing is ever sent off-device.
+
+use std::sync::Mutex;
+
+/// Managed Tauri state: the single connection to usage.db.
+pub struct UsageState {
+    pub db: Mutex<rusqlite::Connection>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum UsageError {
+    #[error("usage db error: {0}")]
+    Db(String),
+    #[error("usage lock poisoned")]
+    Lock,
+}
+
+impl serde::Serialize for UsageError {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.to_string())
+    }
+}
+
+const DB_FILE_NAME: &str = "usage.db";
+
+pub fn init_schema(conn: &rusqlite::Connection) -> Result<(), UsageError> {
+    conn.execute_batch(
+        "PRAGMA journal_mode=WAL;
+         CREATE TABLE IF NOT EXISTS usage_events (
+            event_type TEXT NOT NULL,        -- 'launch' | 'heartbeat' | 'worker_fallback' (local-only)
+            target     TEXT NOT NULL,        -- item id, '' for heartbeat
+            day        TEXT NOT NULL,        -- 'YYYY-MM-DD' local date
+            count      INTEGER NOT NULL DEFAULT 0,
+            sent       INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (event_type, target, day)
+         );
+         CREATE TABLE IF NOT EXISTS usage_meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+         );",
+    )
+    .map_err(|e| UsageError::Db(e.to_string()))?;
+    Ok(())
+}
+
+/// Open (or create) usage.db in the app data dir and build managed state.
+/// Falls back to an ephemeral database so usage commands always have state.
+pub fn initialize_usage_state<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+) -> Result<UsageState, Box<dyn std::error::Error>> {
+    use tauri::Manager;
+    let on_disk = (|| -> Result<UsageState, Box<dyn std::error::Error>> {
+        let dir = app_handle.path().app_data_dir()?;
+        std::fs::create_dir_all(&dir)?;
+        let conn = rusqlite::Connection::open(dir.join(DB_FILE_NAME))?;
+        init_schema(&conn)?;
+        Ok(UsageState {
+            db: Mutex::new(conn),
+        })
+    })();
+
+    match on_disk {
+        Ok(state) => Ok(state),
+        Err(e) => {
+            log::warn!(
+                "Failed to open on-disk usage.db: {e}; falling back to in-memory usage state"
+            );
+            UsageState::in_memory().map_err(Into::into)
+        }
+    }
+}
+
+impl UsageState {
+    pub fn in_memory() -> Result<Self, UsageError> {
+        let conn =
+            rusqlite::Connection::open_in_memory().map_err(|e| UsageError::Db(e.to_string()))?;
+        init_schema(&conn)?;
+        Ok(Self {
+            db: Mutex::new(conn),
+        })
+    }
+
+    pub fn record_launch(&self, target: &str, day: &str) -> Result<(), UsageError> {
+        let conn = self.db.lock().map_err(|_| UsageError::Lock)?;
+        conn.execute(
+            "INSERT INTO usage_events (event_type, target, day, count, sent)
+             VALUES ('launch', ?1, ?2, 1, 0)
+             ON CONFLICT(event_type, target, day)
+             DO UPDATE SET count = count + 1",
+            rusqlite::params![target, day],
+        )
+        .map_err(|e| UsageError::Db(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Local-only compatibility measurement. The usage API has no fallback field.
+    /// Mark excluded rows sent so they never schedule a network ping themselves.
+    pub fn record_worker_fallback(&self, target: &str, day: &str) -> Result<(), UsageError> {
+        let conn = self.db.lock().map_err(|_| UsageError::Lock)?;
+        conn.execute(
+            "INSERT INTO usage_events (event_type, target, day, count, sent)
+             VALUES ('worker_fallback', ?1, ?2, 1, 1)
+             ON CONFLICT(event_type, target, day)
+             DO UPDATE SET count = count + 1",
+            rusqlite::params![target, day],
+        )
+        .map_err(|e| UsageError::Db(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn record_active_day(&self, day: &str) -> Result<(), UsageError> {
+        let conn = self.db.lock().map_err(|_| UsageError::Lock)?;
+        conn.execute(
+            "INSERT INTO usage_events (event_type, target, day, count, sent)
+             VALUES ('heartbeat', '', ?1, 1, 0)
+             ON CONFLICT(event_type, target, day) DO NOTHING",
+            rusqlite::params![day],
+        )
+        .map_err(|e| UsageError::Db(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Every recorded launch as `(target, day, count)`, across all days.
+    ///
+    /// The walkthrough reads this to decide whether a task's completion rule
+    /// is satisfied. Because it spans the full history rather than today,
+    /// a task opens already-complete for a feature the user adopted months
+    /// before the task existed.
+    pub fn all_launches(&self) -> Result<Vec<(String, String, u32)>, UsageError> {
+        let conn = self.db.lock().map_err(|_| UsageError::Lock)?;
+        let mut stmt = conn
+            .prepare("SELECT target, day, count FROM usage_events WHERE event_type='launch'")
+            .map_err(|e| UsageError::Db(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, i64>(2)? as u32,
+                ))
+            })
+            .map_err(|e| UsageError::Db(e.to_string()))?;
+
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row.map_err(|e| UsageError::Db(e.to_string()))?);
+        }
+        Ok(out)
+    }
+}
+
+/// Today's local date as YYYY-MM-DD.
+pub fn local_day() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TopItem {
+    pub id: String,
+    /// Human-friendly display title resolved from the search index (e.g.
+    /// "Paste" for `cmd_org.conbind.clipboard_paste`). `None` here in
+    /// `UsageState::stats()` — it has no access to the search index — and is
+    /// populated by the `get_usage_stats` command via `SearchState`.
+    pub label: Option<String>,
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageStats {
+    pub active_days: u32,
+    pub total_launches: u32,
+    pub top: Vec<TopItem>,
+}
+
+impl UsageState {
+    pub fn stats(&self) -> Result<UsageStats, UsageError> {
+        let conn = self.db.lock().map_err(|_| UsageError::Lock)?;
+
+        let active_days: u32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM usage_events WHERE event_type='heartbeat'",
+                [],
+                |r| r.get::<_, i64>(0),
+            )
+            .map_err(|e| UsageError::Db(e.to_string()))? as u32;
+
+        let total_launches: u32 = conn
+            .query_row(
+                "SELECT COALESCE(SUM(count),0) FROM usage_events WHERE event_type='launch'",
+                [],
+                |r| r.get::<_, i64>(0),
+            )
+            .map_err(|e| UsageError::Db(e.to_string()))? as u32;
+
+        let mut top = Vec::new();
+        let mut stmt = conn
+            .prepare(
+                "SELECT target, SUM(count) AS c FROM usage_events
+                 WHERE event_type='launch' GROUP BY target ORDER BY c DESC LIMIT 20",
+            )
+            .map_err(|e| UsageError::Db(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok(TopItem {
+                    id: r.get(0)?,
+                    label: None,
+                    count: r.get::<_, i64>(1)? as u32,
+                })
+            })
+            .map_err(|e| UsageError::Db(e.to_string()))?;
+        for row in rows {
+            top.push(row.map_err(|e| UsageError::Db(e.to_string()))?);
+        }
+
+        Ok(UsageStats {
+            active_days,
+            total_launches,
+            top,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mem_state() -> UsageState {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        UsageState {
+            db: std::sync::Mutex::new(conn),
+        }
+    }
+
+    #[test]
+    fn worker_fallback_is_daily_local_only_and_not_a_launch() {
+        let state = mem_state();
+        state
+            .record_worker_fallback("org.test", "2026-10-04")
+            .unwrap();
+        state
+            .record_worker_fallback("org.test", "2026-10-04")
+            .unwrap();
+        state
+            .record_worker_fallback("org.test", "2026-10-05")
+            .unwrap();
+        let conn = state.db.lock().unwrap();
+        let (count, sent): (i64, i64) = conn.query_row(
+            "SELECT count, sent FROM usage_events WHERE event_type='worker_fallback' AND target='org.test' AND day='2026-10-04'", [], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+        assert_eq!((count, sent), (2, 1));
+        drop(conn);
+        assert_eq!(state.stats().unwrap().total_launches, 0);
+        assert!(state.all_launches().unwrap().is_empty());
+    }
+
+    #[test]
+    fn in_memory_state_records_launches_and_active_days() {
+        let state = UsageState::in_memory().unwrap();
+
+        state.record_launch("cmd_test", "2026-09-30").unwrap();
+        state.record_active_day("2026-09-30").unwrap();
+
+        let stats = state.stats().unwrap();
+        assert_eq!(stats.total_launches, 1);
+        assert_eq!(stats.active_days, 1);
+    }
+
+    #[test]
+    fn schema_creates_tables() {
+        let state = mem_state();
+        let conn = state.db.lock().unwrap();
+        // querying the empty tables must succeed
+        let events: i64 = conn
+            .query_row("SELECT COUNT(*) FROM usage_events", [], |r| r.get(0))
+            .unwrap();
+        let meta: i64 = conn
+            .query_row("SELECT COUNT(*) FROM usage_meta", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(events, 0);
+        assert_eq!(meta, 0);
+    }
+
+    #[test]
+    fn all_launches_is_empty_on_a_fresh_database() {
+        assert!(mem_state().all_launches().unwrap().is_empty());
+    }
+
+    #[test]
+    fn all_launches_returns_every_day_not_just_today() {
+        let state = mem_state();
+        state.record_launch("cmd_a", "2026-06-14").unwrap();
+        state.record_launch("cmd_a", "2026-06-15").unwrap();
+        state.record_launch("cmd_a", "2026-06-15").unwrap();
+        state.record_launch("cmd_b", "2026-06-15").unwrap();
+
+        let mut rows = state.all_launches().unwrap();
+        rows.sort();
+        assert_eq!(
+            rows,
+            vec![
+                ("cmd_a".to_string(), "2026-06-14".to_string(), 1),
+                ("cmd_a".to_string(), "2026-06-15".to_string(), 2),
+                ("cmd_b".to_string(), "2026-06-15".to_string(), 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn all_launches_excludes_heartbeat_rows() {
+        let state = mem_state();
+        state.record_active_day("2026-06-15").unwrap();
+        state.record_launch("cmd_a", "2026-06-15").unwrap();
+
+        let rows = state.all_launches().unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "cmd_a");
+    }
+
+    #[test]
+    fn record_launch_increments_same_day() {
+        let state = mem_state();
+        state
+            .record_launch("org.conbind.calculator", "2026-06-15")
+            .unwrap();
+        state
+            .record_launch("org.conbind.calculator", "2026-06-15")
+            .unwrap();
+        state
+            .record_launch("org.conbind.calculator", "2026-06-15")
+            .unwrap();
+
+        let conn = state.db.lock().unwrap();
+        let count: i64 = conn
+            .query_row(
+                "SELECT count FROM usage_events WHERE event_type='launch' AND target=?1 AND day=?2",
+                rusqlite::params!["org.conbind.calculator", "2026-06-15"],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn record_launch_separates_days() {
+        let state = mem_state();
+        state.record_launch("a", "2026-06-15").unwrap();
+        state.record_launch("a", "2026-06-16").unwrap();
+        let conn = state.db.lock().unwrap();
+        let rows: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM usage_events WHERE target='a'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(rows, 2);
+    }
+
+    #[test]
+    fn heartbeat_is_idempotent_per_day() {
+        let state = mem_state();
+        state.record_active_day("2026-06-15").unwrap();
+        state.record_active_day("2026-06-15").unwrap();
+        let conn = state.db.lock().unwrap();
+        let count: i64 = conn
+            .query_row(
+                "SELECT count FROM usage_events WHERE event_type='heartbeat' AND day='2026-06-15'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1); // stays 1, never increments
+    }
+
+    #[test]
+    fn stats_returns_totals_and_active_days() {
+        let state = mem_state();
+        state.record_launch("a", "2026-06-15").unwrap();
+        state.record_launch("a", "2026-06-15").unwrap();
+        state.record_launch("b", "2026-06-16").unwrap();
+        state.record_active_day("2026-06-15").unwrap();
+        state.record_active_day("2026-06-16").unwrap();
+
+        let s = state.stats().unwrap();
+        assert_eq!(s.active_days, 2);
+        assert_eq!(s.total_launches, 3);
+        // top items sorted desc by count
+        assert_eq!(s.top.first().map(|t| t.id.as_str()), Some("a"));
+        assert_eq!(s.top.first().map(|t| t.count), Some(2));
+    }
+
+    #[test]
+    fn local_day_format_is_yyyy_mm_dd() {
+        // local_day() returns today in YYYY-MM-DD; assert shape, not value.
+        let d = local_day();
+        assert_eq!(d.len(), 10);
+        assert_eq!(d.as_bytes()[4], b'-');
+        assert_eq!(d.as_bytes()[7], b'-');
+    }
+}

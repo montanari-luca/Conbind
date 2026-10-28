@@ -1,0 +1,10 @@
+import { defineExtensionConfig } from 'conbind-sdk/vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { fileURLToPath, URL } from 'url';
+
+// Entry detection (view.html / worker.html), workspace SDK hot-reload aliasing
+// and the worker-safe build policy (`modulePreload: false`) are owned by the SDK.
+export default defineExtensionConfig({
+  root: fileURLToPath(new URL('.', import.meta.url)),
+  config: { plugins: [svelte()] },
+});

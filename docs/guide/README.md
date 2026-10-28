@@ -1,12 +1,12 @@
-# Using Asyar
+# Using Conbind
 
-Asyar is a keyboard-first launcher: press your global hotkey, start typing, and
-act — without touching the mouse. This guide walks you through everything Asyar
+Conbind is a keyboard-first launcher: press your global hotkey, start typing, and
+act — without touching the mouse. This guide walks you through everything Conbind
 can do.
 
 ## Start here
 
-1. **[Getting Started](./getting-started.md)** — Install Asyar, finish the first-run setup, and run your first search.
+1. **[Getting Started](./getting-started.md)** — Install Conbind, finish the first-run setup, and run your first search.
 2. **[The Basics](./the-basics.md)** — How search, results, navigation, and the action panel work. The mental model behind everything else.
 
 ## Features
@@ -20,7 +20,7 @@ Scripts, AI & Agents, MCP, Browser Integration, the Extension Store, and
 
 - **[Keyboard Shortcuts](./keyboard-shortcuts.md)** — Every shortcut in one place.
 - **[Settings](./settings.md)** — A tour of every settings tab.
-- **[Sync & Backup](./sync-and-backup.md)** — Your account, cloud sync, encryption, and backups.
+- **[Backup](./backup.md)** — Export and import your settings and data.
 - **[Troubleshooting](./troubleshooting.md)** — Fixes for the most common problems.
 - **[FAQ](./faq.md)** — Quick answers.
 

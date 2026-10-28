@@ -4,13 +4,13 @@ order: 6
 
 # How to Add and Maintain Translations
 
-This guide explains how to add new language translations to Asyar and how to use the translation system when authoring launcher UI components or extensions.
+This guide explains how to add new language translations to Conbind and how to use the translation system when authoring launcher UI components or extensions.
 
 ---
 
 ## 1. Zero Hardcoded Strings Policy
 
-Asyar strictly forbids hardcoded user-facing strings in all Svelte templates and UI code. All user-visible strings must be referenced through translation keys. This applies to `.svelte` **and** `.ts` files: action labels and descriptions, confirmation dialogs, toast and notification messages, status text, and `aria-label` / `title` / `alt` attributes all count.
+Conbind strictly forbids hardcoded user-facing strings in all Svelte templates and UI code. All user-visible strings must be referenced through translation keys. This applies to `.svelte` **and** `.ts` files: action labels and descriptions, confirmation dialogs, toast and notification messages, status text, and `aria-label` / `title` / `alt` attributes all count.
 
 > **Note:** The automated test only covers part of this policy (see [Static AST Translation Enforcement](../explanation/locale-and-internationalization.md#8-static-ast-translation-enforcement)), so passing CI does not prove a change is fully localized. Review your own diff for literals.
 
@@ -134,7 +134,7 @@ $effect(() => {
 - Strings the code compares or matches against. For example, the `Required` prefix of a missing-argument notice is matched by `BottomActionBar`, so changing it means changing both places together.
 - Internal identifiers, command IDs and category ids that are never shown.
 - Seed data stored in the user's database (default portal names, for instance): translating the source text would not translate rows already saved.
-- Brand and technical names (`Asyar`, `GitHub`, CLI names), URLs, shortcodes and example placeholders such as `npx` or `com.example.app`.
+- Brand and technical names (`Conbind`, `GitHub`, CLI names), URLs, shortcodes and example placeholders such as `npx` or `com.example.app`.
 
 ### Naming Keys
 
@@ -144,14 +144,14 @@ Group keys by where they are used and keep them under an existing namespace: `co
 
 ## 3. Contributing a New Language Translation
 
-All locale files live in [`asyar-launcher/src/locales/`](../../asyar-launcher/src/locales/).
+All locale files live in [`conbind-launcher/src/locales/`](../../conbind-launcher/src/locales/).
 
 ### Step 1: Create the Locale Catalog
 
 Create a new file named with your target language's BCP-47 / ISO 639-1 code (e.g. `ckb.json` for Central Kurdish, `de.json` for German, `fr.json` for French, `ar.json` for Arabic):
 
 ```
-asyar-launcher/src/locales/
+conbind-launcher/src/locales/
 ├── en.json
 ├── ckb.json
 └── de.json
@@ -178,13 +178,13 @@ Copy the structure of `en.json` and translate each leaf string value:
 
 ### Step 3: Register the Catalog
 
-Register your new catalog in [`asyar-launcher/src/services/i18n/i18nService.svelte.ts`](../../asyar-launcher/src/services/i18n/i18nService.svelte.ts) or dynamically via `i18nService.registerCatalog('ckb', ckbCatalog)`.
+Register your new catalog in [`conbind-launcher/src/services/i18n/i18nService.svelte.ts`](../../conbind-launcher/src/services/i18n/i18nService.svelte.ts) or dynamically via `i18nService.registerCatalog('ckb', ckbCatalog)`.
 
 The catalogs registered today are `en`, `pt-BR`, `zh-CN` and `zh-Hant`. Every catalog must contain exactly the keys of `en.json` and keep the same `{placeholders}`; `catalogs.test.ts` enforces this.
 
 ### Step 4: Add the Native (Rust) Strings
 
-A handful of strings are rendered by Rust, outside the frontend catalogs: the tray menu (Settings, Check for Updates, Quit) and some window titles. They live in [`asyar-launcher/src-tauri/src/locale/native.rs`](../../asyar-launcher/src-tauri/src/locale/native.rs):
+A handful of strings are rendered by Rust, outside the frontend catalogs: the tray menu (Settings, Check for Updates, Quit) and some window titles. They live in [`conbind-launcher/src-tauri/src/locale/native.rs`](../../conbind-launcher/src-tauri/src/locale/native.rs):
 
 1. Add a variant to `NativeLang` and map your locale to it in `NativeLang::from_locale`.
 2. Add a translation for every `NativeText` key in `native_text` (the `match` is exhaustive, so the compiler tells you what is missing).
@@ -212,7 +212,7 @@ Extension manifests support multi-lingual strings directly for properties like `
 }
 ```
 
-Asyar's [`i18nService.resolveLocalized()`](../../asyar-launcher/src/services/i18n/i18nService.svelte.ts) automatically resolves the best matching translation based on the active system locale and fallback chains.
+Conbind's [`i18nService.resolveLocalized()`](../../conbind-launcher/src/services/i18n/i18nService.svelte.ts) automatically resolves the best matching translation based on the active system locale and fallback chains.
 
 ---
 
@@ -221,7 +221,7 @@ Asyar's [`i18nService.resolveLocalized()`](../../asyar-launcher/src/services/i18
 Run the i18n tests. They check that every `t()` call references an existing key, that all catalogs have identical keys and placeholders, and that Svelte templates do not contain the most common hardcoded literals:
 
 ```bash
-pnpm --dir asyar-launcher test:run src/services/i18n/
+pnpm --dir conbind-launcher test:run src/services/i18n/
 ```
 
 If you touched the native strings, also run:

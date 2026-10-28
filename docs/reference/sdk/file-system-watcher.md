@@ -1,8 +1,8 @@
 ### 8.29 `FileSystemWatcherService` — Watch directories for changes
 
 **Runs in:** worker. The `fsWatcher` proxy is wired only into the worker
-ExtensionContext (`asyar-sdk/worker`); the view ExtensionContext does not
-expose it. Importing `IFileSystemWatcherService` from `asyar-sdk/contracts`
+ExtensionContext (`conbind-sdk/worker`); the view ExtensionContext does not
+expose it. Importing `IFileSystemWatcherService` from `conbind-sdk/contracts`
 in view code is allowed for type positions, but `context.getService('fsWatcher')`
 in a view-side `ExtensionContext` throws — the watch handle and its push
 callback must live in the always-on worker iframe so events keep arriving
@@ -10,7 +10,7 @@ after the launcher panel is dismissed.
 
 **Permission required:** `fs:watch`, plus a matching `permissionArgs["fs:watch"]` array of glob patterns in the manifest. The pattern list is the **scope** of what an extension is allowed to watch; calls to `watch(paths)` that escape every declared pattern are rejected at the host boundary with a permission error.
 
-Use this to react to user-initiated changes on the filesystem that happen **outside** Asyar — Apple Shortcuts edits, SSH config tweaks, dotfile refreshes, Homebrew formula updates, and so on. The host exposes a tiny, stable shape (`{ type: 'change', paths: string[] }`) regardless of which OS-native backend produced the raw event (FSEvents on macOS, inotify on Linux, ReadDirectoryChangesW on Windows).
+Use this to react to user-initiated changes on the filesystem that happen **outside** Conbind — Apple Shortcuts edits, SSH config tweaks, dotfile refreshes, Homebrew formula updates, and so on. The host exposes a tiny, stable shape (`{ type: 'change', paths: string[] }`) regardless of which OS-native backend produced the raw event (FSEvents on macOS, inotify on Linux, ReadDirectoryChangesW on Windows).
 
 ```typescript
 interface FileSystemWatcherOptions {
@@ -67,8 +67,8 @@ time.
 
 ```typescript
 // worker.ts
-import { ExtensionContext as WorkerExtensionContext } from 'asyar-sdk/worker';
-import type { IFileSystemWatcherService, ExtensionStateProxy } from 'asyar-sdk/contracts';
+import { ExtensionContext as WorkerExtensionContext } from 'conbind-sdk/worker';
+import type { IFileSystemWatcherService, ExtensionStateProxy } from 'conbind-sdk/contracts';
 
 const ctx = new WorkerExtensionContext();
 ctx.setExtensionId('your.extension.id');
@@ -133,7 +133,7 @@ subscribes:
 
 ```typescript
 // In the view (e.g. inside a Svelte component's onMount):
-import type { ExtensionContext, ExtensionStateProxy } from 'asyar-sdk/view';
+import type { ExtensionContext, ExtensionStateProxy } from 'conbind-sdk/view';
 
 const stateProxy = context.getService<ExtensionStateProxy>('state');
 
@@ -176,8 +176,8 @@ Breaches surface as a host-side validation error. These numbers are large enough
 #### Worker survival vs. view Dormant
 
 Push events travel through the launcher's prefer-worker push bridge:
-Rust emits `asyar:fs-watch` → the bridge looks up the extension's
-`iframe[data-role="worker"]` → it posts `asyar:event:fs-watch:push` to the
+Rust emits `conbind:fs-watch` → the bridge looks up the extension's
+`iframe[data-role="worker"]` → it posts `conbind:event:fs-watch:push` to the
 worker's `contentWindow`. The worker iframe runs with `keep_alive: None`
 — it is mounted on enable, unmounted on disable/uninstall, and never
 evicted on idle. There is no Dormant-window silent-drop for fs-watch

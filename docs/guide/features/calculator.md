@@ -13,7 +13,7 @@ Results appear pinned at the top of the list the moment an expression is recogni
 
 ## How to use it
 
-There is no trigger word — the calculator is always on. Just open Asyar with your global hotkey and start typing.
+There is no trigger word — the calculator is always on. Just open Conbind with your global hotkey and start typing.
 
 1. Type your expression — for example `15% of 240`, `5 kg to lbs`, `days until christmas`, or `time in tokyo`.
 2. The result appears as the first item in the list, with the expression shown alongside it.
@@ -49,11 +49,11 @@ The calculator result row has no action panel (⌘K) entries — its single acti
 
 ## Tips
 
-- **Implicit currency** — type `50 usd` (no target currency) and Asyar converts it to your **Preferred currency** setting automatically.
+- **Implicit currency** — type `50 usd` (no target currency) and Conbind converts it to your **Preferred currency** setting automatically.
 - **Rate units convert too** — `8 dollars/hour in gbp` converts per-unit rates, not just flat amounts.
 - **Date anchor** — use the word `today` in date math, for example `today + 45 days`.
 - **Base literals** — paste a hex color like `0xFF8C00` and see its decimal, binary, and octal values side by side.
-- **Your decimal mark** — type `61,78 * 1,19` and it means what you wrote. Asyar follows your system's region setting, so a comma-decimal locale reads commas as decimals and gets its answers grouped the same way (`73,5182`, `1.234.567`).
+- **Your decimal mark** — type `61,78 * 1,19` and it means what you wrote. Conbind follows your system's region setting, so a comma-decimal locale reads commas as decimals and gets its answers grouped the same way (`73,5182`, `1.234.567`).
 - **Currency refresh interval, preferred currency & number format** — go to Settings → Extensions → Calculator to change how often rates refresh (1–24 hours, default 6), which currency bare amounts convert to, and — if the detected region is not how you actually write numbers — the number format to read and render (Automatic, `1,234.56`, or `1.234,56`).
 - **Disabling Calculator** — If you use an alternative calculation extension or prefer a clean search bar without inline math evaluation, you can turn off Calculator in **Settings → Extensions**. Disabling removes the search-bar math interceptor and calculator commands, while the underlying calculation and currency conversion platform services remain active for Tier 2 extensions.
 

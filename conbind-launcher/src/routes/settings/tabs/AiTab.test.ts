@@ -1,0 +1,425 @@
+// @vitest-environment jsdom
+import { fireEvent, render, screen } from '@testing-library/svelte';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../../components', async () => ({
+  Button: (await import('../../../components/base/Button.svelte')).default,
+  Input: (await import('../../../components/base/Input.svelte')).default,
+  InlineError: (await import('../../../components/feedback/InlineError.svelte')).default,
+  EmptyState: (await import('../../../components/feedback/EmptyState.svelte')).default,
+  SettingsForm: (await import('../../../components/settings/SettingsForm.svelte')).default,
+  SettingsFormRow: (await import('../../../components/settings/SettingsFormRow.svelte')).default,
+  SettingsCard: (await import('../../../components/settings/SettingsCard.svelte')).default,
+  SettingsRow: (await import('../../../components/settings/SettingsRow.svelte')).default,
+  Toggle: (await import('../../../components/base/Toggle.svelte')).default,
+  ModelSelector: (await import('../../../components/form/ModelSelector.svelte')).default,
+  Select: (await import('../../../components/base/Select.svelte')).default,
+}));
+vi.mock('../../../services/settings/settingsService.svelte', () => ({
+  settingsService: {
+    currentSettings: {
+      ai: {
+        providers: {
+          anthropic: { enabled: true, apiKey: 'sk-ant', lastModelId: 'claude-sonnet-5' },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+        historyRetentionCap: 100,
+      },
+    },
+    updateSettings: vi.fn(),
+  },
+}));
+vi.mock('../../../services/ai/providerRegistry', () => ({
+  providerRegistry: {
+    list: vi.fn().mockReturnValue([
+      {
+        id: 'anthropic',
+        name: 'Anthropic',
+        requiresApiKey: true,
+        requiresBaseUrl: false,
+        getModels: vi.fn(),
+      },
+    ]),
+  },
+}));
+vi.mock('../../../built-in-features/agents/agentService.svelte', () => ({
+  agentService: {
+    init: vi.fn().mockResolvedValue(undefined),
+    getDefaultAgent: vi.fn().mockReturnValue(null),
+    upsertDefaultAgent: vi.fn(),
+  },
+}));
+vi.mock('../../../lib/ipc/commands', () => ({
+  agentsProviderRemovalBlockers: vi.fn(),
+}));
+
+import AiTab from './AiTab.svelte';
+import { agentsProviderRemovalBlockers } from '../../../lib/ipc/commands';
+import { settingsService } from '../../../services/settings/settingsService.svelte';
+import { providerRegistry } from '../../../services/ai/providerRegistry';
+
+describe('AiTab', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('blocks removing the last usable provider and shows why', async () => {
+    vi.mocked(agentsProviderRemovalBlockers).mockResolvedValue(
+      "Can't remove Anthropic — it's the last configured provider and these agents still use it: Conbind Assistant. Reassign or delete them first.",
+    );
+
+    render(AiTab, { mode: 'providers-only' });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Anthropic' }));
+
+    expect(await screen.findByText(/Can't remove Anthropic.*Conbind Assistant/)).toBeTruthy();
+    expect(settingsService.updateSettings).not.toHaveBeenCalled();
+  });
+
+  it('removes a provider immediately when nothing blocks it', async () => {
+    vi.mocked(agentsProviderRemovalBlockers).mockResolvedValue(null);
+
+    render(AiTab, { mode: 'providers-only' });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Anthropic' }));
+
+    await vi.waitFor(() => {
+      expect(settingsService.updateSettings).toHaveBeenCalledWith(
+        'ai',
+        expect.objectContaining({
+          providers: {},
+        }),
+      );
+    });
+  });
+
+  it('renders custom connection name and provider type badge', () => {
+    vi.mocked(settingsService).currentSettings = {
+      ai: {
+        providers: {
+          custom_1: {
+            enabled: true,
+            name: 'Local Ollama',
+            providerType: 'custom' as any,
+            baseUrl: 'http://localhost:11434',
+          },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+      },
+    } as any;
+    vi.mocked(providerRegistry.list).mockReturnValue([
+      {
+        id: 'custom',
+        name: 'Custom (OpenAI-compatible)',
+        requiresApiKey: false,
+        requiresBaseUrl: true,
+        getModels: vi.fn(),
+      },
+    ]);
+
+    render(AiTab, { mode: 'providers-only' });
+
+    expect(screen.getByText('Local Ollama')).toBeTruthy();
+    expect(screen.getByText('Custom (OpenAI-compatible)')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove Local Ollama' })).toBeTruthy();
+  });
+
+  it('renders model default for temperature when undefined and allows setting custom value', async () => {
+    vi.mocked(settingsService).currentSettings = {
+      ai: {
+        providers: {
+          anthropic: { enabled: true, apiKey: 'sk-ant', lastModelId: 'claude-sonnet-5' },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+      },
+    } as any;
+    vi.mocked(providerRegistry.list).mockReturnValue([
+      {
+        id: 'anthropic',
+        name: 'Anthropic',
+        requiresApiKey: true,
+        requiresBaseUrl: false,
+        getModels: vi.fn(),
+      },
+    ]);
+
+    render(AiTab, { mode: 'providers-only' });
+
+    // Expand the Anthropic row
+    await fireEvent.click(screen.getByText('Anthropic'));
+
+    expect(screen.getByText(/Temperature:\s*Model default/)).toBeTruthy();
+    expect(screen.getByText('(omitted)')).toBeTruthy();
+
+    const rangeInput = screen.getByLabelText(/Temperature:/) as HTMLInputElement;
+    await fireEvent.input(rangeInput, { target: { value: '0.85' } });
+
+    expect(settingsService.updateSettings).toHaveBeenCalledWith('ai', {
+      providers: {
+        anthropic: expect.objectContaining({
+          temperature: 0.85,
+        }),
+      },
+    });
+  });
+
+  it('renders custom temperature and allows resetting to model default', async () => {
+    vi.mocked(settingsService).currentSettings = {
+      ai: {
+        providers: {
+          anthropic: {
+            enabled: true,
+            apiKey: 'sk-ant',
+            lastModelId: 'claude-sonnet-5',
+            temperature: 0.85,
+          },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+      },
+    } as any;
+    vi.mocked(providerRegistry.list).mockReturnValue([
+      {
+        id: 'anthropic',
+        name: 'Anthropic',
+        requiresApiKey: true,
+        requiresBaseUrl: false,
+        getModels: vi.fn(),
+      },
+    ]);
+
+    render(AiTab, { mode: 'providers-only' });
+
+    // Expand the Anthropic row
+    await fireEvent.click(screen.getByText('Anthropic'));
+
+    expect(screen.getByText(/Temperature:\s*0\.85/)).toBeTruthy();
+    const resetBtn = screen.getByRole('button', { name: 'Use model default' });
+    expect(resetBtn).toBeTruthy();
+
+    await fireEvent.click(resetBtn);
+
+    expect(settingsService.updateSettings).toHaveBeenCalledWith('ai', {
+      providers: {
+        anthropic: expect.objectContaining({
+          temperature: undefined,
+        }),
+      },
+    });
+  });
+
+  it('allows searching and selecting a model via ModelSelector', async () => {
+    const getModelsMock = vi.fn().mockResolvedValue([
+      { id: 'claude-3-7-sonnet', label: 'Claude 3.7 Sonnet' },
+      { id: 'claude-3-5-haiku', label: 'Claude 3.5 Haiku' },
+      { id: 'claude-3-opus', label: 'Claude 3 Opus' },
+    ]);
+
+    vi.mocked(settingsService).currentSettings = {
+      ai: {
+        providers: {
+          anthropic: { enabled: true, apiKey: 'sk-ant' },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+      },
+    } as any;
+    vi.mocked(providerRegistry.list).mockReturnValue([
+      {
+        id: 'anthropic',
+        name: 'Anthropic',
+        requiresApiKey: true,
+        requiresBaseUrl: false,
+        getModels: getModelsMock,
+      },
+    ]);
+
+    render(AiTab, { mode: 'providers-only' });
+
+    // Expand Anthropic row
+    await fireEvent.click(screen.getByText('Anthropic'));
+
+    // Fetch models
+    const fetchBtn = screen.getByRole('button', { name: 'Test & Fetch Models' });
+    await fireEvent.click(fetchBtn);
+
+    // Open model selector
+    const trigger = await screen.findByText('Claude 3.7 Sonnet');
+    await fireEvent.click(trigger);
+
+    // Filter models
+    const searchInput = screen.getByRole('textbox', { name: /Filter models/i });
+    await fireEvent.input(searchInput, { target: { value: 'haiku' } });
+
+    // Select filtered model
+    const haikuOption = screen.getByText('Claude 3.5 Haiku');
+    await fireEvent.click(haikuOption);
+
+    expect(settingsService.updateSettings).toHaveBeenCalledWith('ai', {
+      providers: {
+        anthropic: expect.objectContaining({
+          lastModelId: 'claude-3-5-haiku',
+        }),
+      },
+    });
+  });
+
+  it('renders ModelSelector with saved lastModelId even before manual fetch', async () => {
+    vi.mocked(settingsService).currentSettings = {
+      ai: {
+        providers: {
+          anthropic: { enabled: true, apiKey: 'sk-ant', lastModelId: 'claude-sonnet-5' },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+      },
+    } as any;
+    vi.mocked(providerRegistry.list).mockReturnValue([
+      {
+        id: 'anthropic',
+        name: 'Anthropic',
+        requiresApiKey: true,
+        requiresBaseUrl: false,
+        getModels: vi.fn(),
+      },
+    ]);
+
+    render(AiTab, { mode: 'providers-only' });
+
+    // Expand Anthropic row
+    await fireEvent.click(screen.getByText('Anthropic'));
+
+    // Model selector is immediately visible with the saved lastModelId
+    expect(screen.getByText(/claude-sonnet-5/)).toBeTruthy();
+  });
+
+  it('renders web search card and allows changing engine', async () => {
+    settingsService.currentSettings = {
+      ai: {
+        providers: {
+          anthropic: { enabled: true, apiKey: 'sk-ant', lastModelId: 'claude-sonnet-5' },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+        webSearch: {
+          engine: 'duckduckgo',
+        },
+      },
+    } as any;
+
+    render(AiTab, { mode: 'full' });
+
+    expect(screen.getByText('Web Search')).toBeTruthy();
+    const select = screen.getByLabelText('Search engine') as HTMLSelectElement;
+    expect(select.value).toBe('duckduckgo');
+
+    // Switch to Brave Search
+    await fireEvent.change(select, { target: { value: 'brave' } });
+    expect(settingsService.updateSettings).toHaveBeenCalledWith('ai', {
+      webSearch: {
+        engine: 'brave',
+      },
+    });
+  });
+
+  it('renders api key input when brave engine is configured', async () => {
+    settingsService.currentSettings = {
+      ai: {
+        providers: {
+          anthropic: { enabled: true, apiKey: 'sk-ant', lastModelId: 'claude-sonnet-5' },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+        webSearch: {
+          engine: 'brave',
+        },
+      },
+    } as any;
+
+    render(AiTab, { mode: 'full' });
+
+    const apiKeyInput = screen.getByPlaceholderText('BSA...') as HTMLInputElement;
+    expect(apiKeyInput).toBeTruthy();
+
+    apiKeyInput.value = 'test-brave-key';
+    await fireEvent.blur(apiKeyInput);
+    expect(settingsService.updateSettings).toHaveBeenCalledWith('ai', {
+      webSearch: {
+        engine: 'brave',
+        apiKey: 'test-brave-key',
+      },
+    });
+  });
+
+  it('renders api key input when serply engine is configured', async () => {
+    settingsService.currentSettings = {
+      ai: {
+        providers: {
+          anthropic: { enabled: true, apiKey: 'sk-ant', lastModelId: 'claude-sonnet-5' },
+        },
+        maxTokens: 1024,
+        temperature: 0.7,
+        defaultAgentId: null,
+        tabContinuesLastThread: false,
+        webSearch: {
+          engine: 'serply',
+        },
+      },
+    } as any;
+
+    render(AiTab, { mode: 'full' });
+
+    const apiKeyInput = screen.getByLabelText('Serply API key') as HTMLInputElement;
+    expect(apiKeyInput).toBeTruthy();
+    expect(apiKeyInput.placeholder).toBe('Enter your API key');
+
+    apiKeyInput.value = 'test-serply-key';
+    await fireEvent.blur(apiKeyInput);
+    expect(settingsService.updateSettings).toHaveBeenCalledWith('ai', {
+      webSearch: {
+        engine: 'serply',
+        apiKey: 'test-serply-key',
+      },
+    });
+  });
+
+  it('renders history retention cap and handles option change', async () => {
+    const handler = {
+      handleHistoryRetentionCapChange: vi.fn(),
+    } as any;
+
+    render(AiTab, { mode: 'full', handler });
+
+    expect(screen.getByText('History retention cap')).toBeTruthy();
+
+    const select = screen.getAllByRole('combobox').find((el) => {
+      const options = Array.from((el as HTMLSelectElement).options).map((o) => o.value);
+      return options.includes('100') && options.includes('custom');
+    }) as HTMLSelectElement;
+
+    expect(select).toBeTruthy();
+    expect(select.value).toBe('100');
+
+    await fireEvent.change(select, { target: { value: '50' } });
+    expect(handler.handleHistoryRetentionCapChange).toHaveBeenCalledWith(50);
+  });
+});

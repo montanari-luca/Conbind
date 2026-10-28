@@ -1,36 +1,36 @@
 # Benchmark run 2026-10-04
 
 - Machine: Apple M4 Max, 36 GB RAM, macOS 27.0.1
-- Asyar 0.1.1-49 (`/Applications/asyar.app`), hotkey `cmd+space`
+- Conbind 0.1.1-49 (`/Applications/conbind.app`), hotkey `cmd+space`
 - Raycast 2.6.2.0 (`/Applications/Raycast.app`), hotkey `cmd+space`
 - 15 hotkey runs, 30s post-activity CPU window, 20s initial settle
 - 60s deep-idle window after 120s quiet
 
-| Metric                                 | Asyar 0.1.1-49 | Raycast 2.6.2.0 |
-| -------------------------------------- | -------------: | --------------: |
-| Hotkey → window visible (median of 15) |        13.9 ms |         22.2 ms |
-| Hotkey → window visible (p95)          |        17.3 ms |         32.0 ms |
-| Hotkey → window visible (p99)          |        20.5 ms |         32.5 ms |
-| Keystroke → results painted (p50)      |            n/a |             n/a |
-| Keystroke → results painted (p95)      |            n/a |             n/a |
-| Cold start → usable                    |         585 ms |         2129 ms |
-| Memory footprint, idle (all processes) |       419.2 MB |        451.5 MB |
-| CPU while idle (30s average)           |         0.64 % |          1.44 % |
-| CPU deep idle (60s, after 120s quiet)  |         0.10 % |          1.41 % |
-| Memory deep idle                       |       664.4 MB |        680.4 MB |
-| CPU ms/s (powermetrics, deep idle)     |           1.02 |           13.92 |
-| Idle wakeups/s (deep idle)             |          11.82 |           46.33 |
-| Idle disk write ops (60s)              |              0 |              96 |
-| Idle network bytes in (60s)            |           3106 |               0 |
-| Idle network bytes out (60s)           |            948 |               0 |
-| App size on disk                       |          68 MB |          223 MB |
+| Metric                                 | Conbind 0.1.1-49 | Raycast 2.6.2.0 |
+| -------------------------------------- | ---------------: | --------------: |
+| Hotkey → window visible (median of 15) |          13.9 ms |         22.2 ms |
+| Hotkey → window visible (p95)          |          17.3 ms |         32.0 ms |
+| Hotkey → window visible (p99)          |          20.5 ms |         32.5 ms |
+| Keystroke → results painted (p50)      |              n/a |             n/a |
+| Keystroke → results painted (p95)      |              n/a |             n/a |
+| Cold start → usable                    |           585 ms |         2129 ms |
+| Memory footprint, idle (all processes) |         419.2 MB |        451.5 MB |
+| CPU while idle (30s average)           |           0.64 % |          1.44 % |
+| CPU deep idle (60s, after 120s quiet)  |           0.10 % |          1.41 % |
+| Memory deep idle                       |         664.4 MB |        680.4 MB |
+| CPU ms/s (powermetrics, deep idle)     |             1.02 |           13.92 |
+| Idle wakeups/s (deep idle)             |            11.82 |           46.33 |
+| Idle disk write ops (60s)              |                0 |              96 |
+| Idle network bytes in (60s)            |             3106 |               0 |
+| Idle network bytes out (60s)           |              948 |               0 |
+| App size on disk                       |            68 MB |          223 MB |
 
 <sub>Measured 2026-10-04 on a Apple M4 Max (36 GB RAM), macOS 27.0.1, each app
 as installed, summoned by its own registered global hotkey, one at a time on a
 quiet machine. Black-box measurement: synthetic hotkey press → launcher window
 on screen. Reproduce with [`benchmarks/bench.sh`](benchmarks/README.md).</sub>
 
-## Raw output — Asyar 0.1.1-49
+## Raw output — Conbind 0.1.1-49
 
 ```
 coldstart_ms=585
@@ -54,7 +54,7 @@ p95_ms=17.3
 min_ms=11.9
 p99_ms=20.5
 samples_ms=13.1,13.0,15.0,15.3,13.7,11.9,13.7,17.3,14.2,12.7,14.9,14.2,13.9,20.5,12.9
-process pid=68573 mb=174.3 name=asyar
+process pid=68573 mb=174.3 name=conbind
 process pid=68574 mb=2.6 name=SetStoreUpdateService
 process pid=68575 mb=22.1 name=com.apple.WebKit.GPU
 process pid=68576 mb=92.4 name=com.apple.WebKit.WebContent
@@ -87,7 +87,7 @@ run=10 ms=timeout
 type_p50_ms=n/a
 type_p95_ms=n/a
 type_p99_ms=n/a
-process pid=68573 mb=174.4 name=asyar
+process pid=68573 mb=174.4 name=conbind
 process pid=68574 mb=2.5 name=SetStoreUpdateService
 process pid=68575 mb=225.0 name=com.apple.WebKit.GPU
 process pid=68576 mb=142.5 name=com.apple.WebKit.WebContent

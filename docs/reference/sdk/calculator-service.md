@@ -4,7 +4,7 @@
 
 **Permission required:** `calculator:evaluate`.
 
-`CalculatorService` provides Tier 2 extensions with direct programmatic access to Asyar's high-performance native calculation engine in Rust. It evaluates math expressions, percentages, unit and currency conversions, dates/durations, world clocks, and color conversions.
+`CalculatorService` provides Tier 2 extensions with direct programmatic access to Conbind's high-performance native calculation engine in Rust. It evaluates math expressions, percentages, unit and currency conversions, dates/durations, world clocks, and color conversions.
 
 ```typescript
 export type CalcKind = 'math' | 'unit' | 'currency' | 'date' | 'time' | 'color';
@@ -29,7 +29,7 @@ export interface ICalculatorService {
 **Usage:**
 
 ```typescript
-import type { ICalculatorService } from 'asyar-sdk/contracts';
+import type { ICalculatorService } from 'conbind-sdk/contracts';
 
 const calculator = context.getService<ICalculatorService>('calculator');
 
@@ -44,6 +44,6 @@ const currencyResults = await calculator.evaluate('100 usd to eur');
 const unitResults = await calculator.evaluate('100 km to miles');
 ```
 
-**Lifecycle independence:** `CalculatorService` delegates directly to Asyar's Rust calculation service. Even if the user disables the bundled `calculator` feature (suppressing the inline search bar math evaluator), `CalculatorService` remains fully available to authorized Tier 2 extensions declaring `calculator:evaluate`.
+**Lifecycle independence:** `CalculatorService` delegates directly to Conbind's Rust calculation service. Even if the user disables the bundled `calculator` feature (suppressing the inline search bar math evaluator), `CalculatorService` remains fully available to authorized Tier 2 extensions declaring `calculator:evaluate`.
 
 ---

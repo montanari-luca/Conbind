@@ -1,22 +1,22 @@
-diff --git a/asyar-launcher/src-tauri/tauri.conf.json b/asyar-launcher/src-tauri/tauri.conf.json
+diff --git a/conbind-launcher/src-tauri/tauri.conf.json b/conbind-launcher/src-tauri/tauri.conf.json
 index e5d339a8..0c7695e1 100644
---- a/asyar-launcher/src-tauri/tauri.conf.json
-+++ b/asyar-launcher/src-tauri/tauri.conf.json
+--- a/conbind-launcher/src-tauri/tauri.conf.json
++++ b/conbind-launcher/src-tauri/tauri.conf.json
 @@ -67,8 +67,8 @@
        }
      ],
      "security": {
--      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' asyar-icon: http://asyar-icon.localhost asyar-extension: http://asyar-extension.localhost asyar-thumb: http://asyar-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src asyar-extension: http://asyar-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
--      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asyar-icon: http://asyar-icon.localhost asyar-extension: http://asyar-extension.localhost asyar-thumb: http://asyar-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src asyar-extension: http://asyar-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
-+      "csp": "default-src 'self'; worker-src 'self' blob:; script-src 'self' blob: asyar-extension: http://asyar-extension.localhost 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' asyar-icon: http://asyar-icon.localhost asyar-extension: http://asyar-extension.localhost asyar-thumb: http://asyar-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src asyar-extension: http://asyar-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
-+      "devCsp": "default-src 'self'; worker-src 'self' blob:; script-src 'self' blob: asyar-extension: http://asyar-extension.localhost 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asyar-icon: http://asyar-icon.localhost asyar-extension: http://asyar-extension.localhost asyar-thumb: http://asyar-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src asyar-extension: http://asyar-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
+-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' conbind-icon: http://conbind-icon.localhost conbind-extension: http://conbind-extension.localhost conbind-thumb: http://conbind-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src conbind-extension: http://conbind-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
+-      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' conbind-icon: http://conbind-icon.localhost conbind-extension: http://conbind-extension.localhost conbind-thumb: http://conbind-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src conbind-extension: http://conbind-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
++      "csp": "default-src 'self'; worker-src 'self' blob:; script-src 'self' blob: conbind-extension: http://conbind-extension.localhost 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' conbind-icon: http://conbind-icon.localhost conbind-extension: http://conbind-extension.localhost conbind-thumb: http://conbind-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src conbind-extension: http://conbind-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
++      "devCsp": "default-src 'self'; worker-src 'self' blob:; script-src 'self' blob: conbind-extension: http://conbind-extension.localhost 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' conbind-icon: http://conbind-icon.localhost conbind-extension: http://conbind-extension.localhost conbind-thumb: http://conbind-thumb.localhost asset: https://asset.localhost data: https://*; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://asyar.org http://localhost:* https://*; frame-src conbind-extension: http://conbind-extension.localhost blob:; font-src 'self'; object-src 'none'; base-uri 'self'",
        "capabilities": ["default", "hud", "snap-guides"]
      },
      "macOSPrivateApi": true
-diff --git a/asyar-launcher/src/built-in-features/calculator/index.test.ts b/asyar-launcher/src/built-in-features/calculator/index.test.ts
+diff --git a/conbind-launcher/src/built-in-features/calculator/index.test.ts b/conbind-launcher/src/built-in-features/calculator/index.test.ts
 index bcb0386b..d1a96417 100644
---- a/asyar-launcher/src/built-in-features/calculator/index.test.ts
-+++ b/asyar-launcher/src/built-in-features/calculator/index.test.ts
+--- a/conbind-launcher/src/built-in-features/calculator/index.test.ts
++++ b/conbind-launcher/src/built-in-features/calculator/index.test.ts
 @@ -22,7 +22,7 @@ describe('calculator extension (thin presenter)', () => {
    beforeEach(() => vi.clearAllMocks());
  
@@ -86,10 +86,10 @@ index bcb0386b..d1a96417 100644
 +  search.mockRestore();
 +  expect(rows.every((row) => typeof (row as any).action !== 'function')).toBe(true);
 +});
-diff --git a/asyar-launcher/src/built-in-features/calculator/index.ts b/asyar-launcher/src/built-in-features/calculator/index.ts
+diff --git a/conbind-launcher/src/built-in-features/calculator/index.ts b/conbind-launcher/src/built-in-features/calculator/index.ts
 index dfbc6816..7b83686b 100644
---- a/asyar-launcher/src/built-in-features/calculator/index.ts
-+++ b/asyar-launcher/src/built-in-features/calculator/index.ts
+--- a/conbind-launcher/src/built-in-features/calculator/index.ts
++++ b/conbind-launcher/src/built-in-features/calculator/index.ts
 @@ -1,7 +1,10 @@
 +import {
 +  registerBuiltinSearchProvider,
@@ -101,7 +101,7 @@ index dfbc6816..7b83686b 100644
 -  ExtensionResult,
    ILogService,
    IFeedbackService,
- } from 'asyar-sdk/contracts';
+ } from 'conbind-sdk/contracts';
 @@ -76,37 +79,41 @@ class CalculatorExtension implements Extension {
      this.enabled = false;
    }
@@ -159,44 +159,44 @@ index dfbc6816..7b83686b 100644
 +  execute: (id, payload) => extension.executeSearchResult(id, payload),
 +});
  export default extension;
-diff --git a/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl b/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl
+diff --git a/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl b/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl
 index 701ae59b..4fc19042 100644
---- a/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl
-+++ b/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl
+--- a/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl
++++ b/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.logic.tmpl
 @@ -71,11 +71,7 @@ class WorkerExtension implements Extension {
    onUnload = (): void => {};
  }
  
 -const extensionId =
 -  window.location.hostname === 'localhost' ||
--  window.location.hostname === 'asyar-extension.localhost'
+-  window.location.hostname === 'conbind-extension.localhost'
 -    ? window.location.pathname.split('/').filter(Boolean)[0] || '{{EXTENSION_ID}}'
 -    : window.location.hostname || '{{EXTENSION_ID}}';
 +const extensionId = manifest.id;
  
  const workerContext = new WorkerExtensionContext();
  workerContext.setExtensionId(extensionId);
-diff --git a/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl b/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl
+diff --git a/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl b/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl
 index 13a2f54d..51e24da9 100644
---- a/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl
-+++ b/asyar-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl
+--- a/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl
++++ b/conbind-launcher/src/built-in-features/create-extension/template/src/worker.ts.result.tmpl
 @@ -56,11 +56,7 @@ class WorkerExtension implements Extension {
    onUnload = (): void => {};
  }
  
 -const extensionId =
 -  window.location.hostname === 'localhost' ||
--  window.location.hostname === 'asyar-extension.localhost'
+-  window.location.hostname === 'conbind-extension.localhost'
 -    ? window.location.pathname.split('/').filter(Boolean)[0] || '{{EXTENSION_ID}}'
 -    : window.location.hostname || '{{EXTENSION_ID}}';
 +const extensionId = manifest.id;
  
  const workerContext = new WorkerExtensionContext();
  workerContext.setExtensionId(extensionId);
-diff --git a/asyar-launcher/src/built-in-features/walkthrough/index.test.ts b/asyar-launcher/src/built-in-features/walkthrough/index.test.ts
+diff --git a/conbind-launcher/src/built-in-features/walkthrough/index.test.ts b/conbind-launcher/src/built-in-features/walkthrough/index.test.ts
 index d1d3b1db..d865ff15 100644
---- a/asyar-launcher/src/built-in-features/walkthrough/index.test.ts
-+++ b/asyar-launcher/src/built-in-features/walkthrough/index.test.ts
+--- a/conbind-launcher/src/built-in-features/walkthrough/index.test.ts
++++ b/conbind-launcher/src/built-in-features/walkthrough/index.test.ts
 @@ -66,14 +66,14 @@ describe('WalkthroughExtension commands and root search', () => {
    });
  
@@ -205,7 +205,7 @@ index d1d3b1db..d865ff15 100644
 +    const results = await walkthroughExtension.searchRows('');
      expect(results).toHaveLength(1);
      expect(results[0].title).toBe('Beyond the basics');
-     expect(results[0].subtitle).toBe('2 of 5 tasks — learn what Asyar can really do');
+     expect(results[0].subtitle).toBe('2 of 5 tasks — learn what Conbind can really do');
    });
  
    it('search("something") returns empty array', async () => {
@@ -227,10 +227,10 @@ index d1d3b1db..d865ff15 100644
 +  search.mockRestore();
 +  expect(rows.every((row) => typeof (row as any).action !== 'function')).toBe(true);
 +});
-diff --git a/asyar-launcher/src/built-in-features/walkthrough/index.ts b/asyar-launcher/src/built-in-features/walkthrough/index.ts
+diff --git a/conbind-launcher/src/built-in-features/walkthrough/index.ts b/conbind-launcher/src/built-in-features/walkthrough/index.ts
 index 8a9d1a0f..d25fdee6 100644
---- a/asyar-launcher/src/built-in-features/walkthrough/index.ts
-+++ b/asyar-launcher/src/built-in-features/walkthrough/index.ts
+--- a/conbind-launcher/src/built-in-features/walkthrough/index.ts
++++ b/conbind-launcher/src/built-in-features/walkthrough/index.ts
 @@ -1,10 +1,13 @@
 +import {
 +  registerBuiltinSearchProvider,
@@ -243,7 +243,7 @@ index 8a9d1a0f..d25fdee6 100644
    ILogService,
    ExtensionAction,
 -  ExtensionResult,
- } from 'asyar-sdk/contracts';
+ } from 'conbind-sdk/contracts';
  import { actionService } from '../../services/action/actionService.svelte';
  import { walkthroughService } from '../../services/walkthrough/walkthroughService.svelte';
 @@ -48,7 +51,7 @@ class WalkthroughExtension implements Extension {
@@ -258,7 +258,7 @@ index 8a9d1a0f..d25fdee6 100644
 @@ -58,12 +61,9 @@ class WalkthroughExtension implements Extension {
          score: 1.0,
          title: 'Beyond the basics',
-         subtitle: `${completed} of ${total} tasks — learn what Asyar can really do`,
+         subtitle: `${completed} of ${total} tasks — learn what Conbind can really do`,
 -        type: 'result',
 +        id: 'walkthrough_progress',
          icon: 'icon:star',
@@ -291,10 +291,10 @@ index 8a9d1a0f..d25fdee6 100644
 +});
 +export default extension;
  export { DefaultView };
-diff --git a/asyar-launcher/src/built-in-features/window-management/index.test.ts b/asyar-launcher/src/built-in-features/window-management/index.test.ts
+diff --git a/conbind-launcher/src/built-in-features/window-management/index.test.ts b/conbind-launcher/src/built-in-features/window-management/index.test.ts
 index 58a58b95..be15ce28 100644
---- a/asyar-launcher/src/built-in-features/window-management/index.test.ts
-+++ b/asyar-launcher/src/built-in-features/window-management/index.test.ts
+--- a/conbind-launcher/src/built-in-features/window-management/index.test.ts
++++ b/conbind-launcher/src/built-in-features/window-management/index.test.ts
 @@ -321,7 +321,7 @@ describe('WindowManagementExtension', () => {
          configurable: true,
        });
@@ -326,10 +326,10 @@ index 58a58b95..be15ce28 100644
 +  search.mockRestore();
 +  expect(rows.every((row) => typeof (row as any).action !== 'function')).toBe(true);
 +});
-diff --git a/asyar-launcher/src/built-in-features/window-management/index.ts b/asyar-launcher/src/built-in-features/window-management/index.ts
+diff --git a/conbind-launcher/src/built-in-features/window-management/index.ts b/conbind-launcher/src/built-in-features/window-management/index.ts
 index d1ad5554..4b000547 100644
---- a/asyar-launcher/src/built-in-features/window-management/index.ts
-+++ b/asyar-launcher/src/built-in-features/window-management/index.ts
+--- a/conbind-launcher/src/built-in-features/window-management/index.ts
++++ b/conbind-launcher/src/built-in-features/window-management/index.ts
 @@ -1,3 +1,7 @@
 +import {
 +  registerBuiltinSearchProvider,
@@ -390,10 +390,10 @@ index d1ad5554..4b000547 100644
 +});
 +export default extension;
  export { ManageView, SwitchWindowsView };
-diff --git a/asyar-launcher/src/services/extension/extensionManager.svelte.ts b/asyar-launcher/src/services/extension/extensionManager.svelte.ts
+diff --git a/conbind-launcher/src/services/extension/extensionManager.svelte.ts b/conbind-launcher/src/services/extension/extensionManager.svelte.ts
 index 2e89cebf..0dd94acf 100644
---- a/asyar-launcher/src/services/extension/extensionManager.svelte.ts
-+++ b/asyar-launcher/src/services/extension/extensionManager.svelte.ts
+--- a/conbind-launcher/src/services/extension/extensionManager.svelte.ts
++++ b/conbind-launcher/src/services/extension/extensionManager.svelte.ts
 @@ -1,3 +1,4 @@
 +import { setWorkerEntryProvider } from './workerRegistry.svelte';
  import { settingsService } from '../settings/settingsService.svelte';
@@ -407,10 +407,10 @@ index 2e89cebf..0dd94acf 100644
      ipcRouter.setup();
      registerExtensionNameResolver((id) => this.getManifestById(id)?.name);
    }
-diff --git a/asyar-launcher/src/services/extension/extensionManager.test.ts b/asyar-launcher/src/services/extension/extensionManager.test.ts
+diff --git a/conbind-launcher/src/services/extension/extensionManager.test.ts b/conbind-launcher/src/services/extension/extensionManager.test.ts
 index b917f7e6..9ff2727a 100644
---- a/asyar-launcher/src/services/extension/extensionManager.test.ts
-+++ b/asyar-launcher/src/services/extension/extensionManager.test.ts
+--- a/conbind-launcher/src/services/extension/extensionManager.test.ts
++++ b/conbind-launcher/src/services/extension/extensionManager.test.ts
 @@ -530,7 +530,7 @@ describe('ExtensionManager Characterization Tests', () => {
        expect(results).toEqual([]);
      });
@@ -453,10 +453,10 @@ index b917f7e6..9ff2727a 100644
  
        const results = await extensionManager.searchAll('query');
  
-diff --git a/asyar-launcher/src/services/extension/extensionSearchAggregator.test.ts b/asyar-launcher/src/services/extension/extensionSearchAggregator.test.ts
+diff --git a/conbind-launcher/src/services/extension/extensionSearchAggregator.test.ts b/conbind-launcher/src/services/extension/extensionSearchAggregator.test.ts
 index 71e816a6..edaabfd1 100644
---- a/asyar-launcher/src/services/extension/extensionSearchAggregator.test.ts
-+++ b/asyar-launcher/src/services/extension/extensionSearchAggregator.test.ts
+--- a/conbind-launcher/src/services/extension/extensionSearchAggregator.test.ts
++++ b/conbind-launcher/src/services/extension/extensionSearchAggregator.test.ts
 @@ -23,6 +23,8 @@ vi.mock('../settings/settingsService.svelte', () => ({
    },
  }));
@@ -464,7 +464,7 @@ index 71e816a6..edaabfd1 100644
 +import { settingsService } from '../settings/settingsService.svelte';
 +import { extensionIframeManager } from './extensionIframeManager.svelte';
  import { ExtensionSearchAggregator } from './extensionSearchAggregator';
- import type { Extension, ExtensionResult } from 'asyar-sdk/contracts';
+ import type { Extension, ExtensionResult } from 'conbind-sdk/contracts';
  
 @@ -57,6 +59,22 @@ describe('ExtensionSearchAggregator.searchAll', () => {
        new Map(),
@@ -512,10 +512,10 @@ index 71e816a6..edaabfd1 100644
      const results = await aggregator.searchAll('test');
      expect(results.map((r) => r.title)).toEqual(['Calc Result']);
    });
-diff --git a/asyar-launcher/src/services/extension/extensionSearchAggregator.ts b/asyar-launcher/src/services/extension/extensionSearchAggregator.ts
+diff --git a/conbind-launcher/src/services/extension/extensionSearchAggregator.ts b/conbind-launcher/src/services/extension/extensionSearchAggregator.ts
 index df417f78..bc12db4a 100644
---- a/asyar-launcher/src/services/extension/extensionSearchAggregator.ts
-+++ b/asyar-launcher/src/services/extension/extensionSearchAggregator.ts
+--- a/conbind-launcher/src/services/extension/extensionSearchAggregator.ts
++++ b/conbind-launcher/src/services/extension/extensionSearchAggregator.ts
 @@ -53,31 +53,6 @@ export class ExtensionSearchAggregator {
      const settings = settingsService.getSettings();
      const enableExtensionSearch = settings.search.enableExtensionSearch;
@@ -548,10 +548,10 @@ index df417f78..bc12db4a 100644
      // Tier 2: Send postMessage to searchable iframes (NEW)
      // Only include Tier 2 if the setting is enabled
      if (enableExtensionSearch) {
-diff --git a/asyar-launcher/src/services/extension/workerHost.svelte.ts b/asyar-launcher/src/services/extension/workerHost.svelte.ts
+diff --git a/conbind-launcher/src/services/extension/workerHost.svelte.ts b/conbind-launcher/src/services/extension/workerHost.svelte.ts
 index cefa841b..c28bcb86 100644
---- a/asyar-launcher/src/services/extension/workerHost.svelte.ts
-+++ b/asyar-launcher/src/services/extension/workerHost.svelte.ts
+--- a/conbind-launcher/src/services/extension/workerHost.svelte.ts
++++ b/conbind-launcher/src/services/extension/workerHost.svelte.ts
 @@ -15,6 +15,37 @@ export function setWorkerPreferenceProvider(provider: PreferenceProvider): void
    preferenceProvider = provider;
  }
@@ -574,14 +574,14 @@ index cefa841b..c28bcb86 100644
 +    throw new Error('Invalid background.main module path');
 +  }
 +  const workerUrl = isWindows
-+    ? `http://asyar-extension.localhost/${extensionId}/${entry}`
-+    : `asyar-extension://${extensionId}/${entry}`;
++    ? `http://conbind-extension.localhost/${extensionId}/${entry}`
++    : `conbind-extension://${extensionId}/${entry}`;
 +  return `
-+    self.__ASYAR_ROLE__ = 'worker';
-+    self.__ASYAR_EXTENSION_ID__ = ${JSON.stringify(extensionId)};
-+    self.__ASYAR_MOUNT_TOKEN__ = ${mountToken};
++    self.__CONBIND_ROLE__ = 'worker';
++    self.__CONBIND_EXTENSION_ID__ = ${JSON.stringify(extensionId)};
++    self.__CONBIND_MOUNT_TOKEN__ = ${mountToken};
 +    import(${JSON.stringify(workerUrl)}).catch(err => self.postMessage({
-+      type: 'asyar:feedback:uncaught',
++      type: 'conbind:feedback:uncaught',
 +      payload: { kind: 'worker_bootstrap_error', developerDetail: String(err && err.stack ? err.stack : err) }
 +    }));
 +  `;
@@ -624,11 +624,11 @@ index cefa841b..c28bcb86 100644
        try {
          const isWindows = navigator.userAgent.toLowerCase().includes('windows');
 -        const workerUrl = isWindows
--          ? `http://asyar-extension.localhost/${extensionId}/dist/worker.js`
--          : `asyar-extension://${extensionId}/dist/worker.js`;
+-          ? `http://conbind-extension.localhost/${extensionId}/dist/worker.js`
+-          : `conbind-extension://${extensionId}/dist/worker.js`;
 -
 -        const bootstrapCode = `
--          self.__ASYAR_ROLE__ = 'worker';
+-          self.__CONBIND_ROLE__ = 'worker';
 -          const extensionId = ${JSON.stringify(extensionId)};
 -          const mountToken = ${mountToken};
 -
@@ -646,7 +646,7 @@ index cefa841b..c28bcb86 100644
 -                URL.revokeObjectURL(blobUrl);
 -              } catch (fallbackErr) {
 -                self.postMessage({
--                  type: 'asyar:feedback:uncaught',
+-                  type: 'conbind:feedback:uncaught',
 -                  payload: {
 -                    kind: 'worker_bootstrap_error',
 -                    developerDetail: String(fallbackErr && fallbackErr.stack ? fallbackErr.stack : fallbackErr),
@@ -678,10 +678,10 @@ index cefa841b..c28bcb86 100644
      channel = new HeadlessSimulatedWorker(extensionId, mountToken, onHostMessage);
      return channel;
    }
-diff --git a/asyar-launcher/src/services/extension/workerHost.test.ts b/asyar-launcher/src/services/extension/workerHost.test.ts
+diff --git a/conbind-launcher/src/services/extension/workerHost.test.ts b/conbind-launcher/src/services/extension/workerHost.test.ts
 index b3a40e2a..25c25af3 100644
---- a/asyar-launcher/src/services/extension/workerHost.test.ts
-+++ b/asyar-launcher/src/services/extension/workerHost.test.ts
+--- a/conbind-launcher/src/services/extension/workerHost.test.ts
++++ b/conbind-launcher/src/services/extension/workerHost.test.ts
 @@ -21,7 +21,11 @@ vi.mock('../log/logService', () => ({
  import { iframeReadyAck } from '../../lib/ipc/iframeLifecycleCommands';
  import { feedbackService } from '../feedback/feedbackService.svelte';
@@ -789,7 +789,7 @@ index b3a40e2a..25c25af3 100644
 +    workerHost.mount('ext.test', 1, 'dist/worker.js');
      const channel = workerHost.getWorker('ext.test') as any;
      channel.onHostMessage({
-       type: 'asyar:feedback:uncaught',
+       type: 'conbind:feedback:uncaught',
 @@ -236,7 +240,7 @@ describe('workerHost', () => {
        URL.createObjectURL = vi.fn(() => 'blob:mock-url');
        URL.revokeObjectURL = vi.fn();
@@ -837,7 +837,7 @@ index b3a40e2a..25c25af3 100644
      const old = workerHost.getWorker('ext.stale') as any;
 -    workerHost.mount('ext.stale', 2);
 +    workerHost.mount('ext.stale', 2, 'dist/worker.js');
-     old.onHostMessage({ type: 'asyar:api:clipboard:readText', messageId: 'stale' });
+     old.onHostMessage({ type: 'conbind:api:clipboard:readText', messageId: 'stale' });
      expect(handler).not.toHaveBeenCalled();
      workerHost.reset();
    });
@@ -846,14 +846,14 @@ index b3a40e2a..25c25af3 100644
 +describe('worker module loading contract', () => {
 +  it('uses the manifest entry and keeps relative imports at their original URL', () => {
 +    const code = createWorkerBootstrap('org.test', 7, 'assets/daemon.js', false);
-+    expect(code).toContain('asyar-extension://org.test/assets/daemon.js');
++    expect(code).toContain('conbind-extension://org.test/assets/daemon.js');
 +    expect(code).not.toContain('dist/worker.js');
 +    expect(code).not.toContain('resp.text');
-+    expect(code).toContain("self.__ASYAR_ROLE__ = 'worker'");
++    expect(code).toContain("self.__CONBIND_ROLE__ = 'worker'");
 +  });
 +  it('uses the Windows custom-protocol URL', () => {
 +    expect(createWorkerBootstrap('org.test', 7, 'assets/daemon.js', true)).toContain(
-+      'http://asyar-extension.localhost/org.test/assets/daemon.js',
++      'http://conbind-extension.localhost/org.test/assets/daemon.js',
 +    );
 +  });
 +  it.each(['../escape.js', '/absolute.js', 'https://other/worker.js', 'a/../../escape.js'])(
@@ -876,10 +876,10 @@ index b3a40e2a..25c25af3 100644
 +  vi.unstubAllGlobals();
 +  vi.unstubAllEnvs();
 +});
-diff --git a/asyar-launcher/src/services/extension/workerRegistry.svelte.ts b/asyar-launcher/src/services/extension/workerRegistry.svelte.ts
+diff --git a/conbind-launcher/src/services/extension/workerRegistry.svelte.ts b/conbind-launcher/src/services/extension/workerRegistry.svelte.ts
 index bac92817..767b3175 100644
---- a/asyar-launcher/src/services/extension/workerRegistry.svelte.ts
-+++ b/asyar-launcher/src/services/extension/workerRegistry.svelte.ts
+--- a/conbind-launcher/src/services/extension/workerRegistry.svelte.ts
++++ b/conbind-launcher/src/services/extension/workerRegistry.svelte.ts
 @@ -8,6 +8,11 @@ export interface WorkerRegistryEntry {
    mountToken: number;
  }
@@ -901,10 +901,10 @@ index bac92817..767b3175 100644
    }
  
    async handleUnmount(p: { extensionId: string; reason: string; role?: string }): Promise<void> {
-diff --git a/asyar-launcher/src/services/search/searchOrchestrator.svelte.ts b/asyar-launcher/src/services/search/searchOrchestrator.svelte.ts
+diff --git a/conbind-launcher/src/services/search/searchOrchestrator.svelte.ts b/conbind-launcher/src/services/search/searchOrchestrator.svelte.ts
 index 39ac78f7..73b5480a 100644
---- a/asyar-launcher/src/services/search/searchOrchestrator.svelte.ts
-+++ b/asyar-launcher/src/services/search/searchOrchestrator.svelte.ts
+--- a/conbind-launcher/src/services/search/searchOrchestrator.svelte.ts
++++ b/conbind-launcher/src/services/search/searchOrchestrator.svelte.ts
 @@ -1,3 +1,4 @@
 +import { searchBuiltinProviders, executeBuiltinSearchResult } from './builtinSearchProviders';
  import { isAppInitialized } from '../appInitState';
@@ -971,10 +971,10 @@ index 39ac78f7..73b5480a 100644
      const directAction = this.#directActions.get(objectId);
      if (directAction) {
        try {
-diff --git a/asyar-launcher/src/services/search/searchOrchestrator.test.ts b/asyar-launcher/src/services/search/searchOrchestrator.test.ts
+diff --git a/conbind-launcher/src/services/search/searchOrchestrator.test.ts b/conbind-launcher/src/services/search/searchOrchestrator.test.ts
 index 4b2f5349..bfdfc208 100644
---- a/asyar-launcher/src/services/search/searchOrchestrator.test.ts
-+++ b/asyar-launcher/src/services/search/searchOrchestrator.test.ts
+--- a/conbind-launcher/src/services/search/searchOrchestrator.test.ts
++++ b/conbind-launcher/src/services/search/searchOrchestrator.test.ts
 @@ -441,7 +441,9 @@ describe('searchOrchestrator characterization tests', () => {
      // Executed via tryExecuteResultAction
      const handled = searchOrchestrator.tryExecuteResultAction('calc_result_1');
@@ -986,10 +986,10 @@ index 4b2f5349..bfdfc208 100644
  
      // Also attached to result for direct invocation
      expect(searchOrchestrator.items[0].action).toBeDefined();
-diff --git a/asyar-sdk/cli/commands/build.test.ts b/asyar-sdk/cli/commands/build.test.ts
+diff --git a/conbind-sdk/cli/commands/build.test.ts b/conbind-sdk/cli/commands/build.test.ts
 index 2bed9e41..bd29ab1d 100644
---- a/asyar-sdk/cli/commands/build.test.ts
-+++ b/asyar-sdk/cli/commands/build.test.ts
+--- a/conbind-sdk/cli/commands/build.test.ts
++++ b/conbind-sdk/cli/commands/build.test.ts
 @@ -33,8 +33,8 @@ describe('verifyBuildOutput', () => {
      expect(() => verifyBuildOutput(cwd, manifest)).not.toThrow();
    });
@@ -1072,10 +1072,10 @@ index 2bed9e41..bd29ab1d 100644
    it('accepts legacy single-entry layouts without a manifest', () => {
      writeDist('index.html');
      expect(() => verifyBuildOutput(cwd)).not.toThrow();
-diff --git a/asyar-sdk/cli/commands/build.ts b/asyar-sdk/cli/commands/build.ts
+diff --git a/conbind-sdk/cli/commands/build.ts b/conbind-sdk/cli/commands/build.ts
 index 37e7af5b..673d3126 100644
---- a/asyar-sdk/cli/commands/build.ts
-+++ b/asyar-sdk/cli/commands/build.ts
+--- a/conbind-sdk/cli/commands/build.ts
++++ b/conbind-sdk/cli/commands/build.ts
 @@ -78,13 +78,18 @@ export function verifyBuildOutput(
    const distDir = path.join(cwd, 'dist');
  
@@ -1124,10 +1124,10 @@ index 37e7af5b..673d3126 100644
      for (const file of fs.readdirSync(distDir)) {
        if (file === 'view.html' || file === 'worker.html') continue;
        const full = path.join(distDir, file);
-diff --git a/asyar-sdk/src/ExtensionBridge.ts b/asyar-sdk/src/ExtensionBridge.ts
+diff --git a/conbind-sdk/src/ExtensionBridge.ts b/conbind-sdk/src/ExtensionBridge.ts
 index 4b3d0962..fa5b1faf 100644
---- a/asyar-sdk/src/ExtensionBridge.ts
-+++ b/asyar-sdk/src/ExtensionBridge.ts
+--- a/conbind-sdk/src/ExtensionBridge.ts
++++ b/conbind-sdk/src/ExtensionBridge.ts
 @@ -1,3 +1,4 @@
 +import type { ExtensionContextCore } from './ExtensionContextCore';
  import type { ExtensionContext } from './ExtensionContext';
@@ -1175,28 +1175,28 @@ index 4b3d0962..fa5b1faf 100644
            // Send results back to host
 -          window.parent.postMessage(
 -            {
--              type: 'asyar:search:response',
+-              type: 'conbind:search:response',
 -              messageId,
 -              result: results,
 -            },
 -            '*',
 -          );
 +          postToHost({
-+            type: 'asyar:search:response',
++            type: 'conbind:search:response',
 +            messageId,
 +            result: results,
 +          });
          } catch (error: unknown) {
 -          window.parent.postMessage(
 -            {
--              type: 'asyar:search:response',
+-              type: 'conbind:search:response',
 -              messageId,
 -              error: error instanceof Error ? error.message : String(error),
 -            },
 -            '*',
 -          );
 +          postToHost({
-+            type: 'asyar:search:response',
++            type: 'conbind:search:response',
 +            messageId,
 +            error: error instanceof Error ? error.message : String(error),
 +          });
@@ -1231,14 +1231,14 @@ index 4b3d0962..fa5b1faf 100644
 -        await extension.initialize(context);
 +        await extension.initialize(context as unknown as ExtensionContext);
        } catch (error) {
-         console.error(`[asyar-sdk] Failed to initialize extension ${manifest.id}: ${error}`);
+         console.error(`[conbind-sdk] Failed to initialize extension ${manifest.id}: ${error}`);
        }
-diff --git a/asyar-sdk/src/worker.test.ts b/asyar-sdk/src/worker.test.ts
+diff --git a/conbind-sdk/src/worker.test.ts b/conbind-sdk/src/worker.test.ts
 index dfc66391..e9d3525f 100644
---- a/asyar-sdk/src/worker.test.ts
-+++ b/asyar-sdk/src/worker.test.ts
-@@ -161,3 +161,17 @@ describe('asyar-sdk/worker — entry surface', () => {
-     delete (self as any).__ASYAR_ROLE__;
+--- a/conbind-sdk/src/worker.test.ts
++++ b/conbind-sdk/src/worker.test.ts
+@@ -161,3 +161,17 @@ describe('conbind-sdk/worker — entry surface', () => {
+     delete (self as any).__CONBIND_ROLE__;
    });
  });
 +
@@ -1255,10 +1255,10 @@ index dfc66391..e9d3525f 100644
 +  expect(context.preferences.values.interval).toBe(7);
 +  setRole(undefined);
 +});
-diff --git a/asyar-sdk/src/worker.ts b/asyar-sdk/src/worker.ts
+diff --git a/conbind-sdk/src/worker.ts b/conbind-sdk/src/worker.ts
 index 71263f5a..1e480cfb 100644
---- a/asyar-sdk/src/worker.ts
-+++ b/asyar-sdk/src/worker.ts
+--- a/conbind-sdk/src/worker.ts
++++ b/conbind-sdk/src/worker.ts
 @@ -67,6 +67,7 @@ import { AiServiceProxy } from './services/AiServiceProxy';
  import { McpServiceProxy } from './services/McpServiceProxy';
  import { extensionRpc } from './services/ExtensionRpc';

@@ -1,0 +1,46 @@
+<script lang="ts">
+  import { workerRegistry } from '../../services/extension/workerRegistry.svelte';
+  import extensionManager from '../../services/extension/extensionManager.svelte';
+  import { computeBackgroundIframeSet } from './backgroundIframeSet';
+  import { feedbackService } from '../../services/feedback/feedbackService.svelte';
+
+  // Under the Separation of Headless Compute and Visual Canvas architecture,
+  // workers run off-main-thread in workerHost. Only fallback/legacy entries are rendered as iframes.
+  let toMount = $derived(
+    computeBackgroundIframeSet(
+      workerRegistry.fallbackEntries,
+      extensionManager.extensionRecords,
+      null,
+    ),
+  );
+
+  const isWindows =
+    typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('windows');
+
+  function handleWorkerError(extensionId: string) {
+    feedbackService.report({
+      source: 'extension',
+      kind: 'extension_crash',
+      severity: 'error',
+      retryable: true,
+      context: { extensionId, role: 'worker' },
+      extensionId,
+    });
+  }
+</script>
+
+{#each toMount as entry (entry.extensionId)}
+  {@const src = isWindows
+    ? `http://conbind-extension.localhost/${entry.extensionId}/worker.html`
+    : `conbind-extension://${entry.extensionId}/worker.html`}
+  <iframe
+    data-extension-id={entry.extensionId}
+    data-mount-token={String(entry.mountToken)}
+    data-role="worker"
+    {src}
+    style="display: none; width: 0; height: 0; border: 0;"
+    sandbox="allow-scripts allow-same-origin"
+    title="Worker: {entry.extensionId}"
+    onerror={() => handleWorkerError(entry.extensionId)}
+  ></iframe>
+{/each}

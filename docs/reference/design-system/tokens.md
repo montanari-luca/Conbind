@@ -1,6 +1,6 @@
-# Asyar Design Tokens
+# Conbind Design Tokens
 
-CSS custom properties automatically injected into every extension iframe by the Asyar host. Use `var(--token-name)` in your CSS — no setup required.
+CSS custom properties automatically injected into every extension iframe by the Conbind host. Use `var(--token-name)` in your CSS — no setup required.
 
 **Theme changes are live.** When the user switches light/dark mode, the host re-injects updated values. Your extension adapts without a reload.
 
@@ -9,18 +9,18 @@ CSS custom properties automatically injected into every extension iframe by the 
 When building outside the running app, import the static fallback file for IDE autocomplete and neutral defaults:
 
 ```typescript
-import 'asyar-sdk/tokens.css';
+import 'conbind-sdk/tokens.css';
 ```
 
 Or in plain CSS:
 
 ```css
-@import 'asyar-sdk/tokens.css';
+@import 'conbind-sdk/tokens.css';
 ```
 
 Never hardcode colors, sizes, or radii. Using tokens ensures your extension adapts to light/dark mode and future theme changes automatically.
 
-These tokens are the vocabulary of Asyar's design language, **Measure** — every
+These tokens are the vocabulary of Conbind's design language, **Measure** — every
 value derived from a constraint rather than chosen because it looked right. The
 reasoning behind every value here is in
 [Design Language](./design-language.md); this page is the lookup table.
@@ -31,7 +31,7 @@ reasoning behind every value here is in
 
 Surfaces and container fills.
 
-Surfaces are deep navy rather than neutral grey, and translucent — an Asyar
+Surfaces are deep navy rather than neutral grey, and translucent — an Conbind
 surface lets the desktop read through it. Opacity rises with elevation: the
 nearer a surface is, the less of the ground it lets past.
 
@@ -130,7 +130,7 @@ There are **two accent ramps**, and picking the wrong one is a contrast bug.
 An accent used as text on a dark surface must be light enough to read against
 it. An accent used as a fill under white text must be dark enough for white to
 read on top. On a dark ground those constraints have no common solution, so
-Asyar ships both.
+Conbind ships both.
 
 **The voice** — text, icons, strokes, focus rings, and the source for a tint:
 
@@ -180,7 +180,7 @@ Yes → `-fill`. No → the voice.
 ```
 
 Never use a `-fill` token as a text colour — it is too dark to read on an
-Asyar surface.
+Conbind surface.
 
 ### Brand
 
@@ -189,24 +189,24 @@ product can spend. (Brand was a teal before this design system, while the
 accent was Apple's system blue — so the app's most-used colour belonged to
 Apple and the brand token was decorative.)
 
-| Token                  | Dark value                  |
-| :--------------------- | :-------------------------- |
-| `--asyar-brand`        | `#7B9CFF`                   |
-| `--asyar-brand-hover`  | `#9DB4FF`                   |
-| `--asyar-brand-muted`  | `rgba(123, 156, 255, 0.18)` |
-| `--asyar-brand-subtle` | `rgba(123, 156, 255, 0.09)` |
+| Token                    | Dark value                  |
+| :----------------------- | :-------------------------- |
+| `--conbind-brand`        | `#7B9CFF`                   |
+| `--conbind-brand-hover`  | `#9DB4FF`                   |
+| `--conbind-brand-muted`  | `rgba(123, 156, 255, 0.18)` |
+| `--conbind-brand-subtle` | `rgba(123, 156, 255, 0.09)` |
 
 ### Shadows
 
-| Token            | Use for                                         |
-| :--------------- | :---------------------------------------------- |
-| `--shadow-xs`    | Subtle lift on small elements                   |
-| `--shadow-sm`    | Cards, list items                               |
-| `--shadow-md`    | Dropdowns, popovers                             |
-| `--shadow-lg`    | Modals, elevated panels                         |
-| `--shadow-xl`    | Large overlays                                  |
-| `--shadow-popup` | Fixed popups and command palettes               |
-| `--shadow-focus` | Focus ring (0 0 0 2px var(--asyar-brand-muted)) |
+| Token            | Use for                                           |
+| :--------------- | :------------------------------------------------ |
+| `--shadow-xs`    | Subtle lift on small elements                     |
+| `--shadow-sm`    | Cards, list items                                 |
+| `--shadow-md`    | Dropdowns, popovers                               |
+| `--shadow-lg`    | Modals, elevated panels                           |
+| `--shadow-xl`    | Large overlays                                    |
+| `--shadow-popup` | Fixed popups and command palettes                 |
+| `--shadow-focus` | Focus ring (0 0 0 2px var(--conbind-brand-muted)) |
 
 ```css
 .card {
@@ -330,7 +330,7 @@ not "a tile".
 
 The dense band is a modular scale — `10 × 1.08ⁿ`, rounded — which reproduces
 10, 11, 12, 13, 14, 15, 16 and 17 exactly. A 1.08 ratio is unusually tight;
-it is right for Asyar because 65% of all type in the product sits between 11px
+it is right for Conbind because 65% of all type in the product sits between 11px
 and 13px, and a coarser ratio would leave the app with three usable sizes.
 Above 17px the ratio breaks deliberately: 20px is the command line, 22px a page
 title, 36px display type, and nothing else belongs there.
@@ -344,7 +344,7 @@ title, 36px display type, and nothing else belongs there.
 
 The host injects the actual Satoshi and JetBrains Mono font files into every extension iframe as base64 data URIs on load. `var(--font-ui)` and `var(--font-mono)` render the real typefaces — not system fallbacks — with no extra setup.
 
-Satoshi renders on **every** platform, macOS included. Asyar deliberately does
+Satoshi renders on **every** platform, macOS included. Conbind deliberately does
 not fall back to the system face anywhere.
 
 ```css
@@ -374,7 +374,7 @@ is for headings, and 700 does not appear in the product.
 
 ### Motion
 
-Four durations and four curves. Every animation in Asyar is one of each; there
+Four durations and four curves. Every animation in Conbind is one of each; there
 is no fifth of either.
 
 | Token           | Value   | Use for                                  |
@@ -490,8 +490,8 @@ A realistic card component using only design tokens:
   }
 
   .badge {
-    background: var(--asyar-brand-muted);
-    color: var(--asyar-brand);
+    background: var(--conbind-brand-muted);
+    color: var(--conbind-brand);
     font-size: var(--font-size-xs);
     padding: var(--space-0-5) var(--space-2);
     border-radius: var(--radius-full);

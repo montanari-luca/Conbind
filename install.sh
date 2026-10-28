@@ -1,19 +1,19 @@
 #!/bin/sh
-# Installs the latest Asyar launcher release for macOS or Linux.
+# Installs the latest Conbind launcher release for macOS or Linux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Xoshbin/asyar/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/montanari-luca/Conbind/main/install.sh | sh
 #
 # Install a specific version instead of the newest one:
-#   ASYAR_VERSION=0.1.1-38 curl -fsSL https://raw.githubusercontent.com/Xoshbin/asyar/main/install.sh | sh
+#   CONBIND_VERSION=0.1.1-38 curl -fsSL https://raw.githubusercontent.com/montanari-luca/Conbind/main/install.sh | sh
 #
-# Windows: use `winget install Xoshbin.Asyar` (once a stable release ships) or
-# grab the MSI directly from https://github.com/Xoshbin/asyar/releases.
+# Windows: use `winget install montanari-luca.Conbind` (once a stable release ships) or
+# grab the MSI directly from https://github.com/montanari-luca/Conbind/releases.
 set -eu
 
-REPO="Xoshbin/asyar"
-INSTALL_DIR="${ASYAR_INSTALL_DIR:-$HOME/.local/bin}"
-VERSION="${ASYAR_VERSION:-${1:-}}"
+REPO="montanari-luca/Conbind"
+INSTALL_DIR="${CONBIND_INSTALL_DIR:-$HOME/.local/bin}"
+VERSION="${CONBIND_VERSION:-${1:-}}"
 
 log() { printf '%s\n' "$*"; }
 err() {
@@ -28,14 +28,14 @@ case "$os" in
   Darwin) platform=macos ;;
   Linux) platform=linux ;;
   MINGW* | MSYS* | CYGWIN*)
-    err "Windows isn't supported by this script. Use 'winget install Xoshbin.Asyar' (once a stable release ships) or download the MSI from https://github.com/${REPO}/releases."
+    err "Windows isn't supported by this script. Use 'winget install montanari-luca.Conbind' (once a stable release ships) or download the MSI from https://github.com/${REPO}/releases."
     ;;
   *)
     err "Unsupported OS: $os"
     ;;
 esac
 
-TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/asyar-install.XXXXXX")
+TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/conbind-install.XXXXXX")
 MOUNTED=0
 mount_point="$TMP_DIR/mnt"
 linux_app_tmp=""
@@ -55,7 +55,7 @@ if [ -n "$VERSION" ]; then
   release_json=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/tags/v${VERSION}") ||
     err "release v${VERSION} not found"
 else
-  # GitHub's /releases/latest 404s here: every Asyar release so far is a
+  # GitHub's /releases/latest 404s here: every Conbind release so far is a
   # numeric pre-release (hyphenated tag), which /releases/latest excludes.
   # per_page=1 on the plain list endpoint gives the newest release instead.
   release_json=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=1") ||
@@ -84,11 +84,11 @@ case "$platform" in
     case "$arch" in
       aarch64)
         asset_url=$(find_asset_url '_aarch64\.AppImage"')
-        helper_url=$(find_asset_url 'asyar-summon_aarch64"')
+        helper_url=$(find_asset_url 'conbind-summon_aarch64"')
         ;;
       x86_64)
         asset_url=$(find_asset_url '_amd64\.AppImage"')
-        helper_url=$(find_asset_url 'asyar-summon_amd64"')
+        helper_url=$(find_asset_url 'conbind-summon_amd64"')
         ;;
       *) err "Unsupported Linux architecture: $arch" ;;
     esac
@@ -101,15 +101,15 @@ if [ "$platform" = "linux" ]; then
 fi
 
 asset_file=$(printf '%s' "$asset_url" | sed 's#.*/##')
-version=$(printf '%s' "$asset_file" | sed -E 's/^asyar_([^_]+)_.*/\1/')
+version=$(printf '%s' "$asset_file" | sed -E 's/^conbind_([^_]+)_.*/\1/')
 
-log "Installing Asyar ${version} for ${platform}/${arch}..."
+log "Installing Conbind ${version} for ${platform}/${arch}..."
 
 case "$platform" in
   macos)
-    if [ -d /Applications/asyar.app ]; then
-      current=$(defaults read /Applications/asyar.app/Contents/Info.plist CFBundleShortVersionString 2>/dev/null || echo "unknown")
-      log "Found an existing install (version ${current}) — it will be replaced. Asyar's own updater keeps it current after this; re-run this script any time to reinstall from scratch."
+    if [ -d /Applications/conbind.app ]; then
+      current=$(defaults read /Applications/conbind.app/Contents/Info.plist CFBundleShortVersionString 2>/dev/null || echo "unknown")
+      log "Found an existing install (version ${current}) — it will be replaced. Conbind's own updater keeps it current after this; re-run this script any time to reinstall from scratch."
     fi
 
     dmg_path="$TMP_DIR/$asset_file"
@@ -122,18 +122,18 @@ case "$platform" in
     app_path=$(find "$mount_point" -maxdepth 1 -name '*.app' | head -n1)
     [ -n "$app_path" ] || err "No .app bundle found in the downloaded disk image"
 
-    rm -rf /Applications/asyar.app
+    rm -rf /Applications/conbind.app
     cp -R "$app_path" /Applications/
 
     hdiutil detach "$mount_point" -quiet
     MOUNTED=0
 
-    log "Installed to /Applications/asyar.app"
-    log "Launch it from Spotlight or Applications, then set your hotkey in Asyar's preferences."
+    log "Installed to /Applications/conbind.app"
+    log "Launch it from Spotlight or Applications, then set your hotkey in Conbind's preferences."
     ;;
   linux)
-    target="$INSTALL_DIR/asyar"
-    helper_target="$INSTALL_DIR/asyar-summon"
+    target="$INSTALL_DIR/conbind"
+    helper_target="$INSTALL_DIR/conbind-summon"
     [ ! -d "$target" ] || err "Installation target is a directory: ${target}"
     [ ! -d "$helper_target" ] || err "Summon helper target is a directory: ${helper_target}"
     if [ -e "$target" ]; then
@@ -144,8 +144,8 @@ case "$platform" in
     fi
 
     mkdir -p "$INSTALL_DIR"
-    linux_app_tmp=$(mktemp "$INSTALL_DIR/.asyar.XXXXXX")
-    linux_helper_tmp=$(mktemp "$INSTALL_DIR/.asyar-summon.XXXXXX")
+    linux_app_tmp=$(mktemp "$INSTALL_DIR/.conbind.XXXXXX")
+    linux_helper_tmp=$(mktemp "$INSTALL_DIR/.conbind-summon.XXXXXX")
 
     curl -fsSL -o "$linux_app_tmp" "$asset_url"
     curl -fsSL -o "$linux_helper_tmp" "$helper_url"
@@ -158,7 +158,7 @@ case "$platform" in
     mv -f "$linux_helper_tmp" "$helper_target"
     linux_helper_tmp=""
 
-    log "Installed Asyar to ${target}"
+    log "Installed Conbind to ${target}"
     log "Installed summon helper to ${helper_target}"
     case ":$PATH:" in
       *":$INSTALL_DIR:"*) ;;
@@ -167,7 +167,7 @@ case "$platform" in
         log "  export PATH=\"${INSTALL_DIR}:\$PATH\""
         ;;
     esac
-    log "Run it with: asyar"
-    log "Use asyar-summon for a lightweight Linux global shortcut."
+    log "Run it with: conbind"
+    log "Use conbind-summon for a lightweight Linux global shortcut."
     ;;
 esac

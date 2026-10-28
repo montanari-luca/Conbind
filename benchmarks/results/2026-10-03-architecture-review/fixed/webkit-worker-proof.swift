@@ -3,9 +3,9 @@ import WebKit
 final class Probe: NSObject, WKURLSchemeHandler, WKScriptMessageHandler {
   var web: WKWebView!
   let html = """
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; worker-src 'self' blob:; script-src 'self' blob: asyar-extension: 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; worker-src 'self' blob:; script-src 'self' blob: conbind-extension: 'unsafe-inline'">
   <script>
-  const code = `self.__ASYAR_ROLE__='worker'; import('asyar-extension://org.probe/assets/daemon.js').catch(e=>self.postMessage({error:String(e)}));`;
+  const code = `self.__CONBIND_ROLE__='worker'; import('conbind-extension://org.probe/assets/daemon.js').catch(e=>self.postMessage({error:String(e)}));`;
   const blobUrl = URL.createObjectURL(new Blob([code], {type:'application/javascript'}));
   const w = new Worker(blobUrl, {type:'module'});
   URL.revokeObjectURL(blobUrl);
@@ -15,9 +15,9 @@ final class Probe: NSObject, WKURLSchemeHandler, WKScriptMessageHandler {
   """
   func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
     let url = task.request.url!
-    let script = url.path.hasSuffix("daemon.js") ? "import {answer} from './dependency.js'; self.postMessage({role:self.__ASYAR_ROLE__, dom:typeof document, answer});" : "export const answer=42;"
-    let data = (url.scheme == "asyar-app" ? html : script).data(using: .utf8)!
-    task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": url.scheme == "asyar-app" ? "text/html" : "application/javascript", "Access-Control-Allow-Origin":"*"])!)
+    let script = url.path.hasSuffix("daemon.js") ? "import {answer} from './dependency.js'; self.postMessage({role:self.__CONBIND_ROLE__, dom:typeof document, answer});" : "export const answer=42;"
+    let data = (url.scheme == "conbind-app" ? html : script).data(using: .utf8)!
+    task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": url.scheme == "conbind-app" ? "text/html" : "application/javascript", "Access-Control-Allow-Origin":"*"])!)
     task.didReceive(data); task.didFinish()
   }
   func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
@@ -26,11 +26,11 @@ final class Probe: NSObject, WKURLSchemeHandler, WKScriptMessageHandler {
   }
   func run() {
     let config = WKWebViewConfiguration()
-    config.setURLSchemeHandler(self, forURLScheme:"asyar-app")
-    config.setURLSchemeHandler(self, forURLScheme:"asyar-extension")
+    config.setURLSchemeHandler(self, forURLScheme:"conbind-app")
+    config.setURLSchemeHandler(self, forURLScheme:"conbind-extension")
     config.userContentController.add(self, name:"proof")
     web = WKWebView(frame:NSRect(x:0,y:0,width:400,height:300), configuration:config)
-    web.load(URLRequest(url:URL(string:"asyar-app://localhost/")!))
+    web.load(URLRequest(url:URL(string:"conbind-app://localhost/")!))
     DispatchQueue.main.asyncAfter(deadline:.now()+20) { print("TIMEOUT"); exit(2) }
   }
 }

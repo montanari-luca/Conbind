@@ -1,6 +1,6 @@
 # Clipboard Privacy — Defense in Depth
 
-Asyar treats clipboard data as potentially sensitive and applies layered
+Conbind treats clipboard data as potentially sensitive and applies layered
 protections. This document is the design reference for the layered
 approach; see [`reference/permissions.md`](../reference/permissions.md)
 for the user-facing behaviour summary.
@@ -9,18 +9,16 @@ for the user-facing behaviour summary.
 
 Clipboard history routinely contains: passwords pasted from password
 managers, 2FA codes, recovery phrases, API tokens, SSH private keys,
-credit card numbers, personal data. Asyar must not be the weak link
-between a user's password manager and a server breach.
+credit card numbers, personal data. Conbind must not be the weak link
+between a user's password manager and the rest of their machine.
 
 The principal threats:
 
 1. **Local disk theft** — a stolen laptop or extracted disk image
    reveals the launcher's SQLite database in plaintext.
-2. **Server breach** — a compromise of `asyar.org` exposes every user's
-   synced clipboard.
-3. **Malicious extension** — a Tier 2 extension reads clipboard history
+2. **Malicious extension** — a Tier 2 extension reads clipboard history
    to exfiltrate secrets.
-4. **Inadvertent capture** — a user copies a password and the launcher
+3. **Inadvertent capture** — a user copies a password and the launcher
    stores it without ever signaling intent to do so.
 
 Each layer below addresses one or more of these threats.
@@ -36,7 +34,7 @@ opt-out (`CanIncludeInClipboardHistory`,
 source-app denylist (default: eight common password managers + Apple
 Keychain Access).
 
-Code: [`src-tauri/src/clipboard_privacy/`](../../asyar-launcher/src-tauri/src/clipboard_privacy/).
+Code: [`src-tauri/src/clipboard_privacy/`](../../conbind-launcher/src-tauri/src/clipboard_privacy/).
 Settings UI: **Settings → Privacy → Clipboard Privacy**.
 
 Addresses threats 1 and 2 partially (secrets that opt out at the source
@@ -46,7 +44,7 @@ never appear anywhere) and threat 4 entirely.
 
 Detects high-confidence secret formats at storage time and replaces
 each match in place with `[redacted: <kind>]`. Items still appear in
-history but the secret value never reaches disk, sync, or extension
+history but the secret value never reaches disk or extension
 reads.
 
 Coverage spans clipboard items (text / HTML / RTF), snippet expansions
@@ -81,8 +79,8 @@ The user can disable redaction globally or per-category in
   default).
 - Secrets pasted as images.
 
-Code: [`src-tauri/src/secret_detection/`](../../asyar-launcher/src-tauri/src/secret_detection/),
-[`src/services/privacy/secretRedactionService.svelte.ts`](../../asyar-launcher/src/services/privacy/secretRedactionService.svelte.ts).
+Code: [`src-tauri/src/secret_detection/`](../../conbind-launcher/src-tauri/src/secret_detection/),
+[`src/services/privacy/secretRedactionService.svelte.ts`](../../conbind-launcher/src/services/privacy/secretRedactionService.svelte.ts).
 Settings UI: **Settings → Privacy → Secret Redaction**.
 
 Addresses threats 1 and 2 for the most common secret formats that
@@ -101,7 +99,7 @@ The hardcoded `prefs_key_material()` defense-in-depth scheme is gone:
 honest about not being a real secret, replaced by something that is.
 
 **Linux fallback:** when Secret Service is unavailable (headless,
-minimal WM, DBus-less container), Asyar falls back to a `0600`
+minimal WM, DBus-less container), Conbind falls back to a `0600`
 file-backed key under `appData/keystore-v1.dat` and surfaces a
 warning-severity diagnostic so the user knows protection is reduced
 to the file-permissions level. macOS / Windows treat keychain
@@ -120,106 +118,11 @@ table, no carry-forward of legacy constants.
 Addresses threat 1 directly: an offline disk image alone cannot decrypt
 the data without the (locked) OS keychain.
 
-Code: [`src-tauri/src/crypto/`](../../asyar-launcher/src-tauri/src/crypto/),
-[`src/services/privacy/encryptionService.svelte.ts`](../../asyar-launcher/src/services/privacy/encryptionService.svelte.ts).
+Code: [`src-tauri/src/crypto/`](../../conbind-launcher/src-tauri/src/crypto/),
+[`src/services/privacy/encryptionService.svelte.ts`](../../conbind-launcher/src/services/privacy/encryptionService.svelte.ts).
 Settings UI: **Settings → Privacy → Encryption at Rest**.
 
-## Layer 4a — Per-item delta cloud sync (shipped 2026-05-04)
-
-The first slice of Layer 4 ships independent of encryption: replace
-the monolithic `cloud_snapshots` upload (14 MB / 2 h regardless of
-changes) with per-item rows on the server, each gated by a SHA-256
-content hash and a monotonic per-user version. Unchanged items skip
-the upload entirely. Same data on the wire (plaintext JSON), but
-typical periodic syncs now move 0 bytes when nothing has changed,
-and a single edit pushes only the one item that actually changed.
-
-Bandwidth math:
-
-- Status quo (pre-4a): ~168 MB/user/day.
-- Post-4a, idle user: ~0 bytes/day.
-- Post-4a, active user editing one snippet: only that one item
-  (typically a few hundred bytes) — not the whole category blob.
-
-Server-side: drops `cloud_snapshots` LONGTEXT and the per-category
-`cloud_sync_categories` shape entirely. Adds:
-
-- `cloud_sync_items(user_id, id, category_id, payload, content_hash,
-version, deleted, deleted_at, …)` with a composite primary key on
-  `(user_id, id)` so each syncable item — clipboard entry, snippet,
-  shortcut, settings singleton — gets exactly one row.
-- `cloud_sync_user_state(user_id, next_version)` — per-user monotonic
-  version counter, transactionally locked on each push so versions
-  stay strictly increasing across concurrent device pushes.
-
-New endpoints:
-
-- `POST /api/sync/items` — push a batch of changed items (max 500 per
-  batch, 5 MB total). Each item is upserted by `(user_id, id)` and
-  assigned a fresh `version` from the per-user counter; tombstones
-  carry `deleted: true` with `payload: null`.
-- `GET /api/sync/items?since={cursor}&limit=500` — pull only items
-  with `version > cursor`, ordered ascending. Pagination via
-  `hasMore`. Cursor advances per page.
-
-Client-side: `cloud_sync_items_journal` SQLite table holds one row
-per item with the last-uploaded hash, server-assigned version, dirty
-flag, and tombstone flag. The sync orchestrator hashes each provider
-export, looks up the matching journal entry, and pushes only items
-whose content hash differs from `last_uploaded_hash`. Cursor lives in
-`cloud_sync_cursor`. Per-item upload cap: 256 KB; per-batch cap: 5 MB.
-
-Per-item last-writer-wins replaces the old whole-snapshot LWW.
-Concurrent edits to **different** items on different devices both
-survive — only edits to the **same** item conflict, and the conflict
-is surfaced as an `sync.item-overwritten` diagnostic so the user
-knows their local edit was overridden by a newer version.
-
-Tombstones (deleted items) are pushed with `deleted: true` and stay
-in `cloud_sync_items` for 30 days so other devices have a chance to
-pick up the deletion; a daily `asyar:prune-cloud-sync-tombstones`
-console command (scheduled 03:30 UTC) hard-deletes them after that.
-
-Code: [`src-tauri/src/sync/`](../../asyar-launcher/src-tauri/src/sync/),
-[`src-tauri/src/storage/cloud_sync_state.rs`](../../asyar-launcher/src-tauri/src/storage/cloud_sync_state.rs),
-[`src/services/sync/cloudSyncService.svelte.ts`](../../asyar-launcher/src/services/sync/cloudSyncService.svelte.ts).
-Spec: [`docs/superpowers/specs/2026-05-03-delta-sync-cloud-sync.md`](../superpowers/specs/2026-05-03-delta-sync-cloud-sync.md).
-
-## Layer 4b/4c — Optional end-to-end encrypted sync
-
-Passphrase-based E2EE on top of the per-item shape from 4a.
-**Default OFF** — most users don't want a passphrase prompt; users
-who care explicitly enable it in **Settings → Account → Encrypted Sync**.
-
-Once enabled: user passphrase → Argon2id → 32-byte sync key → AES-256-GCM.
-Multi-device coordination uses `content_hash` computed locally over plaintext —
-different devices with the same passphrase produce the same hash
-without ever sharing the passphrase.
-
-UX (key call): passphrase entered **once** at enrolment, derived sync
-key cached in the OS keychain (same trust anchor as Layer 3's
-data-at-rest key). Daily UX is zero-friction — no per-launch prompt.
-The passphrase is re-entered only at: enrolment, second-device login,
-recovery after passphrase loss, or explicit user "lock sync" action.
-
-Recovery is honest: passphrase loss = data loss. Users get a one-time
-24-word BIP-39 recovery phrase at enrolment and are encouraged to
-write it down. Asyar.org cannot reset a passphrase.
-
-Addresses threat 2 directly. A server breach reveals only ciphertext.
-
-Code paths: [`src-tauri/src/sync/e2ee/`](../../asyar-launcher/src-tauri/src/sync/e2ee/),
-[`src-tauri/src/crypto/`](../../asyar-launcher/src-tauri/src/crypto/) (`kdf.rs`, `mnemonic.rs`, `sync_envelope.rs`),
-[`src/services/sync/syncEncryptionService.svelte.ts`](../../asyar-launcher/src/services/sync/syncEncryptionService.svelte.ts),
-[`src/components/settings/EncryptionEnrolmentDialog.svelte`](../../asyar-launcher/src/components/settings/EncryptionEnrolmentDialog.svelte),
-[`src/components/settings/PassphraseDialog.svelte`](../../asyar-launcher/src/components/settings/PassphraseDialog.svelte),
-[`src/components/settings/RotatePassphraseDialog.svelte`](../../asyar-launcher/src/components/settings/RotatePassphraseDialog.svelte),
-[`src/components/settings/RecoverWithMnemonicDialog.svelte`](../../asyar-launcher/src/components/settings/RecoverWithMnemonicDialog.svelte),
-[`src/components/settings/RecoveryPhraseDialog.svelte`](../../asyar-launcher/src/components/settings/RecoveryPhraseDialog.svelte),
-[`src/components/settings/DisableE2eeDialog.svelte`](../../asyar-launcher/src/components/settings/DisableE2eeDialog.svelte).
-Settings UI: **Settings → Account → Encrypted Sync**.
-
-## Layer 5 — Retention & automatic eviction (shipped 2026-09-30)
+## Layer 4 — Retention & automatic eviction (shipped 2026-09-30)
 
 Time-to-live (TTL) automatic eviction ensures that captured clipboard items do
 not persist indefinitely on local storage. Configurable in
@@ -244,17 +147,15 @@ AI conversation history retention cap (shipped 2026-09-30):
 - **Pinned threads are strictly preserved**: pinned conversations (`is_pinned = 1`)
   are exempt from retention cleanup.
 
-Snippet "private" tag / local-only sync opt-out (shipped 2026-09-30):
+Snippet "private" tag (shipped 2026-09-30):
 
 - Snippets can be individually marked as **Private (Local Only)** via the snippet editor toggle or the `⌘K` Action Panel ("Toggle Private (Local Only)").
 - Private snippets are visually badged with a "Private" indicator in both list rows and detail headers.
-- **Sync exclusion**: Private snippets are strictly filtered out from sync payloads (`export_for_sync`, `exportItems`) and never leave the local device even when cloud sync is active.
-- **Tombstone suppression**: Local updates or deletions of private snippets suppress cloud sync change events and tombstones, eliminating cross-device leakage.
-- Remote sync merge or replace imports preserve local private snippets without overwriting or removing them.
+- **Backup exclusion**: Private snippets are filtered out of exported backups and never leave the local device.
 
 ## What this is NOT
 
-Asyar does not promise to detect every secret. Layer 1 catches items
+Conbind does not promise to detect every secret. Layer 1 catches items
 that opt out at the source; Layer 2 catches the most common known
 formats. A user manually typing a password into a chat field, or
 copying from an app that uses a non-standard clipboard mechanism, is
@@ -266,4 +167,4 @@ not eliminate it.
 - Spec: [`docs/superpowers/specs/2026-05-01-clipboard-capture-exclusion.md`](../superpowers/specs/2026-05-01-clipboard-capture-exclusion.md)
 - Plan: [`docs/superpowers/plans/2026-05-01-clipboard-capture-exclusion.md`](../superpowers/plans/2026-05-01-clipboard-capture-exclusion.md)
 - Permissions reference: [`docs/reference/permissions.md`](../reference/permissions.md)
-- Source: [`src-tauri/src/clipboard_privacy/`](../../asyar-launcher/src-tauri/src/clipboard_privacy/), [`src/services/privacy/clipboardPrivacyService.svelte.ts`](../../asyar-launcher/src/services/privacy/clipboardPrivacyService.svelte.ts)
+- Source: [`src-tauri/src/clipboard_privacy/`](../../conbind-launcher/src-tauri/src/clipboard_privacy/), [`src/services/privacy/clipboardPrivacyService.svelte.ts`](../../conbind-launcher/src/services/privacy/clipboardPrivacyService.svelte.ts)

@@ -1,25 +1,25 @@
-# Releasing Asyar
+# Releasing Conbind
 
 This monorepo contains two independently-released packages. Each has its own flow:
 
-| Package                          | Trigger             | Destination                                                                   |
-| -------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
-| **Launcher** (`asyar-launcher/`) | Push a `v*` tag     | GitHub Releases + asyar.org updater feed                                      |
-| **SDK** (`asyar-sdk/`)           | Push a `sdk-v*` tag | npm: [`asyar-sdk`](https://www.npmjs.com/package/asyar-sdk) + GitHub Releases |
+| Package                            | Trigger             | Destination                                                                       |
+| ---------------------------------- | ------------------- | --------------------------------------------------------------------------------- |
+| **Launcher** (`conbind-launcher/`) | Push a `v*` tag     | GitHub Releases + in-app updater feed (`latest.json`)                             |
+| **SDK** (`conbind-sdk/`)           | Push a `sdk-v*` tag | npm: [`conbind-sdk`](https://www.npmjs.com/package/conbind-sdk) + GitHub Releases |
 
 ## Ordering: release the SDK first
 
 When a release carries changes to **both** packages, **publish the SDK before the
-launcher.** The launcher's release script pins its `asyar-sdk` dependency to
-whatever version sits in `asyar-sdk/package.json` **on disk** — it never asks npm.
+launcher.** The launcher's release script pins its `conbind-sdk` dependency to
+whatever version sits in `conbind-sdk/package.json` **on disk** — it never asks npm.
 So bumping the SDK locally and then releasing the launcher first would pin the
 launcher to a version that does not exist on npm yet, and every extension install
-that resolves `asyar-sdk` would fail.
+that resolves `conbind-sdk` would fail.
 
 Check whether the SDK actually changed since its last published tag:
 
 ```bash
-git diff --stat "sdk-v$(node -p "require('./asyar-sdk/package.json').version")"..HEAD -- asyar-sdk/
+git diff --stat "sdk-v$(node -p "require('./conbind-sdk/package.json').version")"..HEAD -- conbind-sdk/
 ```
 
 Empty output means the published SDK is current and you can release the launcher
@@ -28,11 +28,11 @@ on its own. Any output means the SDK goes first.
 Two things in the SDK reach extension authors directly, so they are worth checking
 before deciding the order:
 
-- **`asyar-sdk/cli/`** — the `asyar` CLI that authors run to build and package.
+- **`conbind-sdk/cli/`** — the `conbind` CLI that authors run to build and package.
   A packaging fix here does nothing for them until it is on npm.
-- **`asyar-sdk/package.json` `exports`** — a new subpath (e.g. `./vite`) is
+- **`conbind-sdk/package.json` `exports`** — a new subpath (e.g. `./vite`) is
   invisible to consumers until published. `scaffoldService.ts` probes npm with
-  `npm view asyar-sdk exports` at scaffold time and falls back to an older
+  `npm view conbind-sdk exports` at scaffold time and falls back to an older
   template, so a new subpath starts being used the moment it is published — no
   launcher release required.
 
@@ -53,13 +53,13 @@ The launcher uses a release helper script (a thin wrapper over the shared `scrip
 From the monorepo root:
 
 ```bash
-pnpm --filter asyar-launcher run release <patch|minor|major|beta>   # add --dry-run to preview
+pnpm --filter conbind-launcher run release <patch|minor|major|beta>   # add --dry-run to preview
 ```
 
-Or from inside `asyar-launcher/`:
+Or from inside `conbind-launcher/`:
 
 ```bash
-cd asyar-launcher
+cd conbind-launcher
 pnpm run release <patch|minor|major|beta>
 ```
 
@@ -77,21 +77,21 @@ pnpm run release <patch|minor|major|beta>
 ### What the release script does
 
 1. **Duplicate-tag guard**: aborts immediately if `vX.Y.Z` already exists on the remote, so a version is never released twice
-2. **Local SDK version**: reads the SDK version from `asyar-sdk/package.json` on disk — **no npm call** (the workspace always builds the local SDK, so a release can't be blocked by npm being down)
-3. **Version sync**: bumps `asyar-launcher/package.json` (its own version + the declared `asyar-sdk` dependency), `src-tauri/Cargo.toml`, `Cargo.lock`, the `scaffoldService.ts` offline fallback, and the root `pnpm-lock.yaml`
+2. **Local SDK version**: reads the SDK version from `conbind-sdk/package.json` on disk — **no npm call** (the workspace always builds the local SDK, so a release can't be blocked by npm being down)
+3. **Version sync**: bumps `conbind-launcher/package.json` (its own version + the declared `conbind-sdk` dependency), `src-tauri/Cargo.toml`, `Cargo.lock`, the `scaffoldService.ts` offline fallback, and the root `pnpm-lock.yaml`
 4. **Git operations**: commits on a new `release/vX.Y.Z` branch, opens a **PR**, and pushes the `vX.Y.Z` tag (it does _not_ push straight to `main`)
 5. **CI trigger**: the `v*` tag triggers `.github/workflows/release-launcher.yml`
 6. **Build matrix**: macOS arm64 + x64 (per-arch, not a universal binary), Windows x64/arm64, Linux amd64/arm64 — all 6 required
 7. **GitHub Release**: published directly (not a draft) with auto-generated notes
 8. **Pre-release detection**: tags with a hyphen (e.g., `v0.1.0-1`) are automatically marked "Pre-release"
-9. **Updater notification**: asyar.org `/api/releases` is notified so the auto-update feed picks up the new version
+9. **Updater manifest**: `latest.json` is attached to the GitHub Release; the app's updater reads `releases/latest/download/latest.json`
 
-> The Rust `SUPPORTED_SDK_VERSION` is **not** set by the release script — `src-tauri/build.rs` injects it at compile time from the local `asyar-sdk/package.json`, so it can never drift.
+> The Rust `SUPPORTED_SDK_VERSION` is **not** set by the release script — `src-tauri/build.rs` injects it at compile time from the local `conbind-sdk/package.json`, so it can never drift.
 
-Linux builds also publish the standalone summon helpers `asyar-summon_amd64`
-and `asyar-summon_aarch64`. `install.sh` installs the matching helper beside the
+Linux builds also publish the standalone summon helpers `conbind-summon_amd64`
+and `conbind-summon_aarch64`. `install.sh` installs the matching helper beside the
 AppImage, and re-running it refreshes both files. The versioned
-`org.asyar.Launcher1` interface and `--show-on-start` argument must remain
+`org.conbind.Launcher1` interface and `--show-on-start` argument must remain
 backward compatible because the AppImage updater does not update the helper.
 
 ### Manual step after CI
@@ -100,7 +100,7 @@ The tag triggers the build from the `release/vX.Y.Z` branch, so the installers a
 
 1. **Merge the release PR.** This lands the version bump on `main` so the _next_ release calculates from the right number.
 
-That's it — the GitHub Release and the asyar.org updater feed are published automatically.
+That's it — the GitHub Release and its updater manifest are published automatically.
 
 ---
 
@@ -114,13 +114,13 @@ From the monorepo root:
 
 ```bash
 pnpm release:sdk <patch|minor|major|beta>
-# equivalent to: pnpm --filter asyar-sdk run release <patch|minor|major|beta>
+# equivalent to: pnpm --filter conbind-sdk run release <patch|minor|major|beta>
 ```
 
-Or from inside `asyar-sdk/`:
+Or from inside `conbind-sdk/`:
 
 ```bash
-cd asyar-sdk
+cd conbind-sdk
 pnpm run release <patch|minor|major|beta>
 ```
 
@@ -138,7 +138,7 @@ Same semantics as the launcher's flow:
 ### What the release script does
 
 1. **Duplicate-tag guard**: aborts if `sdk-vX.Y.Z` already exists on the remote
-2. **Version bump**: updates `asyar-sdk/package.json`
+2. **Version bump**: updates `conbind-sdk/package.json`
 3. **Lockfile sync**: runs `pnpm install` at the monorepo root
 4. **Git operations**: commits on a new `release/sdk-vX.Y.Z` branch, opens a **PR**, and pushes the `sdk-vX.Y.Z` tag
 5. **CI trigger**: the `sdk-v*` tag fires `.github/workflows/release-sdk.yml`
@@ -149,19 +149,19 @@ After CI is green, **merge the release PR** to land the version bump on `main`.
 
 ### Required GitHub secret
 
-The SDK release workflow needs `NPM_TOKEN` configured at **Settings → Secrets and variables → Actions** with publish rights for `asyar-sdk`. Generate an "Automation" token at [npmjs.com/settings/Xoshbin/tokens](https://www.npmjs.com/settings/Xoshbin/tokens).
+The SDK release workflow needs `NPM_TOKEN` configured at **Settings → Secrets and variables → Actions** with publish rights for `conbind-sdk`. Generate an "Automation" token at [npmjs.com/settings/montanari-luca/tokens](https://www.npmjs.com/settings/montanari-luca/tokens).
 
 ---
 
 ## Distributing via Homebrew
 
 Every launcher release also pushes an updated Cask to a personal tap,
-[`Xoshbin/homebrew-asyar`](https://github.com/Xoshbin/homebrew-asyar), so users can:
+[`montanari-luca/homebrew-conbind`](https://github.com/montanari-luca/homebrew-conbind), so users can:
 
 ```bash
-brew tap Xoshbin/asyar
-brew trust --tap xoshbin/asyar   # required once — see note below
-brew install --cask asyar
+brew tap montanari-luca/conbind
+brew trust --tap montanari-luca/Conbind   # required once — see note below
+brew install --cask conbind
 ```
 
 This is a self-owned tap, not the official `homebrew-cask` repo — submitting there
@@ -169,7 +169,7 @@ later requires clearing Homebrew's notability bar, which isn't worth blocking on
 
 > **Homebrew 6.0+ tap trust:** any tap other than `homebrew/core`/`homebrew/cask` is
 > refused by default ("Refusing to load cask ... from untrusted tap") until the user
-> runs `brew trust --tap xoshbin/asyar` (or `brew trust --cask xoshbin/asyar/asyar`
+> runs `brew trust --tap montanari-luca/Conbind` (or `brew trust --cask montanari-luca/Conbind/conbind`
 > for just the cask). This is enforced by `HOMEBREW_REQUIRE_TAP_TRUST`, which is
 > on by default as of brew 6.0 — not something we configure. **Any public-facing
 > install instructions (website, README, discussion replies) must include the
@@ -178,16 +178,16 @@ later requires clearing Homebrew's notability bar, which isn't worth blocking on
 
 ### One-time setup (done — 2026-07-17)
 
-1. Create an empty public GitHub repo named exactly `homebrew-asyar` under the
-   `Xoshbin` account (the `homebrew-` prefix is what makes `brew tap Xoshbin/asyar`
+1. Create an empty public GitHub repo named exactly `homebrew-conbind` under the
+   `montanari-luca` account (the `homebrew-` prefix is what makes `brew tap montanari-luca/conbind`
    resolve to it).
-2. Seed it with `Casks/asyar.rb` — grab the current version of that file from the
+2. Seed it with `Casks/conbind.rb` — grab the current version of that file from the
    most recent `Update Homebrew Cask` CI run, or generate one by hand for the
    current release (see the step's heredoc in `.github/workflows/release-launcher.yml`
    for the exact template).
-3. Generate a fine-grained GitHub PAT scoped to **only** the `homebrew-asyar` repo
+3. Generate a fine-grained GitHub PAT scoped to **only** the `homebrew-conbind` repo
    with `Contents: Read and write` permission.
-4. Add it as a secret named `HOMEBREW_TAP_TOKEN` on the `Xoshbin/asyar` repo
+4. Add it as a secret named `HOMEBREW_TAP_TOKEN` on the `montanari-luca/Conbind` repo
    (Settings → Secrets and variables → Actions).
 
 The secret is in place, so the `Update Homebrew Cask` step in `release-launcher.yml`
@@ -202,7 +202,7 @@ failing if `HOMEBREW_TAP_TOKEN` is ever missing.
   A `livecheck` block for `brew bump-cask-pr`-style automation isn't included
   because Homebrew's `github_latest` strategy only resolves GitHub's `/releases/latest`,
   which excludes prereleases entirely — it would find nothing.
-- `auto_updates true` is set because Asyar has its own updater (the asyar.org feed).
+- `auto_updates true` is set because Conbind has its own updater (the GitHub Releases `latest.json` feed).
   Brew is the _install_ channel; the app's own updater is the _stay current_ channel.
   This also means plain `brew upgrade` skips it — that's intentional, not a bug.
 - Only the two macOS `.dmg` artifacts are needed (Homebrew Cask is macOS-only);
@@ -216,7 +216,7 @@ Every **stable** launcher release also opens/updates a manifest PR against the o
 can:
 
 ```powershell
-winget install Xoshbin.Asyar
+winget install montanari-luca.Conbind
 ```
 
 This targets the real community repo, not a personal fork like the Homebrew tap — there's
@@ -234,10 +234,10 @@ and winget-pkgs won't accept a package whose **only** available version is a pre
 
 ### Pre-release gating
 
-Every Asyar release today is a numeric pre-release (`v0.1.1-N`, hyphenated). winget-pkgs
+Every Conbind release today is a numeric pre-release (`v0.1.1-N`, hyphenated). winget-pkgs
 policy requires a package's default manifest to track a stable release — pre-release-only
 packages aren't accepted as standalone entries (the convention for beta channels is a
-_separate_ identifier, e.g. `Xoshbin.Asyar.Beta`, which isn't set up). So the `Update winget
+_separate_ identifier, e.g. `montanari-luca.Conbind.Beta`, which isn't set up). So the `Update winget
 manifest` step in `release-launcher.yml` checks the version and skips quietly (no failure)
 for any hyphenated tag. **The winget channel goes live automatically the first time a real
 `patch`/`minor`/`major` release ships** (a clean `vX.Y.Z` tag, no `beta` keyword) — no code
@@ -250,27 +250,27 @@ change needed when that happens.
    a pre-release-only submission (see above) — so this whole channel is blocked until the
    first non-hyphenated `vX.Y.Z` tag exists.
 2. Fork [`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs) under the
-   `Xoshbin` account (`vedantmgoyal9/winget-releaser`'s default `fork-user` is the repo
-   owner, i.e. `Xoshbin`, so no extra config is needed once the fork exists).
+   `montanari-luca` account (`vedantmgoyal9/winget-releaser`'s default `fork-user` is the repo
+   owner, i.e. `montanari-luca`, so no extra config is needed once the fork exists).
 3. **Submit the first manifest manually** — this can't be automated, since the action only
    updates an _existing_ package. `wingetcreate` is Windows-only (it needs native Windows
    APIs to read the MSI, so it can't run on this Mac or in a Linux CI runner); either run it
    on a Windows machine/VM:
    ```powershell
    wingetcreate new `
-     --urls "https://github.com/Xoshbin/asyar/releases/download/v<VERSION>/asyar_<VERSION>_x64_en-US.msi|x64" "https://github.com/Xoshbin/asyar/releases/download/v<VERSION>/asyar_<VERSION>_arm64_en-US.msi|arm64" `
+     --urls "https://github.com/montanari-luca/Conbind/releases/download/v<VERSION>/conbind_<VERSION>_x64_en-US.msi|x64" "https://github.com/montanari-luca/Conbind/releases/download/v<VERSION>/conbind_<VERSION>_arm64_en-US.msi|arm64" `
      --version <VERSION>
    ```
-   (it will prompt for the remaining fields — Publisher `Xoshbin`, PackageIdentifier
-   `Xoshbin.Asyar`, License `AGPL-3.0`, Homepage `https://asyar.org`) — or open a manifest
-   PR by hand against `manifests/x/Xoshbin/Asyar/<VERSION>/` following an existing package's
+   (it will prompt for the remaining fields — Publisher `montanari-luca`, PackageIdentifier
+   `montanari-luca.Conbind`, License `AGPL-3.0`, Homepage `https://asyar.org`) — or open a manifest
+   PR by hand against `manifests/x/montanari-luca/Conbind/<VERSION>/` following an existing package's
    layout as a template. Either way it goes through winget-pkgs' normal validation +
    moderator review like any other new package, so budget for review turnaround time.
 4. Once that PR merges, generate a **classic** GitHub PAT (Settings → Developer settings →
    Personal access tokens → **Tokens (classic)**) with the `public_repo` scope. Fine-grained
    PATs aren't supported by `winget-releaser` (Komac can create the manifest/commit with one,
    but can't open the PR).
-5. Add it as a secret named `WINGET_TOKEN` on the `Xoshbin/asyar` repo
+5. Add it as a secret named `WINGET_TOKEN` on the `montanari-luca/Conbind` repo
    (Settings → Secrets and variables → Actions).
 
 Once `WINGET_TOKEN` is set and a stable release exists in winget-pkgs, the `Update winget
@@ -297,17 +297,17 @@ on pre-releases and on any release before step 5 is done.
   a winget package, and the first real submission needs a stable release + manual review
   that hasn't happened yet. What _was_ checked: the workflow YAML passes `actionlint`, the
   action repo/tag (`vedantmgoyal9/winget-releaser@v2`) and its required inputs were confirmed
-  against its current README, and the `Xoshbin`/`Asyar` manifest path
-  (`manifests/x/Xoshbin/Asyar/`) doesn't already exist in winget-pkgs (checked via the GitHub
+  against its current README, and the `montanari-luca`/`Conbind` manifest path
+  (`manifests/x/montanari-luca/Conbind/`) doesn't already exist in winget-pkgs (checked via the GitHub
   API). Treat the first real submission as the actual test.
 
 ## Distributing via a CLI install script
 
-Closes the original ask in [discussion #315](https://github.com/Xoshbin/asyar/discussions/315)
-("can I install Asyar from the CLI?"). macOS and Linux users can run:
+Closes the original ask in [discussion #315](https://github.com/montanari-luca/Conbind/discussions/315)
+("can I install Conbind from the CLI?"). macOS and Linux users can run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Xoshbin/asyar/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/montanari-luca/Conbind/main/install.sh | sh
 ```
 
 This downloads and runs [`install.sh`](install.sh) from the repo root, which detects the
@@ -316,7 +316,7 @@ asset, and installs it — no Homebrew, no `brew trust` step, no manual `.dmg`/`
 handling. To pin a specific version instead of the newest one:
 
 ```bash
-ASYAR_VERSION=0.1.1-38 curl -fsSL https://raw.githubusercontent.com/Xoshbin/asyar/main/install.sh | sh
+CONBIND_VERSION=0.1.1-38 curl -fsSL https://raw.githubusercontent.com/montanari-luca/Conbind/main/install.sh | sh
 ```
 
 ### Scope decisions
@@ -331,21 +331,21 @@ ASYAR_VERSION=0.1.1-38 curl -fsSL https://raw.githubusercontent.com/Xoshbin/asya
   install location would roughly double the script's surface for marginal gain — the
   AppImage is distro-agnostic by design (the same reason discussion #315's original answer
   picked it), needs no root, and already covers both `aarch64`/`amd64`. It's installed to
-  `~/.local/bin/asyar` (override with `ASYAR_INSTALL_DIR`), with a PATH check that prints the
+  `~/.local/bin/conbind` (override with `CONBIND_INSTALL_DIR`), with a PATH check that prints the
   `export PATH=...` line to add if `~/.local/bin` isn't already on it.
-- **No update-checking, always (re)installs.** Asyar already has its own auto-updater, so this
+- **No update-checking, always (re)installs.** Conbind already has its own auto-updater, so this
   script's job is first-install, not staying current — the same reasoning the Homebrew section
-  gives for `auto_updates true`. If an install already exists (`/Applications/asyar.app` on
-  macOS, `~/.local/bin/asyar` on Linux) the script prints its detected version and replaces it
+  gives for `auto_updates true`. If an install already exists (`/Applications/conbind.app` on
+  macOS, `~/.local/bin/conbind` on Linux) the script prints its detected version and replaces it
   rather than prompting; a `curl | sh` pipe has no interactive terminal to prompt against
   safely, and re-running to force a clean reinstall is itself a reasonable use case.
-- **GitHub's `/releases/latest` isn't used.** Every Asyar release so far is a numeric
+- **GitHub's `/releases/latest` isn't used.** Every Conbind release so far is a numeric
   pre-release (`v0.1.1-N`, hyphenated tag), and `/releases/latest` explicitly excludes
   pre-releases — it 404s today. The script queries the plain release list with `per_page=1`
   and takes the newest entry instead, with no `jq` dependency (asset URLs are pulled out of
   the JSON with `grep`/`sed`, matched against the confirmed real asset names — macOS:
-  `asyar_{version}_aarch64.dmg` / `asyar_{version}_x64.dmg`; Linux: `asyar_{version}_aarch64.AppImage`
-  / `asyar_{version}_amd64.AppImage` — note the arch-naming inconsistency between the two:
+  `conbind_{version}_aarch64.dmg` / `conbind_{version}_x64.dmg`; Linux: `conbind_{version}_aarch64.AppImage`
+  / `conbind_{version}_amd64.AppImage` — note the arch-naming inconsistency between the two:
   macOS uses `x64`, Linux AppImage uses `amd64`, and the Linux `.deb` assets use `arm64`
   rather than `aarch64`).
 - Written in POSIX `sh`, not bash — the documented invocation pipes into `sh`, which is
@@ -357,26 +357,24 @@ ASYAR_VERSION=0.1.1-38 curl -fsSL https://raw.githubusercontent.com/Xoshbin/asya
 ## When a release fails
 
 Every step is re-runnable without burning a version number. If a CI run fails
-(npm publish, a build target, the website notify), fix the cause and re-run the
+(npm publish, a build target), fix the cause and re-run the
 workflow with the **same tag**: GitHub → **Actions** → the workflow →
 **Run workflow** (workflow_dispatch) → enter the existing tag. A `concurrency`
-guard prevents two runs of the same tag from colliding, npm publish is
-idempotent, and the asyar.org notify upserts by version — so re-running is always
-safe.
+guard prevents two runs of the same tag from colliding and npm publish is
+idempotent — so re-running is always safe.
 
 ### Symptom → recovery
 
-| Scenario                                                                           | What's safe                                                                              | Recovery                                                                                                                                                                                                                                                                                                |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SDK `npm publish` fails (bad token / version exists / network)                     | Tag + bump on the release branch/PR; npm unchanged                                       | Fix the cause → re-run **release-sdk.yml** via _Run workflow_ with the same tag. Publish is idempotent: it skips if the version is already on npm.                                                                                                                                                      |
-| One launcher build target fails (flaky notarization / runner down)                 | Other artifacts built; nothing published yet                                             | Re-run **release-launcher.yml** via _Run workflow_ with the same tag — no new version. The concurrency guard prevents races.                                                                                                                                                                            |
-| Website notify fails (asyar.org down / bad token)                                  | GitHub Release already created; updater feed stale                                       | The job **fails loudly** (red). Re-run via _Run workflow_; the notify endpoint upserts by version, so it's safe to repeat.                                                                                                                                                                              |
-| Homebrew cask push fails (bad token / tap repo down)                               | GitHub Release + website notify already done; tap just stale                             | Re-run via _Run workflow_ with the same tag — the step overwrites `Casks/asyar.rb` unconditionally, so it's safe to repeat. If `HOMEBREW_TAP_TOKEN` isn't set yet, the step no-ops instead of failing.                                                                                                  |
-| winget manifest step fails (bad token / Komac error / stale fork)                  | GitHub Release + website notify + Homebrew already done; winget-pkgs untouched or mid-PR | Check the `Xoshbin` winget-pkgs fork for an already-open PR for this version first (avoid duplicates), then re-run via _Run workflow_ with the same tag. Skips quietly (not a failure) if `WINGET_TOKEN` isn't set yet or the tag is a pre-release.                                                     |
-| `install.sh` fails for a user (asset match broken, network, GitHub API rate limit) | Not part of the release pipeline — nothing published is affected, no version to re-tag   | Fix `install.sh` directly on `main`; no tag/version bump needed, since the raw URL always serves current `main`. If it's GitHub's unauthenticated API rate limit (60 req/hr per IP), the workaround is downloading the matching asset from the Releases page directly instead of re-running the script. |
-| Tag pushed by mistake / wrong version                                              | —                                                                                        | `git push --delete origin <tag>`, delete the GitHub release, then re-release. The duplicate-tag guard otherwise blocks a duplicate version.                                                                                                                                                             |
-| Launcher release while npm is down                                                 | N/A                                                                                      | Not a failure mode — the launcher reads the SDK version from local `asyar-sdk/package.json`.                                                                                                                                                                                                            |
-| A release script half-finished locally (Ctrl-C / error mid-run)                    | The script cleans up its leftover local branch/tag on the next run                       | Run it again (`--dry-run` first to preview); the duplicate-tag guard blocks an accidental re-release of the same version.                                                                                                                                                                               |
+| Scenario                                                                           | What's safe                                                                            | Recovery                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SDK `npm publish` fails (bad token / version exists / network)                     | Tag + bump on the release branch/PR; npm unchanged                                     | Fix the cause → re-run **release-sdk.yml** via _Run workflow_ with the same tag. Publish is idempotent: it skips if the version is already on npm.                                                                                                                                                      |
+| One launcher build target fails (flaky notarization / runner down)                 | Other artifacts built; nothing published yet                                           | Re-run **release-launcher.yml** via _Run workflow_ with the same tag — no new version. The concurrency guard prevents races.                                                                                                                                                                            |
+| Homebrew cask push fails (bad token / tap repo down)                               | GitHub Release already done; tap just stale                                            | Re-run via _Run workflow_ with the same tag — the step overwrites `Casks/conbind.rb` unconditionally, so it's safe to repeat. If `HOMEBREW_TAP_TOKEN` isn't set yet, the step no-ops instead of failing.                                                                                                |
+| winget manifest step fails (bad token / Komac error / stale fork)                  | GitHub Release + Homebrew already done; winget-pkgs untouched or mid-PR                | Check the `montanari-luca` winget-pkgs fork for an already-open PR for this version first (avoid duplicates), then re-run via _Run workflow_ with the same tag. Skips quietly (not a failure) if `WINGET_TOKEN` isn't set yet or the tag is a pre-release.                                              |
+| `install.sh` fails for a user (asset match broken, network, GitHub API rate limit) | Not part of the release pipeline — nothing published is affected, no version to re-tag | Fix `install.sh` directly on `main`; no tag/version bump needed, since the raw URL always serves current `main`. If it's GitHub's unauthenticated API rate limit (60 req/hr per IP), the workaround is downloading the matching asset from the Releases page directly instead of re-running the script. |
+| Tag pushed by mistake / wrong version                                              | —                                                                                      | `git push --delete origin <tag>`, delete the GitHub release, then re-release. The duplicate-tag guard otherwise blocks a duplicate version.                                                                                                                                                             |
+| Launcher release while npm is down                                                 | N/A                                                                                    | Not a failure mode — the launcher reads the SDK version from local `conbind-sdk/package.json`.                                                                                                                                                                                                          |
+| A release script half-finished locally (Ctrl-C / error mid-run)                    | The script cleans up its leftover local branch/tag on the next run                     | Run it again (`--dry-run` first to preview); the duplicate-tag guard blocks an accidental re-release of the same version.                                                                                                                                                                               |
 
 **Notes**
 
@@ -387,8 +385,8 @@ safe.
 
 ## Quick reference
 
-| To release…             | Run                                                                                                                     |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| The launcher            | `pnpm --filter asyar-launcher run release patch` (or `minor` / `major` / `beta`; add `--dry-run` to preview) — tag `v*` |
-| The SDK                 | `pnpm release:sdk patch` (or `minor` / `major` / `beta`; add `--dry-run` to preview) — tag `sdk-v*`                     |
-| Re-run a failed release | GitHub → Actions → the workflow → **Run workflow** → same tag                                                           |
+| To release…             | Run                                                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| The launcher            | `pnpm --filter conbind-launcher run release patch` (or `minor` / `major` / `beta`; add `--dry-run` to preview) — tag `v*` |
+| The SDK                 | `pnpm release:sdk patch` (or `minor` / `major` / `beta`; add `--dry-run` to preview) — tag `sdk-v*`                       |
+| Re-run a failed release | GitHub → Actions → the workflow → **Run workflow** → same tag                                                             |

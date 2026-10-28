@@ -1,6 +1,6 @@
 ### 8.15 Pattern: user-authored templates with dynamic values
 
-**No SDK service required.** This is a cookbook recipe showing how to build dynamic placeholder substitution — the same `{clipboard}` / `{Selected Text}` / `{Date}` token style used by the built-in **Portals** and **Snippets** features — using only existing SDK services. Asyar deliberately does not expose a `PlaceholderService` because the primitives needed to build one are already available: `IClipboardHistoryService.readCurrentText()`, `ISelectionService.getSelectedText()`, and the JavaScript standard library (`crypto.randomUUID()`, `new Date()...`). Rolling your own resolver keeps the permission model explicit — your extension declares exactly what it needs in `manifest.json` — and lets you choose the token names and set that fit your feature.
+**No SDK service required.** This is a cookbook recipe showing how to build dynamic placeholder substitution — the same `{clipboard}` / `{Selected Text}` / `{Date}` token style used by the built-in **Portals** and **Snippets** features — using only existing SDK services. Conbind deliberately does not expose a `PlaceholderService` because the primitives needed to build one are already available: `IClipboardHistoryService.readCurrentText()`, `ISelectionService.getSelectedText()`, and the JavaScript standard library (`crypto.randomUUID()`, `new Date()...`). Rolling your own resolver keeps the permission model explicit — your extension declares exactly what it needs in `manifest.json` — and lets you choose the token names and set that fit your feature.
 
 **When to use this pattern:** your extension lets the user author a template string (a URL, a shell command template, a text snippet) and you want to substitute dynamic values into it at invocation time.
 
@@ -19,7 +19,7 @@
 **Minimal resolver implementation.** Drop this into your extension (e.g. `src/lib/templates.ts`). It mirrors the built-in launcher's semantics: tokens are deduplicated so each is resolved once even if it appears multiple times; unknown tokens are left untouched; async tokens are resolved concurrently; service failures degrade to empty strings.
 
 ```typescript
-import type { IClipboardHistoryService, ISelectionService } from 'asyar-sdk';
+import type { IClipboardHistoryService, ISelectionService } from 'conbind-sdk';
 
 interface ResolveContext {
   query?: string;
@@ -34,7 +34,7 @@ export function createTemplateResolver(
   selection: ISelectionService,
 ) {
   // Token registry — add, rename, or remove to match your feature's UX.
-  // The canonical spellings below match Asyar's built-in Portals/Snippets
+  // The canonical spellings below match Conbind's built-in Portals/Snippets
   // so your users get consistent muscle memory.
   const tokens: Record<string, TokenResolver> = {
     query: (ctx) => ctx.query ?? '',
@@ -93,7 +93,7 @@ export function createTemplateResolver(
 **Usage from a command handler:**
 
 ```typescript
-import type { ExtensionContext, IClipboardHistoryService, ISelectionService } from 'asyar-sdk';
+import type { ExtensionContext, IClipboardHistoryService, ISelectionService } from 'conbind-sdk';
 import { createTemplateResolver } from './lib/templates';
 
 let resolver: ReturnType<typeof createTemplateResolver>;
@@ -119,6 +119,6 @@ export async function openTemplatedUrl(template: string, query: string) {
 
 **Error handling notes.** `getSelectedText()` can throw a `SelectionError` — in particular `ACCESSIBILITY_PERMISSION_REQUIRED` on macOS when the user hasn't granted accessibility access. The resolver above swallows these into empty strings for template-filling convenience, but if your extension is the user's first experience with selection reading, wrap the first call in an explicit try/catch and use `IFeedbackService.report` to guide them into System Settings. See §8.14 for the full `SelectionError` handling pattern.
 
-**Why isn't there a built-in `PlaceholderService`?** The primary reason is architectural. As covered in §4's **two-tier model**, Asyar's launcher features (Tier 1) run in the privileged SvelteKit host context with direct access to internal services, while third-party extensions (Tier 2) run in sandboxed `<iframe>`s whose only channel to the host is serializable `postMessage` IPC. **Asyar does not — and has no plans to — share launcher components or internal module code across that boundary. The SDK exposes service interfaces only; never UI components, Svelte code, or internal implementations.** The launcher's placeholder resolver and its `{` picker are Tier 1 Svelte code that directly imports concrete launcher services, so "just exposing the built-in" isn't a small refactor — it would mean designing a separate IPC-routed service surface from scratch and solving the picker-in-iframe problem on the extension side. On top of that, a packaged `PlaceholderService` would bundle `clipboard:read` and `selection:read` behind an implicit contract, and extensions would pay for the whole permission set even if they only wanted date/time tokens. Keeping the pattern in user-land lets each extension declare exactly the permissions it uses, choose its own token names, and add tokens Asyar doesn't ship (e.g. a `{current_project}` token scoped to a project-tracking extension).
+**Why isn't there a built-in `PlaceholderService`?** The primary reason is architectural. As covered in §4's **two-tier model**, Conbind's launcher features (Tier 1) run in the privileged SvelteKit host context with direct access to internal services, while third-party extensions (Tier 2) run in sandboxed `<iframe>`s whose only channel to the host is serializable `postMessage` IPC. **Conbind does not — and has no plans to — share launcher components or internal module code across that boundary. The SDK exposes service interfaces only; never UI components, Svelte code, or internal implementations.** The launcher's placeholder resolver and its `{` picker are Tier 1 Svelte code that directly imports concrete launcher services, so "just exposing the built-in" isn't a small refactor — it would mean designing a separate IPC-routed service surface from scratch and solving the picker-in-iframe problem on the extension side. On top of that, a packaged `PlaceholderService` would bundle `clipboard:read` and `selection:read` behind an implicit contract, and extensions would pay for the whole permission set even if they only wanted date/time tokens. Keeping the pattern in user-land lets each extension declare exactly the permissions it uses, choose its own token names, and add tokens Conbind doesn't ship (e.g. a `{current_project}` token scoped to a project-tracking extension).
 
 ---

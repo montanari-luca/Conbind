@@ -1,0 +1,312 @@
+import { t } from '../../services/i18n';
+import type {
+  CommandExecuteArgs,
+  Extension,
+  ExtensionContext,
+  IExtensionManager,
+} from 'conbind-sdk/contracts';
+// @ts-ignore
+import DefaultView from './DefaultView.svelte';
+import { noteStore, type Note } from './noteStore.svelte';
+import { isAnyModalOpen } from '../../components/base/Modal.logic';
+import { noteViewState } from './noteViewState.svelte';
+import { splitQuickCapture } from './quickCapture';
+import {
+  noteExportMarkdown,
+  stickyOpen,
+  stickyClose,
+  stickyIsStuck,
+  stickyNew,
+} from '../../lib/ipc/commands';
+import { ActionContext } from 'conbind-sdk/contracts';
+import { actionService } from '../../services/action/actionService.svelte';
+import { feedbackService } from '../../services/feedback/feedbackService.svelte';
+import { writeText } from 'tauri-plugin-clipboard-x-api';
+import { type UnlistenFn } from '@tauri-apps/api/event';
+import { appListen } from '../../lib/ipc/bridgeEvents';
+
+function noteAsMarkdown(title: string, body: string): string {
+  return title.trim() ? `# ${title}\n\n${body}` : body;
+}
+
+function toastSaved(message: string): void {
+  feedbackService.report({
+    source: 'frontend',
+    kind: 'manual',
+    severity: 'success',
+    retryable: false,
+    context: { message },
+  });
+}
+
+function quickCaptureNote(text: string): Note {
+  const now = Date.now();
+  const note: Note = {
+    id: crypto.randomUUID(),
+    ...splitQuickCapture(text),
+    createdAt: now,
+    updatedAt: now,
+    pinned: false,
+  };
+  noteStore.add(note);
+  return note;
+}
+
+class NotesExtension implements Extension {
+  onUnload = () => {};
+  private extensionManager?: IExtensionManager;
+  private inView = false;
+  private unlistenNotesChanged: UnlistenFn | null = null;
+  private handleKeydownBound = (e: KeyboardEvent) => this.handleKeydown(e);
+
+  async initialize(context: ExtensionContext): Promise<void> {
+    this.extensionManager = context.getService<IExtensionManager>('extensions');
+    await noteStore.init();
+  }
+
+  private handleKeydown(e: KeyboardEvent) {
+    if (!this.inView) return;
+    if (typeof document !== 'undefined') {
+      if (document.querySelector('.action-popup') || isAnyModalOpen(document)) return;
+    }
+
+    // The launcher's own search input is focused while browsing the list, so
+    // "is an input" can't be the exemption — only the note editor's fields
+    // (title/body) keep their native cursor-movement keys.
+    const target = e.target as HTMLElement | null;
+    if (target?.closest?.('.note-editor')) return;
+
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      noteViewState.moveSelection(e.key === 'ArrowUp' ? 'up' : 'down');
+    }
+  }
+
+  async executeCommand(commandId: string, args?: CommandExecuteArgs): Promise<any> {
+    if (commandId === 'open-notes') {
+      this.extensionManager?.navigateToView('notes/DefaultView');
+      return { type: 'view', viewPath: 'notes/DefaultView' };
+    }
+
+    if (commandId === 'quick-note') {
+      const text = String(args?.arguments?.text ?? '').trim();
+      if (text) {
+        quickCaptureNote(text);
+        toastSaved('Note saved');
+      }
+      return { type: 'no-view' };
+    }
+
+    if (commandId === 'new-sticky') {
+      await stickyNew();
+      return { type: 'no-view' };
+    }
+
+    if (commandId === 'append-today') {
+      const text = String(args?.arguments?.text ?? '').trim();
+      if (text) {
+        noteStore.appendToToday(text);
+        toastSaved('Added to today');
+      }
+      return { type: 'no-view' };
+    }
+  }
+
+  private registerViewActions(): void {
+    actionService.registerAction({
+      id: 'notes:add',
+      label: t('features.notes.act.new'),
+      icon: 'icon:plus',
+      shortcut: 'Mod+N',
+      description: t('features.notes.act.new_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        await noteViewState.createNote();
+      },
+    });
+    actionService.registerAction({
+      id: 'notes:pin',
+      label: t('features.notes.act.pin_note'),
+      icon: 'icon:pin',
+      shortcut: 'Mod+Shift+P',
+      description: t('features.notes.act.pin_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      visible: () => (noteViewState.selectedNote ? !noteViewState.selectedNote.pinned : false),
+      execute: async () => {
+        const n = noteViewState.selectedNote;
+        if (n) noteStore.togglePin(n.id);
+      },
+    });
+    actionService.registerAction({
+      id: 'notes:unpin',
+      label: t('features.notes.act.unpin_note'),
+      icon: 'icon:pin',
+      shortcut: 'Mod+Shift+P',
+      description: t('features.notes.act.pin_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      visible: () =>
+        noteViewState.selectedNote ? Boolean(noteViewState.selectedNote.pinned) : false,
+      execute: async () => {
+        const n = noteViewState.selectedNote;
+        if (n) noteStore.togglePin(n.id);
+      },
+    });
+    actionService.registerAction({
+      id: 'notes:duplicate',
+      label: t('features.notes.act.duplicate'),
+      icon: 'icon:layers',
+      description: t('features.notes.act.duplicate_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        const n = noteViewState.selectedNote;
+        if (!n) return;
+        const now = Date.now();
+        const dup = {
+          id: crypto.randomUUID(),
+          title: n.title ? `${n.title} Copy` : '',
+          body: n.body,
+          createdAt: now,
+          updatedAt: now,
+          pinned: false,
+        };
+        noteStore.add(dup);
+        await noteViewState.selectAfterMutation(dup.id);
+      },
+    });
+    actionService.registerAction({
+      id: 'notes:copy-markdown',
+      label: t('features.notes.act.copy_md'),
+      icon: 'icon:copy',
+      description: t('features.notes.act.copy_md_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        const n = noteViewState.selectedNote;
+        if (n) await writeText(noteAsMarkdown(n.title, n.body));
+      },
+    });
+    actionService.registerAction({
+      id: 'notes:stick-to-desktop',
+      label: t('features.notes.act.stick'),
+      icon: 'icon:pin',
+      description: t('features.notes.act.stick_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        const n = noteViewState.selectedNote;
+        if (!n) return;
+        // One toggle: unstick if it's already on the desktop.
+        if (await stickyIsStuck(n.id)) {
+          await stickyClose(n.id);
+          toastSaved('Unstuck from desktop');
+        } else {
+          await stickyOpen(n.id);
+          toastSaved('Stuck to desktop');
+        }
+      },
+    });
+    actionService.registerAction({
+      id: 'notes:export-markdown',
+      label: t('features.notes.act.export_md'),
+      icon: 'icon:download',
+      description: t('features.notes.act.export_md_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        const n = noteViewState.selectedNote;
+        if (!n) return;
+        const path = await noteExportMarkdown(n.id);
+        if (path) toastSaved('Note exported');
+      },
+    });
+    actionService.registerAction({
+      id: 'notes:delete',
+      label: t('features.notes.act.delete'),
+      icon: 'icon:trash',
+      description: t('features.notes.act.delete_desc'),
+      category: t('categories.notes'),
+      extensionId: 'notes',
+      context: ActionContext.EXTENSION_VIEW,
+      confirm: true,
+      destructive: true,
+      execute: async () => {
+        const n = noteViewState.selectedNote;
+        if (n) noteStore.remove(n.id);
+      },
+    });
+  }
+
+  private unregisterViewActions(): void {
+    actionService.unregisterAction('notes:add');
+    actionService.unregisterAction('notes:pin');
+    actionService.unregisterAction('notes:unpin');
+    actionService.unregisterAction('notes:duplicate');
+    actionService.unregisterAction('notes:copy-markdown');
+    actionService.unregisterAction('notes:stick-to-desktop');
+    actionService.unregisterAction('notes:export-markdown');
+    actionService.unregisterAction('notes:delete');
+  }
+
+  async viewActivated(_viewId: string): Promise<void> {
+    this.inView = true;
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', this.handleKeydownBound, true);
+      window.addEventListener('keydown', this.handleKeydownBound, true);
+    }
+    await noteStore.reload();
+
+    // Sticky windows are separate webviews with their own noteStore, so their
+    // edits only reach this view through the Rust-emitted event.
+    this.unlistenNotesChanged?.();
+    this.unlistenNotesChanged = await appListen('notes:changed', () => {
+      void noteStore.reload();
+    });
+
+    this.registerViewActions();
+  }
+
+  async viewDeactivated(_viewId: string): Promise<void> {
+    this.inView = false;
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', this.handleKeydownBound, true);
+    }
+    this.unlistenNotesChanged?.();
+    this.unlistenNotesChanged = null;
+    noteViewState.reset();
+    this.unregisterViewActions();
+  }
+
+  async onViewSearch(query: string): Promise<void> {
+    await noteViewState.setSearch(query);
+  }
+
+  async activate(): Promise<void> {
+    await noteStore.reload();
+  }
+
+  async deactivate(): Promise<void> {
+    this.inView = false;
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', this.handleKeydownBound, true);
+    }
+    this.unlistenNotesChanged?.();
+    this.unlistenNotesChanged = null;
+    noteViewState.reset();
+    this.unregisterViewActions();
+  }
+}
+
+export default new NotesExtension();
+export { DefaultView };

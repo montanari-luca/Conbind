@@ -69,7 +69,7 @@ export interface IMcpService {
 **Usage (Discovering servers and tools):**
 
 ```typescript
-import type { IMcpService } from 'asyar-sdk/contracts';
+import type { IMcpService } from 'conbind-sdk/contracts';
 
 // Using context.mcp or context.getService<IMcpService>('mcp')
 const mcp = context.mcp;
@@ -95,8 +95,8 @@ for (const tool of gitTools) {
 
 ```typescript
 const result = await context.mcp.invokeTool('github', 'get_issue', {
-  owner: 'asyar-app',
-  repo: 'asyar',
+  owner: 'conbind-app',
+  repo: 'conbind',
   issue_number: 806,
 });
 
@@ -105,7 +105,7 @@ console.log('Issue details:', result);
 
 **Security & Permission Gating:**
 
-- **Layer 1 (Manifest Permission):** The extension must declare `"mcp"` in its manifest. Without this declaration, any call to `listServers`, `listTools`, or `invokeTool` is blocked by Asyar's fail-closed permission gate.
+- **Layer 1 (Manifest Permission):** The extension must declare `"mcp"` in its manifest. Without this declaration, any call to `listServers`, `listTools`, or `invokeTool` is blocked by Conbind's fail-closed permission gate.
 - **Layer 2 (User Consent & Strict Mode):** Tools that perform mutations (write tools) or any tool invoked while Strict Mode is enabled require user consent before execution. The caller extension identity is recorded in the host's MCP audit log.
 
 ---

@@ -4,7 +4,7 @@ order: 4
 
 ## 9. Actions — The ⌘K Panel
 
-Actions are keyboard-accessible commands that appear in Asyar's Action Drawer when the user presses **⌘K**. They are **contextual** — what appears depends on where the user is and what your extension has registered.
+Actions are keyboard-accessible commands that appear in Conbind's Action Drawer when the user presses **⌘K**. They are **contextual** — what appears depends on where the user is and what your extension has registered.
 
 There are two ways to contribute actions:
 
@@ -22,7 +22,7 @@ Use actions for secondary operations relevant while the user is looking at your 
 The `execute` function is a live JavaScript closure. It **cannot be serialized over postMessage**. The SDK uses a two-registry approach:
 
 1. When you call `registerAction({ id, ..., execute })`, the SDK stores the closure locally in the iframe's `ExtensionBridge.actionRegistry`. Only the metadata (`id`, `title`, `icon`, etc.) is sent to the host.
-2. When the user activates an action from the ⌘K Drawer, the host sends `asyar:action:execute` to the correct iframe.
+2. When the user activates an action from the ⌘K Drawer, the host sends `conbind:action:execute` to the correct iframe.
 3. The SDK receives the message, looks up the `execute` closure in `actionRegistry`, and calls it.
 
 ### Registering actions
@@ -30,8 +30,8 @@ The `execute` function is a live JavaScript closure. It **cannot be serialized o
 Register actions after your view is mounted:
 
 ```typescript
-import { ActionContext, ActionCategory } from 'asyar-sdk';
-import type { IActionService, ExtensionAction } from 'asyar-sdk';
+import { ActionContext, ActionCategory } from 'conbind-sdk';
+import type { IActionService, ExtensionAction } from 'conbind-sdk';
 
 const actionService = context.getService<IActionService>('actions');
 
@@ -56,8 +56,8 @@ actionService.registerAction(refreshAction);
 ```svelte
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { ActionContext, ActionCategory } from 'asyar-sdk';
-  import type { IActionService } from 'asyar-sdk';
+  import { ActionContext, ActionCategory } from 'conbind-sdk';
+  import type { IActionService } from 'conbind-sdk';
 
   interface Props {
     actionService: IActionService;
@@ -111,14 +111,14 @@ actionService.registerAction(refreshAction);
 
 ### Action context reference
 
-| `ActionContext`  | When shown                                        |
-| ---------------- | ------------------------------------------------- |
-| `GLOBAL`         | Always — regardless of what's open                |
-| `EXTENSION_VIEW` | Only while an extension panel is open             |
-| `SEARCH_VIEW`    | While the main search result list is active       |
-| `RESULT`         | When a specific result item is highlighted        |
-| `COMMAND_RESULT` | After a command has returned a result             |
-| `CORE`           | Built-in Asyar actions — do not use in extensions |
+| `ActionContext`  | When shown                                          |
+| ---------------- | --------------------------------------------------- |
+| `GLOBAL`         | Always — regardless of what's open                  |
+| `EXTENSION_VIEW` | Only while an extension panel is open               |
+| `SEARCH_VIEW`    | While the main search result list is active         |
+| `RESULT`         | When a specific result item is highlighted          |
+| `COMMAND_RESULT` | After a command has returned a result               |
+| `CORE`           | Built-in Conbind actions — do not use in extensions |
 
 ---
 
@@ -152,7 +152,7 @@ A `shortcut` is a declaration, not just a hint: the launcher shows it next to th
 | `ActionCategory.EDIT`        | Edit           | Create, update, delete operations           |
 | `ActionCategory.SHARE`       | Share          | Export, copy to clipboard, send             |
 | `ActionCategory.DESTRUCTIVE` | Destructive    | Irreversible actions — delete, clear, reset |
-| `ActionCategory.SYSTEM`      | System         | Reserved for built-in Asyar actions         |
+| `ActionCategory.SYSTEM`      | System         | Reserved for built-in Conbind actions       |
 
 Custom category strings are fully supported — use them for domain-specific grouping.
 

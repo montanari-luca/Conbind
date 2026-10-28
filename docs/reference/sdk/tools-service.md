@@ -4,7 +4,7 @@
 
 **Permission required:** `tools:register`.
 
-`ToolsService` lets an extension contribute callable tools to Asyar's agent runtime. Once registered, your tools appear alongside built-in tools (calculator, clipboard, shell, etc.) and MCP-sourced tools in the tool list available to any running agent. When an agent decides to invoke one of your tools, the launcher routes the call back to your worker's registered handler.
+`ToolsService` lets an extension contribute callable tools to Conbind's agent runtime. Once registered, your tools appear alongside built-in tools (calculator, clipboard, shell, etc.) and MCP-sourced tools in the tool list available to any running agent. When an agent decides to invoke one of your tools, the launcher routes the call back to your worker's registered handler.
 
 ```typescript
 export interface ManifestTool {
@@ -28,7 +28,7 @@ export interface ToolDescriptor extends ManifestTool {
    * Globally unique tool address in `<extensionId>:<toolId>` format.
    * Built by the Rust registry at registration time.
    */
-  fullyQualifiedId: ToolFullyQualifiedId; // e.g. "org.asyar.contacts:lookup-contact"
+  fullyQualifiedId: ToolFullyQualifiedId; // e.g. "org.conbind.contacts:lookup-contact"
 }
 
 /** A handler receives the parsed args object and must return a serialisable result. */
@@ -59,7 +59,7 @@ export interface IToolsService {
 **Usage:**
 
 ```typescript
-import type { IToolsService, ManifestTool, ToolHandler } from 'asyar-sdk/contracts';
+import type { IToolsService, ManifestTool, ToolHandler } from 'conbind-sdk/contracts';
 
 // In your worker entry point:
 const tools = context.getService<IToolsService>('tools');
@@ -96,7 +96,7 @@ await tools.unregisterTool('lookup-contact');
 
 The SDK proxy (`ToolsServiceProxy`) keeps a local `handlers` map keyed by tool id. `registerTool` stores the handler in that map, then sends `tools:registerTool` to the launcher via the IPC broker. The launcher's `ExtensionIpcRouter` validates the permission and forwards the call to the Rust `agents_tools_register_tier2` Tauri command.
 
-On the Rust side, `ToolRegistry.register_tier2` applies a replace-style update: all entries previously stored under your `extensionId` are dropped and replaced by the new list. The Rust registry assigns each tool its `fullyQualifiedId` in the form `<extensionId>:<toolId>` (e.g. `org.asyar.contacts:lookup-contact`).
+On the Rust side, `ToolRegistry.register_tier2` applies a replace-style update: all entries previously stored under your `extensionId` are dropped and replaced by the new list. The Rust registry assigns each tool its `fullyQualifiedId` in the form `<extensionId>:<toolId>` (e.g. `org.conbind.contacts:lookup-contact`).
 
 When an agent invokes one of your tools, the call flows back in the other direction: agent → Rust registry → launcher → `tools:invokeHandler` postMessage → `ToolsServiceProxy.invokeHandler` → the `ToolHandler` you registered. The result is returned to the agent as a serialised JSON value.
 

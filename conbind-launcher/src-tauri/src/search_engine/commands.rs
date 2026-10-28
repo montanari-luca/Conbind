@@ -1,0 +1,712 @@
+use super::models::{SearchResult, SearchableItem};
+use super::{SearchError, SearchState};
+use tauri::{Manager, State};
+
+#[tauri::command]
+pub async fn search_items(
+    query: String,
+    state: State<'_, std::sync::Arc<SearchState>>,
+) -> Result<Vec<SearchResult>, SearchError> {
+    state.search(&query)
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn merged_search(
+    query: String,
+    external_results: Vec<super::models::ExternalSearchResult>,
+    min_results: Option<usize>,
+    include_files: Option<bool>,
+    app_handle: tauri::AppHandle,
+    state: State<'_, std::sync::Arc<SearchState>>,
+    alias_state: State<'_, crate::aliases::AliasState>,
+    extensions: State<'_, crate::extensions::ExtensionRegistryState>,
+) -> Result<super::models::MergedSearchResponse, SearchError> {
+    let disabled = read_disabled_application_ids(&app_handle);
+    let disabled_extensions: Vec<String> = extensions
+        .extensions
+        .lock()
+        .map_err(|_| SearchError::LockError)?
+        .iter()
+        .filter(|(_, record)| !record.enabled)
+        .map(|(id, _)| id.clone())
+        .collect();
+    let mut response = state.merged_search_with_aliases_filtered(
+        &query,
+        external_results,
+        min_results.unwrap_or(20),
+        &alias_state,
+        &disabled,
+        &disabled_extensions,
+    )?;
+
+    // Inline file rows are the only file-search touch point on the root-search
+    // hot path: an O(1) availability check (one Arc + one RwLock read) plus a
+    // bounded insert. There is deliberately no synthetic "Search files for …"
+    // row: the dedicated Search Files command is the way into the full view,
+    // and it opens empty (the typed text only found the command).
+    let file_index =
+        app_handle.try_state::<std::sync::Arc<crate::file_index::service::FileIndexState>>();
+    let file_search_available = !disabled_extensions.iter().any(|id| id == "file-search")
+        && file_index
+            .as_ref()
+            .map(|s| s.config().enabled)
+            .unwrap_or(false);
+    // Backfilled suggestions are marked `score == -1.0` by
+    // `SearchState::merged_search`; everything else is a real match.
+    let count_matched = |results: &[super::models::SearchResult]| {
+        results.iter().filter(|r| r.score != -1.0).count()
+    };
+
+    // A typed filesystem path gets one exact row (hidden files and `~` work,
+    // the file index is not needed) and suppresses unrelated fuzzy file hits.
+    let home = dirs::home_dir();
+    let typed_path = super::file_search_path::parse_typed_path(&query, home.as_deref());
+    let exact_allowed = super::file_search_path::exact_row_allowed(
+        include_files.unwrap_or(false),
+        typed_path.is_some(),
+        file_search_available,
+        file_index
+            .as_ref()
+            .map(|s| s.config().root_search_enabled)
+            .unwrap_or(false),
+    );
+    if exact_allowed {
+        if let Some(row) = super::file_search_path::resolve_exact_row(
+            &query,
+            home,
+            super::file_search_path::EXACT_PATH_TIMEOUT,
+            |path, home| super::file_search_path::exact_path_row(&path, home.as_deref()),
+        )
+        .await
+        {
+            super::file_search_path::prepend_exact_row(&mut response.results, row);
+        }
+    }
+
+    let matched_count = count_matched(&response.results);
+    if include_files.unwrap_or(false) && file_search_available && matched_count < 20 {
+        if let Some(file_index) = file_index.as_ref() {
+            let typed_prefix = typed_path.map(|p| p.to_string_lossy().into_owned());
+            super::file_search_inline::append_inline_file_results(
+                &mut response.results,
+                &query,
+                matched_count,
+                file_index,
+                crate::file_index::ranking::now_seconds(),
+                typed_prefix.as_deref(),
+            );
+        }
+    }
+    response.results.truncate(20);
+    if response.alias_match.as_ref().is_some_and(|alias| {
+        !response
+            .results
+            .iter()
+            .any(|result| result.object_id == alias.object_id)
+    }) {
+        response.alias_match = None;
+    }
+
+    Ok(response)
+}
+
+/// Pure JSON-navigation helper mirroring `lib.rs::parse_launch_view`. Reads
+/// `search.applicationEnabled` — an object of `{ objectId: boolean }` written
+/// by Settings → Applications — and returns the ids whose value is `false`.
+///
+/// CONTRACT: the JSON path `settings → search → applicationEnabled` must
+/// match what `settingsService.svelte.ts` writes via
+/// `store.set("settings", currentSettings)`. Guarded on the TS side by the
+/// `rust merged_search disabled-app contract` describe block in
+/// `settingsService.test.ts`.
+fn parse_disabled_application_ids(settings_root: Option<&serde_json::Value>) -> Vec<String> {
+    settings_root
+        .and_then(|s| s.get("search"))
+        .and_then(|s| s.get("applicationEnabled"))
+        .and_then(|v| v.as_object())
+        .map(|obj| {
+            obj.iter()
+                .filter(|(_, v)| v.as_bool() == Some(false))
+                .map(|(k, _)| k.clone())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Reads `settings.search.applicationEnabled` from `settings.dat`
+/// synchronously, same error-tolerant pattern as `lib.rs::read_launch_view`.
+fn read_disabled_application_ids(app: &tauri::AppHandle) -> Vec<String> {
+    use tauri_plugin_store::StoreExt;
+    let Ok(store) = app.store("settings.dat") else {
+        return Vec::new();
+    };
+    parse_disabled_application_ids(store.get("settings").as_ref())
+}
+
+/// Rank an arbitrary frontend-supplied list against a query using the shared
+/// tiered fuzzy ranker. Stateless: items are passed in, ordered ids come back.
+/// Used by built-in views (snippets, store) and available to extensions that
+/// need to rank their own data through the same engine the launcher uses.
+#[tauri::command]
+pub async fn rank_items(
+    query: String,
+    items: Vec<super::ranker::RankInput>,
+) -> Result<Vec<String>, SearchError> {
+    Ok(super::ranker::rank_ids(&query, &items))
+}
+
+/// Classify an arbitrary frontend-supplied list against a query, returning a
+/// tier per id with no filtering or sorting. Used to interleave data that
+/// isn't in the Rust search index (e.g. Run rows) against results that are
+/// already tiered by `merged_search`.
+#[tauri::command]
+pub async fn classify_items(
+    query: String,
+    items: Vec<super::ranker::RankInput>,
+) -> Result<Vec<super::ranker::TierResult>, SearchError> {
+    Ok(super::ranker::classify_many(&query, &items))
+}
+
+#[tauri::command]
+pub async fn index_item(
+    item: SearchableItem,
+    state: State<'_, std::sync::Arc<SearchState>>,
+) -> Result<(), SearchError> {
+    state.index_one(item)
+}
+
+#[tauri::command]
+pub async fn batch_index_items(
+    items: Vec<SearchableItem>,
+    state: State<'_, std::sync::Arc<SearchState>>,
+) -> Result<(), SearchError> {
+    state.batch_index(items)
+}
+
+#[tauri::command]
+pub async fn get_indexed_object_ids(
+    state: State<'_, std::sync::Arc<SearchState>>,
+) -> Result<Vec<String>, SearchError> {
+    state.all_ids().map(|set| set.into_iter().collect())
+}
+
+#[tauri::command]
+pub async fn record_item_usage(
+    object_id: String,
+    app_handle: tauri::AppHandle,
+    state: State<'_, std::sync::Arc<SearchState>>,
+    usage: State<'_, std::sync::Arc<crate::usage::UsageState>>,
+) -> Result<(), SearchError> {
+    state.record_usage(&object_id)?;
+    // Best-effort local usage record; never fail the launch on a usage write.
+    let _ = usage.record_launch(&object_id, &crate::usage::local_day());
+    // This is the single funnel every launch passes through, which is why
+    // walkthrough tasks need no cooperation from the feature they teach.
+    // Cheap by construction: unless some unfinished task watches this id,
+    // `on_item_launched` returns before touching a database.
+    notify_walkthrough(&app_handle, &usage, &object_id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_item_favorite(
+    object_id: String,
+    favorite: bool,
+    app_handle: tauri::AppHandle,
+    state: State<'_, std::sync::Arc<SearchState>>,
+) -> Result<bool, SearchError> {
+    let updated = state.set_favorite(&object_id, favorite)?;
+    if updated {
+        notify_favorite_walkthrough(&app_handle, state.favorite_count()?);
+    }
+    Ok(updated)
+}
+
+fn notify_favorite_walkthrough(app_handle: &tauri::AppHandle, count: u32) {
+    let (Some(data), Some(usage), Some(walkthrough)) = (
+        app_handle.try_state::<crate::storage::DataStore>(),
+        app_handle.try_state::<std::sync::Arc<crate::usage::UsageState>>(),
+        app_handle.try_state::<std::sync::Arc<crate::walkthrough::registry::WalkthroughState>>(),
+    ) else {
+        return;
+    };
+    walkthrough.set_probe("favorites.count", count);
+    match crate::walkthrough::service::evaluate(&data, &usage, &walkthrough) {
+        Ok(newly) if !newly.is_empty() => {
+            if let Ok(snapshot) = crate::walkthrough::service::snapshot(&data, &usage, &walkthrough)
+            {
+                crate::event_bridge::bridge_emit(
+                    app_handle,
+                    "conbind:walkthrough:changed",
+                    snapshot,
+                );
+            }
+        }
+        Ok(_) => {}
+        Err(error) => log::warn!("walkthrough favorite probe failed: {error}"),
+    }
+}
+
+/// Best-effort: a walkthrough problem must never fail a launch.
+fn notify_walkthrough(
+    app_handle: &tauri::AppHandle,
+    usage: &std::sync::Arc<crate::usage::UsageState>,
+    object_id: &str,
+) {
+    let (Some(data), Some(walkthrough)) = (
+        app_handle.try_state::<crate::storage::DataStore>(),
+        app_handle.try_state::<std::sync::Arc<crate::walkthrough::registry::WalkthroughState>>(),
+    ) else {
+        return;
+    };
+
+    match crate::walkthrough::service::on_item_launched(&data, usage, &walkthrough, object_id) {
+        Ok(newly) if !newly.is_empty() => {
+            if let Ok(snapshot) = crate::walkthrough::service::snapshot(&data, usage, &walkthrough)
+            {
+                crate::event_bridge::bridge_emit(
+                    app_handle,
+                    "conbind:walkthrough:changed",
+                    snapshot,
+                );
+            }
+        }
+        Ok(_) => {}
+        Err(e) => log::warn!("walkthrough evaluation failed for '{object_id}': {e}"),
+    }
+}
+
+#[tauri::command]
+pub async fn save_search_index(
+    state: State<'_, std::sync::Arc<SearchState>>,
+) -> Result<(), SearchError> {
+    state.save_items_to_db()
+}
+
+#[tauri::command]
+pub async fn delete_item(
+    object_id: String,
+    state: State<'_, std::sync::Arc<SearchState>>,
+    alias_state: State<'_, crate::aliases::AliasState>,
+) -> Result<(), SearchError> {
+    state.delete(&object_id)?;
+    let _ = alias_state.unset_for_object_id(&object_id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn reset_search_index(
+    app_handle: tauri::AppHandle,
+    state: State<'_, std::sync::Arc<SearchState>>,
+) -> Result<(), SearchError> {
+    let icon_cache = app_handle
+        .path()
+        .app_data_dir()
+        .ok()
+        .map(|d: std::path::PathBuf| d.join("icon_cache"));
+    state.reset(icon_cache)
+}
+
+/// Input: a list of commands currently known to the frontend.
+/// Rust diffs against indexed `cmd_` items, adds new ones, removes stale ones, persists to SQLite.
+#[derive(serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandSyncInput {
+    pub id: String, // Full object ID, e.g. "cmd_extensionId_commandId"
+    pub name: String,
+    pub extension: String, // Extension ID
+    pub trigger: String,
+    #[serde(rename = "type")]
+    pub command_type: String,
+    pub icon: Option<String>,
+}
+
+#[derive(serde::Serialize, Clone, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandSyncResult {
+    pub added: u32,
+    pub removed: u32,
+    pub total: u32,
+}
+
+#[tauri::command]
+pub async fn sync_command_index(
+    commands: Vec<CommandSyncInput>,
+    search_state: tauri::State<'_, std::sync::Arc<crate::search_engine::SearchState>>,
+    alias_state: tauri::State<'_, crate::aliases::AliasState>,
+) -> Result<CommandSyncResult, crate::error::AppError> {
+    sync_command_index_internal_with_aliases(commands, &search_state, Some(&alias_state))
+}
+
+/// Internal logic for Command Sync, separated for testability without tauri::State complexity.
+/// Delegates to `sync_command_index_internal_with_aliases` with no alias pruning.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn sync_command_index_internal(
+    commands: Vec<CommandSyncInput>,
+    search_state: &crate::search_engine::SearchState,
+) -> Result<CommandSyncResult, crate::error::AppError> {
+    sync_command_index_internal_with_aliases(commands, search_state, None)
+}
+
+/// Internal logic for Command Sync with optional alias pruning.
+/// After the index is updated, any aliases whose object_id is no longer present
+/// in the index are removed via `AliasState::prune_orphans`.
+pub fn sync_command_index_internal_with_aliases(
+    commands: Vec<CommandSyncInput>,
+    search_state: &crate::search_engine::SearchState,
+    alias_state: Option<&crate::aliases::AliasState>,
+) -> Result<CommandSyncResult, crate::error::AppError> {
+    use crate::search_engine::models::{Command, SearchableItem};
+    use std::collections::{HashMap, HashSet};
+
+    // 1. Build current command map from input
+    let mut current_commands: HashMap<String, CommandSyncInput> = HashMap::new();
+    for cmd in commands {
+        current_commands.insert(cmd.id.clone(), cmd);
+    }
+
+    // 2. Get currently indexed cmd_ IDs
+    let indexed_ids: Vec<String> = {
+        let items = search_state
+            .items
+            .read()
+            .map_err(|_| crate::error::AppError::Lock)?;
+        items
+            .iter()
+            .filter_map(|item| {
+                let id = item.id();
+                if id.starts_with("cmd_") {
+                    Some(id.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    };
+
+    let indexed_set: HashSet<&str> = indexed_ids.iter().map(|s| s.as_str()).collect();
+    let current_set: HashSet<&str> = current_commands.keys().map(|s| s.as_str()).collect();
+
+    // 3. Diff
+    let to_add: Vec<String> = current_set
+        .difference(&indexed_set)
+        .map(|s| s.to_string())
+        .collect();
+    // Dynamic commands (id pattern `cmd_<ext>_dyn_<id>`) and custom layout commands
+    // (id pattern `cmd_window-management_layout_<id>`) own a separate
+    // registration path — they MUST NOT be wiped by the manifest-driven diff.
+    // Without this filter, Tier 1 features that register dynamic commands
+    // or custom window layouts see their entries silently deleted on manifest sync.
+    let to_remove: Vec<String> = indexed_set
+        .difference(&current_set)
+        .filter(|id| !id.contains("_dyn_") && !id.starts_with("cmd_window-management_layout_"))
+        .map(|s| s.to_string())
+        .collect();
+
+    let added = to_add.len() as u32;
+    let removed = to_remove.len() as u32;
+
+    // 4. Update SearchState
+    if !to_add.is_empty() || !to_remove.is_empty() {
+        let mut items = search_state
+            .items
+            .write()
+            .map_err(|_| crate::error::AppError::Lock)?;
+
+        // Remove stale commands
+        if !to_remove.is_empty() {
+            let remove_set: HashSet<String> = to_remove.into_iter().collect();
+            items.retain(|item| !remove_set.contains(item.id()));
+        }
+
+        // Add new commands (preserve usage_count=0, last_used_at=None for new entries)
+        for id in to_add {
+            if let Some(cmd_input) = current_commands.remove(&id) {
+                items.push(SearchableItem::Command(Command {
+                    id: cmd_input.id,
+                    name: cmd_input.name,
+                    extension: cmd_input.extension,
+                    trigger: cmd_input.trigger,
+                    command_type: cmd_input.command_type,
+                    usage_count: 0,
+                    icon: cmd_input.icon,
+                    last_used_at: None,
+                    subtitle: None,
+                    type_label: None,
+                    has_arguments: false,
+                    is_dynamic: false,
+                }));
+            }
+        }
+    }
+
+    // 5. Persist
+    search_state
+        .save_items_to_db()
+        .map_err(|e| crate::error::AppError::Other(format!("Failed to save index: {}", e)))?;
+
+    let total = {
+        let items = search_state
+            .items
+            .read()
+            .map_err(|_| crate::error::AppError::Lock)?;
+        items.iter().filter(|i| i.id().starts_with("cmd_")).count() as u32
+    };
+
+    log::info!(
+        "Command sync complete: {} added, {} removed, {} total commands",
+        added,
+        removed,
+        total
+    );
+
+    // 6. Prune orphan aliases (those whose object_id is no longer in the index)
+    if let Some(aliases) = alias_state {
+        let live_ids: std::collections::HashSet<String> = {
+            let items = search_state
+                .items
+                .read()
+                .map_err(|_| crate::error::AppError::Lock)?;
+            items.iter().map(|i| i.id().to_string()).collect()
+        };
+        let _ = aliases.prune_orphans(&live_ids);
+    }
+
+    Ok(CommandSyncResult {
+        added,
+        removed,
+        total,
+    })
+}
+
+/// Input for updating a command's runtime metadata (currently: subtitle only).
+#[derive(serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCommandMetadataInput {
+    pub command_object_id: String,
+    pub subtitle: Option<String>,
+}
+
+#[tauri::command]
+pub async fn update_command_metadata(
+    input: UpdateCommandMetadataInput,
+    search_state: tauri::State<'_, std::sync::Arc<crate::search_engine::SearchState>>,
+) -> Result<(), crate::error::AppError> {
+    search_state
+        .update_command_subtitle(&input.command_object_id, input.subtitle)
+        .map_err(|e| crate::error::AppError::Other(format!("{}", e)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_app(id: &str, name: &str, usage: u32) -> SearchableItem {
+        SearchableItem::Application(super::super::models::Application {
+            id: id.to_string(),
+            name: name.to_string(),
+            path: format!("/apps/{}", name),
+            usage_count: usage,
+            icon: None,
+            last_used_at: None,
+            bundle_id: None,
+        })
+    }
+
+    fn make_cmd(id: &str, name: &str, usage: u32) -> SearchableItem {
+        SearchableItem::Command(super::super::models::Command {
+            id: id.to_string(),
+            name: name.to_string(),
+            extension: "test_ext".to_string(),
+            trigger: name.to_string(),
+            command_type: "command".to_string(),
+            usage_count: usage,
+            icon: None,
+            last_used_at: None,
+            subtitle: None,
+            type_label: None,
+            has_arguments: false,
+            is_dynamic: false,
+        })
+    }
+
+    #[test]
+    fn test_get_usage_count_zero() {
+        let item = make_app("app_new", "NewApp", 0);
+        assert_eq!(item.usage_count(), 0);
+    }
+
+    // --- sync_command_index tests ---
+
+    fn make_test_state() -> SearchState {
+        SearchState::new_for_test()
+    }
+
+    #[tokio::test]
+    async fn test_sync_command_index_empty_removes_all() {
+        let state = make_test_state();
+        state.index_one(make_cmd("cmd_1", "Cmd 1", 0)).unwrap();
+        state.index_one(make_cmd("cmd_2", "Cmd 2", 0)).unwrap();
+
+        let result = sync_command_index_internal(vec![], &state).unwrap();
+
+        assert_eq!(result.removed, 2);
+        assert_eq!(result.total, 0);
+    }
+
+    #[tokio::test]
+    async fn test_sync_command_index_adds_new() {
+        let state = make_test_state();
+
+        let input = vec![CommandSyncInput {
+            id: "cmd_new".to_string(),
+            name: "New".to_string(),
+            extension: "ext".to_string(),
+            trigger: "new".to_string(),
+            command_type: "command".to_string(),
+            icon: None,
+        }];
+
+        let result = sync_command_index_internal(input, &state).unwrap();
+        assert_eq!(result.added, 1);
+        assert_eq!(result.total, 1);
+    }
+
+    #[tokio::test]
+    async fn test_sync_command_index_preserves_apps() {
+        let state = make_test_state();
+        state.index_one(make_app("app_1", "App 1", 0)).unwrap();
+        state.index_one(make_cmd("cmd_1", "Cmd 1", 0)).unwrap();
+
+        // Syncing with empty command list should remove cmd_1 but KEEP app_1
+        let result = sync_command_index_internal(vec![], &state).unwrap();
+
+        assert_eq!(result.removed, 1);
+        assert_eq!(result.total, 0);
+
+        // Final check of the state
+        let items = state.items.read().unwrap();
+        assert_eq!(items.len(), 1);
+        assert!(items[0].id().starts_with("app_"));
+    }
+
+    #[tokio::test]
+    async fn test_sync_command_index_deduplicates_input() {
+        let state = make_test_state();
+
+        // Same ID twice in input
+        let input = vec![
+            CommandSyncInput {
+                id: "cmd_dup".to_string(),
+                name: "First".to_string(),
+                extension: "ext".to_string(),
+                trigger: "first".to_string(),
+                command_type: "command".to_string(),
+                icon: None,
+            },
+            CommandSyncInput {
+                id: "cmd_dup".to_string(),
+                name: "Second".to_string(),
+                extension: "ext".to_string(),
+                trigger: "second".to_string(),
+                command_type: "command".to_string(),
+                icon: None,
+            },
+        ];
+
+        let result = sync_command_index_internal(input, &state).unwrap();
+        assert_eq!(result.added, 1); // Only one added
+        assert_eq!(result.total, 1);
+
+        let items = state.items.read().unwrap();
+        assert_eq!(items[0].get_name(), "Second"); // Last one wins
+    }
+
+    #[tokio::test]
+    async fn sync_command_index_preserves_dynamic_commands() {
+        // Dynamic commands (id pattern `cmd_<ext>_dyn_<id>`) are registered
+        // through replace_dynamic_commands{,_builtin} and MUST survive a
+        // manifest-driven sync. Without the `_dyn_` filter in the diff, every
+        // manifest sync would silently wipe Tier 1 dynamic registrations
+        // (e.g. Scripts) moments after the feature seeded them.
+        let state = make_test_state();
+        state
+            .index_one(make_cmd("cmd_scripts_dyn_abcdef0123456789", "Hello", 0))
+            .unwrap();
+        state
+            .index_one(make_cmd(
+                "cmd_window-management_layout_123",
+                "Custom Layout",
+                0,
+            ))
+            .unwrap();
+        state
+            .index_one(make_cmd("cmd_static_one", "Static", 0))
+            .unwrap();
+
+        // Sync with only the static command — no dynamic ids in manifest input.
+        let input = vec![CommandSyncInput {
+            id: "cmd_static_one".to_string(),
+            name: "Static".to_string(),
+            extension: "ext".to_string(),
+            trigger: "static".to_string(),
+            command_type: "command".to_string(),
+            icon: None,
+        }];
+
+        let result = sync_command_index_internal(input, &state).unwrap();
+        assert_eq!(
+            result.removed, 0,
+            "dynamic and custom layout commands must not be removed"
+        );
+
+        let items = state.items.read().unwrap();
+        let ids: Vec<&str> = items.iter().map(|i| i.id()).collect();
+        assert!(ids.contains(&"cmd_scripts_dyn_abcdef0123456789"));
+        assert!(ids.contains(&"cmd_window-management_layout_123"));
+        assert!(ids.contains(&"cmd_static_one"));
+    }
+
+    #[test]
+    fn parse_disabled_application_ids_collects_false_entries() {
+        let settings = serde_json::json!({
+            "search": {
+                "applicationEnabled": {
+                    "app_finder": true,
+                    "app_safari": false,
+                    "app_mail": false
+                }
+            }
+        });
+
+        let mut ids = parse_disabled_application_ids(Some(&settings));
+        ids.sort();
+
+        assert_eq!(ids, vec!["app_mail".to_string(), "app_safari".to_string()]);
+    }
+
+    #[test]
+    fn parse_disabled_application_ids_empty_when_missing() {
+        assert!(parse_disabled_application_ids(None).is_empty());
+        assert!(parse_disabled_application_ids(Some(&serde_json::json!({}))).is_empty());
+    }
+
+    #[tokio::test]
+    async fn sync_command_index_prunes_orphan_aliases() {
+        let state = make_test_state();
+        state
+            .index_one(make_cmd("cmd_pomodoro_start", "Start", 0))
+            .unwrap();
+        let alias_state = crate::aliases::AliasState::new_for_test();
+        alias_state
+            .set_alias("cmd_pomodoro_start", "ps", "Start", "command", 1)
+            .unwrap();
+
+        // Sync with empty input — pomodoro removed.
+        sync_command_index_internal_with_aliases(vec![], &state, Some(&alias_state)).unwrap();
+
+        let listed = alias_state.list_all().unwrap();
+        assert!(listed.is_empty());
+    }
+}

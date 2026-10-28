@@ -1,6 +1,6 @@
 # Extension Types
 
-Asyar has two top-level extension types. The legacy `"view"` / `"result"` /
+Conbind has two top-level extension types. The legacy `"view"` / `"result"` /
 `"logic"` distinction is gone — those have been collapsed into a single
 unified type whose commands choose `mode: "view"` or `mode: "background"`
 independently.

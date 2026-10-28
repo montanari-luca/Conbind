@@ -1,11 +1,11 @@
 # Build extension workers without DOM polyfills
 
-Use the SDK's Node-only `asyar-sdk/vite` helper with Vite 6. Runtime code continues
-importing `asyar-sdk/contracts`, `asyar-sdk/worker`, or `asyar-sdk/view`; the bare
-`asyar-sdk` import remains unsupported.
+Use the SDK's Node-only `conbind-sdk/vite` helper with Vite 6. Runtime code continues
+importing `conbind-sdk/contracts`, `conbind-sdk/worker`, or `conbind-sdk/view`; the bare
+`conbind-sdk` import remains unsupported.
 
 ```ts
-import { defineExtensionConfig } from 'asyar-sdk/vite';
+import { defineExtensionConfig } from 'conbind-sdk/vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { fileURLToPath } from 'node:url';
 
@@ -27,7 +27,7 @@ HTML filename. Use `raycastCompat: true` for the local Raycast adapter, or pass 
 directory as a string. The adapter's source and React dependencies must be
 available. Extension-specific settings go in `config`; shared output naming,
 entry selection, relative base, and preload policy stay owned by the helper.
-Workspace SDK sources are detected at `../../asyar-sdk/src`; `sdkSource` can
+Workspace SDK sources are detected at `../../conbind-sdk/src`; `sdkSource` can
 specify another location.
 
 ## Temporary compatibility and privacy
@@ -108,11 +108,11 @@ is covered by a fixture test.
 
 `extensions/` is gitignored, so these 20 config migrations do not appear in the
 monorepo diff. A review patch is saved at
-`/private/tmp/asyar-worker-vite-configs.patch`; original configs and Coffee's
-pre-fix bundle are under `/private/tmp/asyar-worker-polyfill-configs/`. Build logs
-and CI logs use `/private/tmp/asyar-worker-*` and `/private/tmp/asyar-rebuild-*`.
+`/private/tmp/conbind-worker-vite-configs.patch`; original configs and Coffee's
+pre-fix bundle are under `/private/tmp/conbind-worker-polyfill-configs/`. Build logs
+and CI logs use `/private/tmp/conbind-worker-*` and `/private/tmp/conbind-rebuild-*`.
 
-The leftover `asyar-launcher/src-tauri/built-in-features.bak/` directory still
+The leftover `conbind-launcher/src-tauri/built-in-features.bak/` directory still
 exists and was left untouched. No extensions were published, no app was launched,
 and no benchmarks were run.
 

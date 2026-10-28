@@ -22,7 +22,7 @@ export interface IOnboardingService {
 #### Usage
 
 ```typescript
-import type { IOnboardingService } from 'asyar-sdk/contracts';
+import type { IOnboardingService } from 'conbind-sdk/contracts';
 
 // Resolve from ExtensionContext
 const onboarding = context.getService<IOnboardingService>('onboarding');

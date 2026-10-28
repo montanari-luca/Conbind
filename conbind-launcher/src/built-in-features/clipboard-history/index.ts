@@ -1,0 +1,492 @@
+import { t } from '../../services/i18n';
+import { clipboardViewState } from './state.svelte';
+import DefaultView from './DefaultView.svelte'; // Import renamed component
+import { actionService } from '../../services/action/actionService.svelte';
+import { logService } from '../../services/log/logService';
+import { contextModeService } from '../../services/context/contextModeService.svelte';
+import { feedbackService } from '../../services/feedback/feedbackService.svelte';
+import { searchStores } from '../../services/search/stores/search.svelte';
+import { viewManager } from '../../services/extension/viewManager.svelte';
+
+import { openUrl } from '@tauri-apps/plugin-opener';
+import {
+  type Extension,
+  type ExtensionContext,
+  type ExtensionResult,
+  type ILogService,
+  type IExtensionManager,
+  type IClipboardHistoryService,
+  type ClipboardHistoryItem,
+  ActionContext,
+  ClipboardItemType,
+} from 'conbind-sdk/contracts';
+import type { ExtensionAction, IActionService } from 'conbind-sdk/contracts';
+import { snippetUiState } from '../snippets/snippetUiState.svelte';
+
+// Define static results for clipboard extension
+const clipboardResults = [
+  {
+    id: 'clipboard-history',
+    get title() {
+      return t('features.clipboard.title');
+    },
+    get subtitle() {
+      return t('features.clipboard.subtitle');
+    },
+    keywords: 'clipboard copy paste history',
+  },
+];
+
+/**
+ * Returns the plain-text representation of the currently selected clipboard
+ * item if it can be sent to a downstream context provider (AI Chat, portals,
+ * etc.), or null otherwise. For unsupported types (Image / Files) this also
+ * surfaces a "Not supported yet" toast naming the action and the type, so the
+ * user understands why nothing happened. For "no selection" or "empty plain
+ * text" this is a silent no-op.
+ *
+ * Shared by every paste action — do not duplicate the type check.
+ */
+async function assertTextSendable(actionTitle: string): Promise<string | null> {
+  const item = clipboardViewState.selectedItem;
+  if (!item) return null;
+
+  if (item.type === ClipboardItemType.Image || item.type === ClipboardItemType.Files) {
+    const typeName = item.type === ClipboardItemType.Image ? 'Image' : 'File';
+    await feedbackService.report({
+      source: 'frontend',
+      kind: 'manual',
+      severity: 'error',
+      retryable: false,
+      context: {
+        message: t('features.clipboard.unsupported_item', { type: typeName, action: actionTitle }),
+      },
+    });
+    return null;
+  }
+
+  const text = await clipboardViewState.getPlainText(item);
+  if (!text.trim()) return null;
+  return text;
+}
+
+/**
+ * Built-in features run in-process and receive the host clipboard service,
+ * whose capture methods take the caller id Rust tracks consumers by. The SDK
+ * interface models the iframe-proxy side, where `ExtensionIpcRouter` injects a
+ * host-authenticated caller id instead, so it declares no parameter.
+ */
+type HostClipboardService = Omit<
+  IClipboardHistoryService,
+  'subscribeCapture' | 'unsubscribeCapture'
+> & {
+  subscribeCapture(callerId: string): Promise<void>;
+  unsubscribeCapture(callerId: string): Promise<void>;
+};
+
+class ClipboardHistoryExtension implements Extension {
+  onUnload: any;
+
+  private logService?: ILogService;
+  private extensionManager?: IExtensionManager;
+  private clipboardService?: HostClipboardService;
+  private inView: boolean = false;
+  private context?: ExtensionContext;
+
+  async initialize(context: ExtensionContext): Promise<void> {
+    try {
+      this.context = context;
+      this.logService = context.getService<ILogService>('log');
+      this.extensionManager = context.getService<IExtensionManager>('extensions');
+      this.clipboardService = context.getService<HostClipboardService>('clipboard');
+
+      if (!this.logService || !this.extensionManager || !this.clipboardService) {
+        logService.error('Failed to initialize required services for Clipboard History');
+        this.logService?.error('Failed to initialize required services for Clipboard History');
+        return;
+      }
+
+      // Initialize state services
+      clipboardViewState.initializeServices(context);
+
+      this.logService.info('Clipboard History extension initialized with services');
+    } catch (error) {
+      logService.error(`Clipboard History initialization failed: ${error}`);
+      this.logService?.error(`Clipboard History initialization failed: ${error}`);
+    }
+  }
+
+  async executeCommand(commandId: string, args?: Record<string, any>): Promise<any> {
+    this.logService?.info(`Executing clipboard command: ${commandId}`);
+
+    switch (commandId) {
+      case 'show-clipboard':
+        // Navigate first, load in the background. Awaiting refreshClipboardData
+        // before navigating yields the event loop; the view would still land,
+        // but the list would briefly show stale items from the last session.
+        this.extensionManager?.navigateToView('clipboard-history/DefaultView');
+        this.registerViewActions();
+        this.refreshClipboardData().catch((e) => {
+          this.logService?.error(`refreshClipboardData failed: ${e}`);
+          feedbackService.report({
+            source: 'frontend',
+            kind: 'manual',
+            severity: 'warning',
+            retryable: false,
+            context: { message: t('features.clipboard.refresh_failed') },
+          });
+        });
+        return {
+          type: 'view',
+          viewPath: 'clipboard-history/DefaultView',
+        };
+
+      default:
+        this.logService?.error(`Received unknown command ID: ${commandId}`);
+        throw new Error(`Unknown command: ${commandId}`);
+    }
+  }
+
+  // Called when this extension's view is activated
+  async viewActivated(viewPath: string): Promise<void> {
+    this.inView = true;
+    this.logService?.debug(`Clipboard History view activated: ${viewPath}`);
+
+    // Fresh entry into the view should not carry over a stale multi-selection
+    // from a previous visit.
+    clipboardViewState.clearMultiSelect();
+
+    // Add global key listener
+    window.addEventListener('keydown', this.handleKeydownBound);
+
+    // Set the primary action label via the manager
+    this.extensionManager?.setActiveViewActionLabel('Paste');
+  }
+
+  private handleKeydownBound = (event: KeyboardEvent) => this.handleKeydown(event);
+
+  private async handleKeydown(event: KeyboardEvent) {
+    if (!this.inView) return;
+
+    // We can't easily check filteredItems.length here without importing the state
+    // But the state is already initialized.
+    const state = clipboardViewState;
+    if (!state.filteredItems.length) return;
+
+    if (event.key === 'Enter') {
+      this.logService?.debug(
+        `[clipboard] Enter pressed. selectedItem=${!!state.selectedItem}, items=${state.items.length}, activeElement=${document.activeElement?.tagName}`,
+      );
+    }
+
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      (event.key === 'ArrowUp' || event.key === 'ArrowDown')
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      clipboardViewState.moveSelectionAndExtend(event.key === 'ArrowUp' ? 'up' : 'down');
+      return;
+    }
+
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      event.stopPropagation();
+      clipboardViewState.moveSelection(event.key === 'ArrowUp' ? 'up' : 'down');
+    } else if (event.key === 'Enter' && event.shiftKey && state.selectedItem) {
+      event.preventDefault();
+      event.stopPropagation();
+      clipboardViewState.pasteAsPlainText();
+    } else if (event.key === 'Enter' && state.selectedItem) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (state.selectedIds.length > 1) {
+        clipboardViewState.pasteMergedSelection();
+      } else {
+        clipboardViewState.handleItemAction(state.selectedItem, 'paste');
+      }
+    }
+  }
+
+  // Helper method to register view-specific actions
+  private registerViewActions() {
+    if (!this.clipboardService) {
+      this.logService?.warn('ClipboardService not available, cannot register view actions.');
+      return;
+    }
+    this.logService?.debug('Registering clipboard view actions...');
+
+    actionService.registerAction({
+      id: 'clipboard-history:clear-history',
+      title: t('features.clipboard.act.clear_history'),
+      description: t('features.clipboard.act.clear_history_desc'),
+      icon: 'icon:trash',
+      extensionId: 'clipboard-history',
+      category: 'clipboard-action',
+      destructive: true,
+      execute: async () => {
+        try {
+          await this.clipboardService?.clearNonFavorites();
+          await this.refreshClipboardData();
+        } catch (error) {
+          this.logService?.error(`Failed to clear clipboard history: ${error}`);
+        }
+      },
+    });
+
+    // Note: type-filter actions (All/Text/Images/Files) were removed once the
+    // searchBarAccessory dropdown took over filter selection. The dropdown
+    // drives clipboardViewState.setTypeFilter directly — see DefaultView.svelte.
+
+    const toggleHtmlAction: ExtensionAction = {
+      id: 'clipboard-history:toggle-html-view',
+      title: t('features.clipboard.act.toggle_html'),
+      description: t('features.clipboard.act.toggle_html_desc'),
+      icon: 'icon:eye',
+      extensionId: 'clipboard-history',
+      category: 'clipboard-action',
+      execute: () => {
+        clipboardViewState.toggleHtmlView();
+      },
+    };
+    actionService.registerAction(toggleHtmlAction);
+
+    const openInBrowserAction: ExtensionAction = {
+      id: 'clipboard-history:open-in-browser',
+      title: t('features.clipboard.act.open_browser'),
+      description: t('features.clipboard.act.open_browser_desc'),
+      icon: 'icon:link',
+      extensionId: 'clipboard-history',
+      category: 'clipboard-action',
+      execute: async () => {
+        const selected = clipboardViewState.selectedItem;
+        if (selected?.content && /^https?:\/\/[^\s]+$/.test(selected.content.trim())) {
+          await openUrl(selected.content.trim());
+        }
+      },
+    };
+    actionService.registerAction(openInBrowserAction);
+
+    const pasteAsPlainTextAction: ExtensionAction = {
+      id: 'clipboard-history:paste-as-plain-text',
+      title: t('features.clipboard.act.paste_plain'),
+      description: t('features.clipboard.act.paste_plain_desc'),
+      icon: 'icon:type',
+      extensionId: 'clipboard-history',
+      category: 'clipboard-action',
+      execute: async () => {
+        await clipboardViewState.pasteAsPlainText();
+      },
+    };
+    actionService.registerAction(pasteAsPlainTextAction);
+
+    actionService.registerAction({
+      id: 'clipboard-history:pin',
+      title: t('features.clipboard.pin_action'),
+      description: t('features.clipboard.act.toggle_favorite_desc'),
+      icon: 'icon:pin',
+      shortcut: 'Mod+Shift+P',
+      extensionId: 'clipboard-history',
+      context: ActionContext.EXTENSION_VIEW,
+      category: 'clipboard-action',
+      visible: () => {
+        const item = clipboardViewState.selectedItem;
+        return item ? !item.favorite : false;
+      },
+      execute: async () => {
+        const selected = clipboardViewState.selectedItem;
+        if (selected) {
+          await clipboardViewState.toggleFavorite(selected.id);
+          await this.refreshClipboardData();
+        }
+      },
+    });
+
+    actionService.registerAction({
+      id: 'clipboard-history:unpin',
+      title: t('features.clipboard.unpin_action'),
+      description: t('features.clipboard.act.toggle_favorite_desc'),
+      icon: 'icon:pin',
+      shortcut: 'Mod+Shift+P',
+      extensionId: 'clipboard-history',
+      context: ActionContext.EXTENSION_VIEW,
+      category: 'clipboard-action',
+      visible: () => {
+        const item = clipboardViewState.selectedItem;
+        return item ? Boolean(item.favorite) : false;
+      },
+      execute: async () => {
+        const selected = clipboardViewState.selectedItem;
+        if (selected) {
+          await clipboardViewState.toggleFavorite(selected.id);
+          await this.refreshClipboardData();
+        }
+      },
+    });
+
+    actionService.registerAction({
+      id: 'clipboard-history:save-as-snippet',
+      title: t('features.clipboard.act.save_snippet'),
+      icon: 'icon:scissors',
+      description: t('features.clipboard.act.save_snippet_desc'),
+      category: 'clipboard-action',
+      extensionId: 'clipboard-history',
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        const item = clipboardViewState.selectedItem;
+        if (!item || item.type === ClipboardItemType.Image || item.type === ClipboardItemType.Files)
+          return;
+        snippetUiState.prefillExpansion = await clipboardViewState.getPlainText(item);
+        snippetUiState.editorTrigger = 'add';
+        this.extensionManager?.navigateToView('snippets/DefaultView');
+      },
+    });
+
+    actionService.registerAction({
+      id: 'clipboard-history:delete',
+      title: 'Delete',
+      description: t('features.clipboard.act.delete_desc'),
+      icon: 'icon:trash',
+      category: 'clipboard-action',
+      extensionId: 'clipboard-history',
+      destructive: true,
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        const selected = clipboardViewState.selectedItem;
+        if (!selected) return;
+        await clipboardViewState.deleteItem(selected.id);
+      },
+    });
+
+    actionService.registerAction({
+      id: 'clipboard-history:clear-multi-selection',
+      title: t('features.clipboard.act.clear_selection'),
+      description: t('features.clipboard.act.clear_selection_desc'),
+      icon: 'icon:x',
+      category: 'clipboard-action',
+      extensionId: 'clipboard-history',
+      context: ActionContext.EXTENSION_VIEW,
+      visible: () => clipboardViewState.selectedIds.length > 0,
+      execute: () => {
+        clipboardViewState.clearMultiSelect();
+      },
+    });
+
+    actionService.registerAction({
+      id: 'clipboard-history:ask-ai-about-this',
+      title: t('features.clipboard.act.ask_ai'),
+      description: t('features.clipboard.act.ask_ai_desc'),
+      icon: 'icon:ai-chat',
+      category: 'clipboard-action',
+      extensionId: 'clipboard-history',
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        const text = await assertTextSendable('Ask AI about this');
+        if (!text) return;
+
+        // Pop the clipboard view synchronously so its keydown listener + registered
+        // actions are torn down via viewDeactivated BEFORE Svelte 5 flushes effects.
+        // We call viewManager.goBack() directly (not this.extensionManager?.goBack())
+        // because for built-in features the ExtensionManager returned by
+        // context.getService is actually the async ExtensionManagerProxy that fires
+        // a fire-and-forget postMessage IPC — its goBack would not take effect until
+        // the next event-loop tick, and by then Effect 5 in searchController has
+        // already seen state.activeViewVal=true and routed our new searchStores.query
+        // into the clipboard view's onViewSearch, freezing the launcher. viewManager
+        // is a host-internal module and built-in (Tier 1) features are allowed to
+        // import it directly (see launcherKeyboard.ts, searchOrchestrator.svelte.ts).
+        viewManager.goBack();
+
+        // Force the AI hint chip to appear regardless of whether the clipboard text
+        // looks like a natural-language question, then push the text into the main
+        // search bar. Svelte 5 batches these two state mutations with the
+        // viewManager state mutations from goBack above into a single effect flush,
+        // so by the time Effect 5 in searchController computes the hint it sees:
+        //   state.activeViewVal = null (goBack emptied the stack)
+        //   state.localSearchValue = text (non-empty, final value)
+        //   contextModeService.pinnedHintProviderId = 'ai-chat'
+        // which makes getHint return the AI hint and routes through the "no active
+        // view" branch of Effect 5 (NOT the "Search in extension" branch). User
+        // presses Tab to commit, which activates AI chat with the text as the
+        // initial query and auto-sends via the existing tryCommitContextHint path.
+        contextModeService.pinHint('agents:default');
+        searchStores.query = text;
+      },
+    });
+  }
+
+  // Helper method to unregister view-specific actions
+  private unregisterViewActions() {
+    this.logService?.debug('Unregistering clipboard view actions...');
+    actionService.unregisterAction('clipboard-history:clear-history');
+    actionService.unregisterAction('clipboard-history:toggle-html-view');
+    actionService.unregisterAction('clipboard-history:pin');
+    actionService.unregisterAction('clipboard-history:unpin');
+    actionService.unregisterAction('clipboard-history:paste-as-plain-text');
+    actionService.unregisterAction('clipboard-history:open-in-browser');
+    actionService.unregisterAction('clipboard-history:save-as-snippet');
+    actionService.unregisterAction('clipboard-history:delete');
+    actionService.unregisterAction('clipboard-history:clear-multi-selection');
+    actionService.unregisterAction('clipboard-history:ask-ai-about-this');
+  }
+
+  // Called when this extension's view is deactivated
+  async viewDeactivated(viewPath: string): Promise<void> {
+    // Remove global key listener first
+    window.removeEventListener('keydown', this.handleKeydownBound);
+
+    // Unregister actions when the view is deactivated
+    this.unregisterViewActions();
+    // Clear the primary action label via the manager
+    this.extensionManager?.setActiveViewActionLabel(null);
+    this.inView = false;
+    this.logService?.debug(`Clipboard History view deactivated: ${viewPath}`);
+  }
+
+  async onViewSearch(query: string): Promise<void> {
+    // Make async
+    clipboardViewState.setSearch(query);
+  }
+
+  private async refreshClipboardData() {
+    if (this.clipboardService) {
+      clipboardViewState.setLoading(true);
+      try {
+        const items = await this.clipboardService.getRecentItems(100);
+        clipboardViewState.setItems(items || []); // Ensure items is an array
+      } catch (error) {
+        this.logService?.error(`Failed to load clipboard data: ${error}`);
+        clipboardViewState.setError(`Failed to load clipboard data: ${error}`);
+      } finally {
+        clipboardViewState.setLoading(false);
+      }
+    } else {
+      this.logService?.warn('ClipboardService not available in refreshClipboardData');
+    }
+  }
+
+  async activate(): Promise<void> {
+    try {
+      await this.clipboardService?.initialize();
+      await this.clipboardService?.subscribeCapture('clipboard-history');
+      this.logService?.info('Clipboard History extension activated');
+    } catch (error) {
+      this.logService?.error(`Failed to activate Clipboard History extension: ${error}`);
+      throw error;
+    }
+  }
+
+  async deactivate(): Promise<void> {
+    // Ensure actions are unregistered if the extension is deactivated while view is active
+    if (this.inView) {
+      this.unregisterViewActions();
+    }
+    await this.clipboardService?.unsubscribeCapture('clipboard-history');
+    this.logService?.info('Clipboard History extension deactivated');
+  }
+}
+
+export default new ClipboardHistoryExtension();
+
+// Export component for dynamic loading
+export { DefaultView };

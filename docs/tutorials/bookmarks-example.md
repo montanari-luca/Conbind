@@ -26,7 +26,7 @@ A complete production-ready extension demonstrating:
   "type": "extension",
   "background": { "main": "dist/worker.js" },
   "searchable": true,
-  "asyarSdk": "^2.7.0",
+  "conbindSdk": "^2.7.0",
   "permissions": ["notifications:send"],
   "commands": [
     {
@@ -51,7 +51,7 @@ A complete production-ready extension demonstrating:
 ```typescript
 import { mount } from 'svelte';
 import BookmarksView from './BookmarksView.svelte';
-import { ExtensionContext, type IActionService, type IFeedbackService } from 'asyar-sdk';
+import { ExtensionContext, type IActionService, type IFeedbackService } from 'conbind-sdk';
 
 const extensionId = window.location.hostname || 'com.yourname.bookmarks';
 
@@ -60,7 +60,7 @@ const context = new ExtensionContext();
 context.setExtensionId(extensionId);
 
 // 2. Signal readiness to the host.
-window.parent.postMessage({ type: 'asyar:extension:loaded', extensionId }, '*');
+window.parent.postMessage({ type: 'conbind:extension:loaded', extensionId }, '*');
 
 // 3. Forward ⌘K to the host.
 window.addEventListener('keydown', (event) => {
@@ -68,7 +68,7 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault();
     window.parent.postMessage(
       {
-        type: 'asyar:extension:keydown',
+        type: 'conbind:extension:keydown',
         payload: {
           key: event.key,
           metaKey: event.metaKey,
@@ -88,7 +88,7 @@ const actionService = context.getService<IActionService>('actions');
 
 // 5. Handle no-view command (add-today) invoked by the host.
 window.addEventListener('message', async (event) => {
-  if (event.data?.type !== 'asyar:invoke:command') return;
+  if (event.data?.type !== 'conbind:invoke:command') return;
   const { commandId } = event.data.payload;
 
   if (commandId === 'add-today') {
@@ -121,8 +121,8 @@ if (viewName === 'BookmarksView') {
 ```svelte
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { ActionContext, ActionCategory } from 'asyar-sdk';
-  import type { IActionService, IFeedbackService } from 'asyar-sdk';
+  import { ActionContext, ActionCategory } from 'conbind-sdk';
+  import type { IActionService, IFeedbackService } from 'conbind-sdk';
 
   interface Props {
     actionService: IActionService;
@@ -144,7 +144,7 @@ if (viewName === 'BookmarksView') {
   // --- In-view search listener ---
   function handleMessage(event: MessageEvent) {
     if (event.source !== window.parent) return;
-    if (event.data?.type === 'asyar:view:search') {
+    if (event.data?.type === 'conbind:view:search') {
       query = event.data.payload?.query ?? '';
     }
   }

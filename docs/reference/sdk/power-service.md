@@ -86,7 +86,7 @@ onActivate(async (context) => {
 | Linux    | `org.freedesktop.login1.Manager.Inhibit` (logind DBus) | Composed `what=` string (`idle:sleep`, plus `handle-lid-switch` for `display`); the returned fd is held by the Rust registry until release.          |
 | Windows  | `SetThreadExecutionState`                              | `ES_CONTINUOUS \| ES_SYSTEM_REQUIRED [\| ES_DISPLAY_REQUIRED]`. Each inhibitor is held on a dedicated worker thread since the flag is thread-sticky. |
 
-**Non-systemd Linux:** Systems without logind (or where the DBus call fails for any reason) cause `keepAwake()` to reject with a `PowerUnavailable:` error. Asyar does NOT fall back to `systemd-inhibit` or shell tools — catch the error and degrade your feature's UX gracefully.
+**Non-systemd Linux:** Systems without logind (or where the DBus call fails for any reason) cause `keepAwake()` to reject with a `PowerUnavailable:` error. Conbind does NOT fall back to `systemd-inhibit` or shell tools — catch the error and degrade your feature's UX gracefully.
 
 **Lifecycle:**
 

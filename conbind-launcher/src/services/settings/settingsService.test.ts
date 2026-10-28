@@ -1,0 +1,519 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { settingsService } from './settingsService.svelte';
+import type { AppSettings } from './types/AppSettingsType';
+
+const mockTauriStore = vi.hoisted(() => ({
+  get: vi.fn().mockResolvedValue(null),
+  set: vi.fn().mockResolvedValue(undefined),
+  save: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../log/logService', () => ({
+  logService: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('@tauri-apps/plugin-store', () => ({
+  load: vi.fn().mockResolvedValue(mockTauriStore),
+  Store: vi.fn(),
+}));
+
+vi.mock('@tauri-apps/api/path', () => ({
+  appDataDir: vi.fn().mockResolvedValue('/mock/data/'),
+}));
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
+
+const DEFAULT: AppSettings = {
+  general: {
+    startAtLogin: false,
+    showDockIcon: false,
+    showTrayIcon: true,
+    escapeInViewBehavior: 'go-back',
+    popToRootDelay: '1m',
+  },
+  search: {
+    searchApplications: true,
+    searchSystemPreferences: true,
+    fuzzySearch: true,
+    enableExtensionSearch: false,
+    additionalScanPaths: [],
+    applicationEnabled: {},
+  },
+  shortcut: { modifier: 'Alt', key: 'Space' },
+  appearance: {
+    theme: 'system',
+    launchView: 'default',
+    windowWidth: 800,
+    windowHeight: 600,
+    uiScale: 1,
+  },
+  extensions: {
+    enabled: {},
+    autoUpdate: true,
+  },
+  onboarding: {
+    completed: false,
+  },
+  updates: {
+    channel: 'stable',
+    autoCheck: true,
+  },
+  ai: {
+    providers: {
+      openai: { enabled: false },
+      anthropic: { enabled: false },
+      google: { enabled: false },
+      ollama: { enabled: false },
+      openrouter: { enabled: false },
+      custom: { enabled: false },
+    },
+    temperature: 0.7,
+    maxTokens: 2048,
+    defaultAgentId: null,
+    tabContinuesLastThread: false,
+    historyRetentionCap: 100,
+  },
+  fileSearch: {
+    enabled: true,
+    rootSearchEnabled: true,
+    includeRoots: [],
+    excludePatterns: [],
+    indexHidden: false,
+    recentIgnorePatterns: [],
+  },
+};
+
+const svc = settingsService as any;
+
+function resetState() {
+  svc.currentSettings = JSON.parse(JSON.stringify(DEFAULT));
+  svc.initialized = false;
+  svc.store = null;
+}
+
+function injectStore() {
+  mockTauriStore.get.mockResolvedValue(null);
+  mockTauriStore.set.mockResolvedValue(undefined);
+  mockTauriStore.save.mockResolvedValue(undefined);
+  svc.store = mockTauriStore;
+}
+
+// ── mergeWithDefaults ─────────────────────────────────────────────────────────
+
+describe('mergeWithDefaults', () => {
+  const merge = (stored: unknown) => svc.mergeWithDefaults(stored);
+
+  it('returns a copy of defaults for null', () => {
+    const result = merge(null);
+    expect(result.general.startAtLogin).toBe(false);
+    expect(result.shortcut.key).toBe('Space');
+  });
+
+  it('returns defaults for a non-object value', () => {
+    const result = merge('bad input');
+    expect(result.appearance.theme).toBe('system');
+  });
+
+  it('fills all default fields when stored is an empty object', () => {
+    const result = merge({});
+    expect(result.general).toEqual(DEFAULT.general);
+    expect(result.search).toEqual(DEFAULT.search);
+    expect(result.appearance).toEqual(DEFAULT.appearance);
+  });
+
+  it('overrides individual fields while keeping other defaults', () => {
+    const result = merge({ shortcut: { modifier: 'Alt', key: 'Space' } });
+    expect(result.shortcut.modifier).toBe('Alt');
+    expect(result.shortcut.key).toBe('Space');
+    expect(result.general.startAtLogin).toBe(DEFAULT.general.startAtLogin);
+  });
+
+  it('merges extension enabled states', () => {
+    const result = merge({ extensions: { enabled: { clipboard: false, store: true } } });
+    expect(result.extensions.enabled.clipboard).toBe(false);
+    expect(result.extensions.enabled.store).toBe(true);
+  });
+
+  it('overrides only the provided appearance fields', () => {
+    const result = merge({ appearance: { theme: 'dark' } });
+    expect(result.appearance.theme).toBe('dark');
+    expect(result.appearance.windowWidth).toBe(DEFAULT.appearance.windowWidth);
+  });
+
+  it('defaults popToRootDelay to one minute', () => {
+    expect(DEFAULT.general.popToRootDelay).toBe('1m');
+    const result = merge({});
+    expect(result.general.popToRootDelay).toBe('1m');
+  });
+
+  it('preserves a stored popToRootDelay', () => {
+    expect(merge({ general: { popToRootDelay: 'never' } }).general.popToRootDelay).toBe('never');
+  });
+
+  it('migrates legacy restoreLastView false to immediately', () => {
+    const result = merge({ general: { restoreLastView: false } });
+    expect(result.general.popToRootDelay).toBe('immediately');
+    expect('restoreLastView' in result.general).toBe(false);
+  });
+
+  it('migrates legacy restoreLastView true to the default', () => {
+    expect(merge({ general: { restoreLastView: true } }).general.popToRootDelay).toBe('1m');
+  });
+
+  it('prefers an explicit popToRootDelay over the legacy boolean', () => {
+    const result = merge({ general: { popToRootDelay: '5m', restoreLastView: false } });
+    expect(result.general.popToRootDelay).toBe('5m');
+  });
+
+  it('mergeWithDefaults fills onboarding with defaults when missing from stored settings', () => {
+    const stored = {
+      general: {},
+      search: {},
+      shortcut: {},
+      appearance: {},
+      extensions: {},
+      ai: {},
+      // no onboarding key — simulates existing user upgrading
+    };
+    const merged = merge(stored);
+    expect(merged.onboarding).toBeDefined();
+    expect(merged.onboarding.completed).toBe(false);
+  });
+
+  it('mergeWithDefaults preserves stored onboarding.completed=true', () => {
+    const stored = {
+      general: {},
+      search: {},
+      shortcut: {},
+      appearance: {},
+      extensions: {},
+      ai: {},
+      onboarding: { completed: true },
+    };
+    const merged = merge(stored);
+    expect(merged.onboarding.completed).toBe(true);
+  });
+});
+
+// ── getSettings ───────────────────────────────────────────────────────────────
+
+describe('getSettings', () => {
+  beforeEach(resetState);
+
+  it('returns or reflects the current state', () => {
+    const s = settingsService.getSettings();
+    expect(s.shortcut).toEqual({ modifier: 'Alt', key: 'Space' });
+  });
+
+  it('reflects changes made directly to currentSettings', () => {
+    svc.currentSettings.shortcut = { modifier: 'Ctrl', key: 'P' };
+    expect(settingsService.getSettings().shortcut.key).toBe('P');
+  });
+});
+
+// ── isInitialized ─────────────────────────────────────────────────────────────
+
+describe('isInitialized', () => {
+  beforeEach(resetState);
+
+  it('returns false on a fresh reset', () => {
+    expect(settingsService.isInitialized()).toBe(false);
+  });
+
+  it('returns true after being manually set (simulating init)', () => {
+    svc.initialized = true;
+    expect(settingsService.isInitialized()).toBe(true);
+  });
+});
+
+// ── isExtensionEnabled ────────────────────────────────────────────────────────
+
+describe('isExtensionEnabled', () => {
+  beforeEach(resetState);
+
+  it('returns true for an extension that has no explicit setting', () => {
+    expect(settingsService.isExtensionEnabled('myExt')).toBe(true);
+  });
+
+  it('returns false for an extension explicitly disabled', () => {
+    svc.currentSettings.extensions.enabled.myExt = false;
+    expect(settingsService.isExtensionEnabled('myExt')).toBe(false);
+  });
+
+  it('returns true for an extension explicitly enabled', () => {
+    svc.currentSettings.extensions.enabled.myExt = true;
+    expect(settingsService.isExtensionEnabled('myExt')).toBe(true);
+  });
+});
+
+// ── getExtensionStates ────────────────────────────────────────────────────────
+
+describe('getExtensionStates', () => {
+  beforeEach(resetState);
+
+  it('returns an empty object with default settings', () => {
+    expect(settingsService.getExtensionStates()).toEqual({});
+  });
+
+  it('returns all extension states', () => {
+    svc.currentSettings.extensions.enabled = { a: true, b: false };
+    expect(settingsService.getExtensionStates()).toEqual({ a: true, b: false });
+  });
+});
+
+// ── updateSettings ────────────────────────────────────────────────────────────
+
+describe('updateSettings', () => {
+  beforeEach(() => {
+    resetState();
+    injectStore();
+  });
+
+  it('updates the in-memory state and returns true', async () => {
+    const ok = await settingsService.updateSettings('shortcut', { key: 'J' });
+    expect(ok).toBe(true);
+    expect(settingsService.getSettings().shortcut.key).toBe('J');
+  });
+
+  it('merges into the section without clobbering other fields', async () => {
+    await settingsService.updateSettings('search', { fuzzySearch: false });
+    const s = settingsService.getSettings().search;
+    expect(s.fuzzySearch).toBe(false);
+    expect(s.searchApplications).toBe(true);
+  });
+
+  it('updates showDockIcon and showTrayIcon in general settings', async () => {
+    await settingsService.updateSettings('general', { showDockIcon: true });
+    expect(settingsService.getSettings().general.showDockIcon).toBe(true);
+
+    await settingsService.updateSettings('general', { showTrayIcon: false });
+    expect(settingsService.getSettings().general.showTrayIcon).toBe(false);
+  });
+
+  it('returns false (save fails) when the store is not initialized', async () => {
+    svc.store = null;
+    const ok = await settingsService.updateSettings('shortcut', { key: 'X' });
+    expect(ok).toBe(false);
+    // In-memory change still happened
+    expect(settingsService.getSettings().shortcut.key).toBe('X');
+  });
+});
+
+// ── updateExtensionState ──────────────────────────────────────────────────────
+
+describe('updateExtensionState', () => {
+  beforeEach(() => {
+    resetState();
+    injectStore();
+  });
+
+  it('sets an extension to enabled', async () => {
+    await settingsService.updateExtensionState('clipboard', true);
+    expect(settingsService.getSettings().extensions.enabled.clipboard).toBe(true);
+  });
+
+  it('sets an extension to disabled', async () => {
+    await settingsService.updateExtensionState('clipboard', false);
+    expect(settingsService.getSettings().extensions.enabled.clipboard).toBe(false);
+  });
+
+  it('updating one extension does not affect others', async () => {
+    svc.currentSettings.extensions.enabled.other = true;
+    await settingsService.updateExtensionState('clipboard', false);
+    expect(settingsService.getSettings().extensions.enabled.other).toBe(true);
+  });
+});
+
+// ── removeExtensionState ──────────────────────────────────────────────────────
+
+describe('removeExtensionState', () => {
+  beforeEach(() => {
+    resetState();
+    injectStore();
+  });
+
+  it('removes an extension entry entirely', async () => {
+    svc.currentSettings.extensions.enabled.toRemove = true;
+    await settingsService.removeExtensionState('toRemove');
+    expect('toRemove' in settingsService.getSettings().extensions.enabled).toBe(false);
+  });
+
+  it('does not affect other extensions when removing one', async () => {
+    svc.currentSettings.extensions.enabled = { keep: true, remove: false };
+    await settingsService.removeExtensionState('remove');
+    expect(settingsService.getSettings().extensions.enabled.keep).toBe(true);
+  });
+
+  it('is a no-op when the extension does not exist', async () => {
+    await expect(settingsService.removeExtensionState('nonexistent')).resolves.toBeDefined();
+  });
+});
+
+// ── Rust read_launch_view contract ────────────────────────────────────────────
+//
+// Rust's `read_launch_view` in `src-tauri/src/lib.rs` navigates the JSON path
+// `appearance → launchView` on the value stored under the `"settings"` key in
+// `settings.dat`. That path is hardcoded in Rust — renaming any key on the TS
+// side silently breaks compact-launcher first-frame seeding (Rust falls back
+// to "default", compact users see a 480→96 reflow flash).
+//
+// This block pins the contract: if someone renames `appearance` or
+// `launchView`, these tests fail and point at `lib.rs::parse_launch_view` and
+// its sibling `launch_view_tests` module.
+
+describe('rust read_launch_view contract', () => {
+  // Round-trip through JSON so we're asserting against the exact shape Rust
+  // sees (not TS-only sugar like Symbol keys or class instances).
+  const serializedDefaults = JSON.parse(JSON.stringify(DEFAULT));
+
+  it('exposes launchView at appearance.launchView', () => {
+    expect(serializedDefaults.appearance).toBeDefined();
+    expect(typeof serializedDefaults.appearance.launchView).toBe('string');
+  });
+
+  it('uses one of the enum values Rust checks against', () => {
+    expect(['default', 'compact']).toContain(serializedDefaults.appearance.launchView);
+  });
+
+  it('keeps the appearance key at the top level (not nested under ui/window/etc.)', () => {
+    const topLevelKeys = Object.keys(serializedDefaults);
+    expect(topLevelKeys).toContain('appearance');
+  });
+
+  it('persists onboarding.completed under settings.onboarding', () => {
+    const settings = { ...DEFAULT, onboarding: { completed: true } };
+    expect(settings.onboarding.completed).toBe(true);
+  });
+
+  it('defaults onboarding.completed to false', () => {
+    expect(DEFAULT.onboarding.completed).toBe(false);
+  });
+});
+
+// ── Rust merged_search disabled-app contract ──────────────────────────────────
+//
+// Rust's `parse_disabled_application_ids` in
+// `src-tauri/src/search_engine/commands.rs` navigates the JSON path
+// `search → applicationEnabled` on the value stored under `"settings"` in
+// `settings.dat`, treating any key whose value is `false` as a disabled
+// application id. That path is hardcoded in Rust — renaming `search` or
+// `applicationEnabled` silently breaks Settings → Applications toggles
+// (the app would stay visible in search despite being "disabled").
+
+describe('rust merged_search disabled-app contract', () => {
+  const serializedDefaults = JSON.parse(JSON.stringify(DEFAULT));
+
+  it('exposes applicationEnabled at search.applicationEnabled', () => {
+    expect(serializedDefaults.search).toBeDefined();
+    expect(typeof serializedDefaults.search.applicationEnabled).toBe('object');
+  });
+
+  it('keeps the search key at the top level (not nested under settings/general/etc.)', () => {
+    expect(Object.keys(serializedDefaults)).toContain('search');
+  });
+
+  it('marks a disabled app with a literal boolean false (not a string or omission)', () => {
+    const settings = {
+      ...DEFAULT,
+      search: { ...DEFAULT.search, applicationEnabled: { app_x: false } },
+    };
+    const serialized = JSON.parse(JSON.stringify(settings));
+    expect(serialized.search.applicationEnabled.app_x).toBe(false);
+  });
+});
+
+// ── DEFAULT_SETTINGS.ai shape (Phase 1: Unify AI Chat into Agents) ────────────
+//
+// The AISettings type dropped: systemPrompt, activeProviderId, activeModelId,
+// allowExtensionUse. It gained: defaultAgentId, tabContinuesLastThread.
+// These tests assert against the PRODUCTION DEFAULT_SETTINGS (via mergeWithDefaults(null))
+// so they fail until settingsService.svelte.ts is updated to match.
+
+describe('DEFAULT_SETTINGS.ai shape', () => {
+  // Pull from the production DEFAULT_SETTINGS, not the local test constant.
+  // mergeWithDefaults(null) returns a copy of DEFAULT_SETTINGS, so this
+  // reflects the actual production defaults, not whatever the test constant says.
+  const productionAi = (settingsService as any).mergeWithDefaults(null).ai;
+
+  it('has defaultAgentId set to null', () => {
+    expect(productionAi).toHaveProperty('defaultAgentId', null);
+  });
+
+  it('has tabContinuesLastThread set to false', () => {
+    expect(productionAi).toHaveProperty('tabContinuesLastThread', false);
+  });
+
+  it('does not contain the deleted key activeProviderId', () => {
+    expect(productionAi).not.toHaveProperty('activeProviderId');
+  });
+
+  it('does not contain the deleted key activeModelId', () => {
+    expect(productionAi).not.toHaveProperty('activeModelId');
+  });
+
+  it('does not contain the deleted key allowExtensionUse', () => {
+    expect(productionAi).not.toHaveProperty('allowExtensionUse');
+  });
+
+  it('has historyRetentionCap set to 100', () => {
+    expect(productionAi).toHaveProperty('historyRetentionCap', 100);
+  });
+
+  it('matches the full new AISettings shape', () => {
+    expect(productionAi).toEqual({
+      providers: {
+        openai: { enabled: false },
+        anthropic: { enabled: false },
+        google: { enabled: false },
+        ollama: { enabled: false },
+        openrouter: { enabled: false },
+        custom: { enabled: false },
+      },
+      temperature: 0.7,
+      maxTokens: 2048,
+      defaultAgentId: null,
+      tabContinuesLastThread: false,
+      historyRetentionCap: 100,
+      webSearch: {
+        engine: 'duckduckgo',
+      },
+    });
+  });
+});
+
+// ── clipboardHistory ──────────────────────────────────────────────────────────
+
+describe('clipboardHistory', () => {
+  beforeEach(() => {
+    resetState();
+    injectStore();
+  });
+
+  it('defaults retentionMs to 90 days', () => {
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+    const result = (settingsService as any).mergeWithDefaults(null);
+    expect(result.clipboardHistory).toBeDefined();
+    expect(result.clipboardHistory.retentionMs).toBe(ninetyDaysMs);
+  });
+
+  it('persists an updated retentionMs', async () => {
+    const fiveMinMs = 5 * 60 * 1000;
+    const ok = await settingsService.updateSettings('clipboardHistory', { retentionMs: fiveMinMs });
+    expect(ok).toBe(true);
+    expect(settingsService.currentSettings.clipboardHistory?.retentionMs).toBe(fiveMinMs);
+  });
+
+  it('mergeWithDefaults fills clipboardHistory with defaults when missing from stored settings', () => {
+    const result = (settingsService as any).mergeWithDefaults({});
+    expect(result.clipboardHistory).toBeDefined();
+    expect(result.clipboardHistory.retentionMs).toBe(90 * 24 * 60 * 60 * 1000);
+  });
+
+  it('mergeWithDefaults preserves a stored retentionMs', () => {
+    const oneHourMs = 60 * 60 * 1000;
+    const result = (settingsService as any).mergeWithDefaults({
+      clipboardHistory: { retentionMs: oneHourMs },
+    });
+    expect(result.clipboardHistory.retentionMs).toBe(oneHourMs);
+  });
+});

@@ -1,0 +1,92 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
+vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn().mockResolvedValue(vi.fn()) }));
+vi.mock('../../lib/ipc/bridgeEvents', () => ({
+  bridgeListen: vi.fn().mockResolvedValue(vi.fn()),
+}));
+vi.mock('../envService', () => ({
+  envService: { storeApiBaseUrl: 'http://localhost' },
+}));
+vi.mock('../log/logService', () => ({
+  logService: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('../settings/settingsService.svelte', () => ({
+  settingsService: {
+    currentSettings: {
+      extensions: { autoUpdate: true },
+    },
+  },
+}));
+vi.mock('../../lib/ipc/commands', () => ({
+  checkExtensionUpdates: vi.fn().mockResolvedValue([]),
+  updateAllExtensions: vi.fn(),
+  updateExtension: vi.fn(),
+}));
+
+describe('extensionUpdateService', () => {
+  let extensionUpdateService: any;
+  let listen: any;
+  let bridgeListen: any;
+  let commands: any;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ extensionUpdateService } = await import('./extensionUpdateService.svelte'));
+    ({ listen } = await import('@tauri-apps/api/event'));
+    ({ bridgeListen } = await import('../../lib/ipc/bridgeEvents'));
+    commands = await import('../../lib/ipc/commands');
+    // Reset call history only, keep mock implementations from factory
+    vi.mocked(listen).mockClear();
+    vi.mocked(listen).mockResolvedValue(vi.fn());
+    vi.mocked(bridgeListen).mockClear();
+    vi.mocked(bridgeListen).mockResolvedValue(vi.fn());
+    vi.mocked(commands.checkExtensionUpdates).mockClear();
+  });
+
+  it('init() subscribes to conbind:extension-update:tick and calls checkAndAutoApply when the event fires', async () => {
+    await extensionUpdateService.init(
+      () => null,
+      async () => {},
+    );
+
+    // the tick subscription goes through the eval-free bridge
+    const listenCalls = vi.mocked(bridgeListen).mock.calls;
+    const tickCall = listenCalls.find(
+      ([eventName]: [string]) => eventName === 'conbind:extension-update:tick',
+    );
+    expect(tickCall).toBeDefined();
+
+    // Invoking the captured handler should trigger checkAndAutoApply → checkForUpdates
+    const handler = tickCall![1] as () => void;
+    await handler();
+
+    expect(commands.checkExtensionUpdates).toHaveBeenCalled();
+  });
+
+  it('destroy() calls the tick unlisten function', async () => {
+    const mockUnlisten = vi.fn();
+    vi.mocked(bridgeListen).mockResolvedValue(mockUnlisten);
+
+    await extensionUpdateService.init(
+      () => null,
+      async () => {},
+    );
+    extensionUpdateService.destroy();
+
+    expect(mockUnlisten).toHaveBeenCalled();
+  });
+
+  it('keeps the pending update and skips reload after an update failure', async () => {
+    const update = { extensionId: 'ext.example', name: 'Example' };
+    extensionUpdateService.availableUpdates = [update];
+    commands.updateExtension.mockRejectedValueOnce(new Error('replacement failed'));
+    const reload = vi.fn();
+
+    await expect(extensionUpdateService.updateSingle(update, reload)).resolves.toBe(false);
+
+    expect(extensionUpdateService.availableUpdates).toEqual([update]);
+    expect(extensionUpdateService.updatingExtensionIds.size).toBe(0);
+    expect(reload).not.toHaveBeenCalled();
+  });
+});

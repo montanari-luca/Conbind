@@ -4,13 +4,13 @@
 
 ## What it does
 
-Runs provides a centralized mission control for every background process and asynchronous task launched inside Asyar — including shell scripts, agent execution pipelines, long-running CLI tools, and extension workers.
+Runs provides a centralized mission control for every background process and asynchronous task launched inside Conbind — including shell scripts, agent execution pipelines, long-running CLI tools, and extension workers.
 
 Instead of wondering if a background script is still running or failing silently, Runs shows a live list of active and recent runs with status pills, execution duration, and real-time streaming output logs.
 
 ## How to use it
 
-1. Open Asyar and type `runs` — or select **Runs** from search results.
+1. Open Conbind and type `runs` — or select **Runs** from search results.
 2. The runs view displays two sections:
    - **Active Runs**: Currently executing processes and background operations.
    - **Recent Runs**: Completed, failed, or cancelled executions from this session.

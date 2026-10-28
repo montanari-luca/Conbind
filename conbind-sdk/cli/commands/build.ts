@@ -1,0 +1,181 @@
+import { Command } from 'commander';
+import chalk from 'chalk';
+import ora from 'ora';
+import { spawn } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import { readManifest, lintManifest } from '../lib/manifest';
+import { toPackagedPath } from '../lib/zip';
+import { workerBundleNeedsDomFallback, workerCompatWarning } from '../lib/workerCompat';
+
+export function registerBuild(program: Command) {
+  program
+    .command('build')
+    .description('Build extension for production')
+    .option('--skip-validate', 'Skip manifest validation before building')
+    .action(async (opts) => {
+      const cwd = process.cwd();
+      const manifest = readManifest(cwd);
+
+      if (manifest.type === 'theme') {
+        console.log(chalk.green('✓') + ' Theme extension — no build step needed.');
+        console.log(chalk.gray('  Run "conbind publish" to package and publish your theme.'));
+        process.exit(0);
+      }
+
+      if (!opts.skipValidate) {
+        const { errors, warnings } = lintManifest(manifest, cwd);
+        if (warnings.length > 0) {
+          warnings.forEach((w) => console.log(chalk.yellow('  ⚠️ ') + `${w.field}: ${w.message}`));
+        }
+        if (errors.length > 0) {
+          console.log(chalk.red('✗ Validation failed:'));
+          errors.forEach((e) => console.log(chalk.red(`  ✗ ${e.field}: ${e.message}`)));
+          process.exit(1);
+        }
+        console.log(chalk.green('✓ Validation passed'));
+      }
+
+      try {
+        await runViteBuild(cwd);
+        verifyBuildOutput(cwd, manifest);
+      } catch {
+        process.exit(1);
+      }
+    });
+}
+
+export async function runViteBuild(cwd: string): Promise<void> {
+  const spinner = ora('Building extension...').start();
+
+  return new Promise((resolve, reject) => {
+    const viteBin = path.join(cwd, 'node_modules', '.bin', 'vite');
+    const child = spawn(viteBin, ['build', '--base', './'], { cwd, stdio: 'pipe', shell: true });
+
+    let output = '';
+    child.stdout.on('data', (d) => {
+      output += d.toString();
+    });
+    child.stderr.on('data', (d) => {
+      output += d.toString();
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        spinner.succeed('Build complete');
+        resolve();
+      } else {
+        spinner.fail('Build failed');
+        console.error(output);
+        reject(new Error('vite build exited with code ' + code));
+      }
+    });
+  });
+}
+
+export function verifyBuildOutput(
+  cwd: string,
+  manifest?: { background?: { main?: string }; commands?: { mode?: string }[] },
+) {
+  const distDir = path.join(cwd, 'dist');
+
+  // Dual-entry layout (Tier 2 worker/view split): dist/view.html is the
+  // user-facing iframe; the declared JavaScript module is required when
+  // the manifest declares background.main (always-on headless worker).
+  // Worker-only extensions (background.main with no mode:"view" commands)
+  // legitimately build no view.html, so view.html is only required when a
+  // view command is declared — or when no manifest is available to tell.
+  const hasView = fs.existsSync(path.join(distDir, 'view.html'));
+  const workerEntry = manifest?.background?.main;
+  const packagedWorkerEntry = workerEntry ? toPackagedPath(workerEntry) : null;
+  const resolvedWorkerEntry = packagedWorkerEntry
+    ? path.resolve(distDir, packagedWorkerEntry)
+    : null;
+  const hasWorker =
+    !!resolvedWorkerEntry &&
+    resolvedWorkerEntry.startsWith(path.resolve(distDir) + path.sep) &&
+    fs.existsSync(resolvedWorkerEntry);
+  const requiresWorker = !!manifest?.background?.main;
+  const requiresView = manifest?.commands ? manifest.commands.some((c) => c.mode === 'view') : true;
+
+  // Legacy single-entry layouts (pre-dual-entry extensions).
+  const hasWebApp = fs.existsSync(path.join(distDir, 'index.html'));
+  const hasLibrary = fs.existsSync(path.join(distDir, 'index.js'));
+
+  const hasDualEntry =
+    (hasView || hasWorker) && (!requiresView || hasView) && (!requiresWorker || hasWorker);
+  const hasLegacy = !requiresWorker && (hasWebApp || hasLibrary);
+
+  if (!hasDualEntry && !hasLegacy) {
+    if (requiresWorker && !hasWorker) {
+      console.log(
+        chalk.red(
+          '✗ Build output incomplete: manifest declares background.main but its JavaScript module is missing. ' +
+            'Ensure the declared module is emitted by your build.',
+        ),
+      );
+    } else {
+      console.log(
+        chalk.red(
+          '✗ Build output not found: expected dist/view.html (dual-entry) ' +
+            'or dist/index.html (legacy web app) or dist/index.js (legacy library)',
+        ),
+      );
+    }
+    process.exit(1);
+  }
+
+  // Advisory, not fatal: the extension still runs today, on a compatibility
+  // path that is going away. Warn at build time so the author hears about it
+  // from their own terminal rather than from a user after the fallback is gone.
+  if (hasWorker && workerBundleNeedsDomFallback(resolvedWorkerEntry!)) {
+    console.log(
+      '\n' +
+        chalk.yellow('  ⚠️  Deprecated: ') +
+        workerCompatWarning(path.relative(cwd, resolvedWorkerEntry!)),
+    );
+  }
+
+  console.log('\nOutput:');
+  if (hasDualEntry) {
+    printFileSize(cwd, path.join(distDir, 'view.html'));
+    if (hasWorker) printFileSize(cwd, resolvedWorkerEntry!);
+    for (const file of fs.readdirSync(distDir)) {
+      if (file === 'view.html' || file === 'worker.html') continue;
+      const full = path.join(distDir, file);
+      const stat = fs.statSync(full);
+      if (stat.isDirectory()) {
+        if (file === 'assets') {
+          for (const asset of fs.readdirSync(full)) {
+            printFileSize(cwd, path.join(full, asset));
+          }
+        }
+      } else {
+        printFileSize(cwd, full);
+      }
+    }
+  } else if (hasWebApp) {
+    printFileSize(cwd, path.join(distDir, 'index.html'));
+    const assetsDir = path.join(distDir, 'assets');
+    if (fs.existsSync(assetsDir)) {
+      for (const file of fs.readdirSync(assetsDir)) {
+        printFileSize(cwd, path.join(assetsDir, file));
+      }
+    }
+  } else {
+    // Library build — list all files in dist/
+    for (const file of fs.readdirSync(distDir)) {
+      printFileSize(cwd, path.join(distDir, file));
+    }
+  }
+
+  console.log();
+}
+
+function printFileSize(cwd: string, filePath: string) {
+  if (!fs.existsSync(filePath)) return;
+  const size = fs.statSync(filePath).size;
+  const label = path.relative(cwd, filePath).padEnd(42);
+  const sizeStr = size > 1024 ? `${(size / 1024).toFixed(1)} kB` : `${size} B`;
+  console.log(`  ${label} ${chalk.gray(sizeStr)}`);
+}

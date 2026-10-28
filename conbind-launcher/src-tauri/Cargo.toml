@@ -1,0 +1,252 @@
+[package]
+name = "conbind"
+version = "0.1.1-53"
+description = "A fast, open-source launcher for macOS, Windows, and Linux."
+authors = ["MintFlow Technologies, Luca Montanari"]
+license = "GPL-3.0-only"
+edition = "2021"
+
+[workspace]
+members = [".", "conbind-summon", "crates/*"]
+default-members = ["."]
+resolver = "2"
+
+[profile.release.package.conbind-summon]
+strip = "symbols"
+
+# Unoptimized image codecs decode a single screenshot 20-30x slower than
+# release (~600 ms vs ~30 ms), making File Search previews/thumbnails crawl
+# in `tauri dev`. Optimize just the codec crates; our own code stays debug.
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.zune-core]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.image-webp]
+opt-level = 3
+[profile.dev.package.gif]
+opt-level = 3
+[profile.dev.package.moxcms]
+opt-level = 3
+[profile.dev.package.crc32fast]
+opt-level = 3
+[profile.dev.package.simd-adler32]
+opt-level = 3
+[profile.dev.package.pxfm]
+opt-level = 3
+[profile.dev.package.adler2]
+opt-level = 3
+[profile.dev.package.flate2]
+opt-level = 3
+[profile.dev.package.bytemuck]
+opt-level = 3
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "conbind_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.3", features = [] }
+semver = "1"
+serde_json = "1"
+
+[dependencies]
+percent-encoding = "2.3"
+base64 = "0.22"
+dirs = "5.0"
+url = "2"
+tauri = { version = "2.12.4", features = ["macos-private-api", "tray-icon", "image-png", "image-ico", "test"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+semver = "1"
+specta = { version = "2.0.0-rc.23", features = ["derive", "collect", "serde_json"] }
+specta-typescript = "0.0.10"
+serde_json = "1"
+tauri-plugin-log = "2"
+log = "0.4"
+tauri-plugin-fs = "2"
+tauri-plugin-store = "2"
+thiserror = "2"
+enigo = "0.1.3"
+rusqlite = { version = "0.31", features = ["bundled"] }
+r2d2 = "0.8"
+# 0.24 is the r2d2_sqlite line built against rusqlite 0.31 — later releases
+# track newer rusqlite majors and will not link against the pin above.
+r2d2_sqlite = "0.24"
+plist = "1.7"
+# The user's language preference, which is what bundle display names must be
+# resolved against — Cocoa's own lookups answer in the host process's language.
+sys-locale = "0.3"
+tauri-plugin-notification = "2"
+tokio = { version = "1.0", features = ["full"] }
+tauri-plugin-clipboard-x = "2"
+window-vibrancy = "0.6"
+fuzzy-matcher = "0.3.7" # Added for better fuzzy search
+conbind-search = { path = "crates/conbind-search" }
+conbind-calculator = { path = "crates/conbind-calculator" }
+conbind-storage = { path = "crates/conbind-storage" }
+conbind-platform = { path = "crates/conbind-platform" }
+sysinfo = "0.31" # cross-platform process enumeration + kill
+sha2 = "0.10"
+hmac = "0.12"
+aes-gcm = "0.10"
+aes = "0.8"           # Raycast classic .rayconfig decryption (CBC)
+cbc = { version = "0.1", features = ["alloc"] }
+scrypt = { version = "0.11", default-features = false } # Raycast X .rayconfig key derivation
+hex = "0.4"
+flate2 = "1"          # .rayconfig gzip layers
+tar = "0.4"            # tar.gz extraction for on-demand runtime downloads (e.g. uv)
+argon2 = "0.5"
+rand = "0.10"
+zeroize = "1"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+# Two HTTP stacks coexist on purpose — do NOT unify them:
+# reqwest is host-side Rust HTTP (downloads, the auth/API client, sidecar
+# fetches) that runs in the Rust process with no webview origin.
+reqwest = { version = "0.12", features = ["json", "stream"] } # host-side Rust HTTP
+zip = { version = "2.1", default-features = false, features = ["deflate"] } # For extracting zip files
+futures-util = "0.3" # For stream handling
+tokio-util = { version = "0.7", features = ["codec"] } # For async file I/O helpers
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+tempfile = "3.10" # For temporary file handling
+dunce = "1" # Canonicalize without Windows verbatim (\\?\) prefixes, which break Path::starts_with against normal-form roots
+async_zip = { version = "0.0.17", features = ["full", "tokio"] } # Enable tokio feature
+# Force `async_zip`'s transitive liblzma to compile from vendored xz sources
+# instead of dynamic-linking the host's system liblzma. macOS CI runners ship
+# Homebrew `xz`, which caused the conbind binary to load
+# `/opt/homebrew/_/liblzma.5.dylib` at launch and crash for end users without
+# Homebrew. See issue #345. Direct dep + `static` feature wins via Cargo's
+# feature unification.
+liblzma-sys = { version = "0.4", features = ["static"] }
+# The other HTTP stack (see reqwest above): the fetch client exposed to the
+# webview/extensions. Host network calls from JS MUST route through this, not
+# the WebView's own fetch(), which breaks CORS on Windows (the tauri:// origin
+# mismatches the target). Drives the SDK's network:fetch. Kept separate from
+# reqwest on purpose — unifying them would reintroduce the Windows CORS break.
+tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
+tauri-plugin-dialog = "2.7"
+tauri-plugin-shell = "2.3.5"
+tauri-plugin-os = "2.0.0"
+tauri-plugin-updater = "2.0.0"
+tauri-plugin-deep-link = "2"
+arboard = "3.6.1"
+trash = "5"
+regex = "1"
+unicode-segmentation = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+notify = "8"                       # Filesystem watcher — drives auto-rescan of the app index
+notify-debouncer-full = "0.7"      # Debounce for app-index/fs-watch. ALWAYS NoCache: default FileIdMap stat-walks whole watched roots
+globset = "0.4"                    # Glob pattern matching for fs:watch permission patterns
+async-trait = "0.1"
+chrono = "0.4"                     # Local-date formatting for usage rollups (YYYY-MM-DD)
+evalexpr = "12"
+axum = { version = "0.7", features = ["ws"] }
+memchr = "2"                       # SIMD substring scan over the file-index name arena
+nucleo = "0.5"                     # Fuzzy matcher for file-index fuzzy fallback (Helix's)
+ignore = "0.4"                     # .gitignore-honoring parallel walker for the file index
+fnv = "1"                          # Stable file_id hash (dev,inode) for the file index
+file-id = "0.2"                    # Cross-platform (dev,inode)/(volume,file_index) lookup on stable Rust — MetadataExt's Windows methods are nightly-only
+bincode = "1"                      # Versioned file-index snapshot serialization
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] } # Cross-platform thumbnail downscaling
+fend-core = "1.5.8"
+chrono-tz = "0.10.4"
+iana-time-zone = "0.1.65"
+mdns-sd  = "0.11"
+if-addrs = "0.13"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-autostart = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }  # deep-link feature forwards conbind:// argv to on_open_url on Windows/Linux
+
+
+[features]
+cargo-clippy = []
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3"
+icns = "0.3"
+block2 = "0.5"
+objc2 = "0.5"
+objc2-foundation = { version = "0.2", features = ["all"] }
+objc2-app-kit = { version = "0.2", features = ["all"] }
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
+monitor = { git = "https://github.com/ahkohd/tauri-toolkit", branch = "v2" }
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
+# Used directly for notification actions — tauri-plugin-notification's desktop
+# path (via notify-rust) strips action buttons on macOS, so we drive the
+# NSUserNotification backend ourselves when an extension registers buttons.
+mac-notification-sys = "0.6"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+png = "0.17"
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com",
+    "Win32_System_Ole",
+    "Win32_System_Variant",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Accessibility",
+    "Win32_System_Threading",
+    "Win32_System_Power",
+    "Win32_System_Shutdown",
+    "Win32_Security",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Diagnostics_ToolHelp",
+] }
+wmi = "0.14"
+# Registry access for the uninstall-application flow (scanning
+# Software\Microsoft\Windows\CurrentVersion\Uninstall for the app's
+# UninstallString). Ergonomic wrapper over the Win32 Registry API.
+winreg = "0.56"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+xkbcommon = "0.7"
+gtk = "0.18"
+gdk = "0.18"
+gdkx11 = "0.18"
+gio = "0.18"
+zbus = { version = "4", features = ["blocking"] }
+procfs = "0.16"
+x11rb = "0.13"
+# Drives freedesktop actions + `wait_for_action` directly — the Tauri plugin
+# wraps this but doesn't expose per-notification `.action()` on desktop.
+notify-rust = "4"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+rdev = "0.5"
+
+[dev-dependencies]
+conbind-platform = { path = "crates/conbind-platform", features = ["test-support"] }
+mockito = "1.4"
+proptest = "1"
+serial_test = "3"
+tokio-tungstenite = "0.21"
+
+# Upstream 0.6.12 plus one fix: the wait-for-click loop busy-spins on
+# background threads, pinning a core per unclicked notification-with-actions.
+# See vendor/mac-notification-sys/VENDORED.md.
+[patch.crates-io]
+mac-notification-sys = { path = "vendor/mac-notification-sys" }

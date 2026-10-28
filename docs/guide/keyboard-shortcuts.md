@@ -1,17 +1,17 @@
 # Keyboard Shortcuts
 
-> Every Asyar shortcut in one place. The same list appears in-app under "Help".
+> Every Conbind shortcut in one place. The same list appears in-app under "Help".
 
 ![The in-app Help view cheat sheet](../images/keyboard-shortcuts-help.png)
 _Figure: the in-app Help view cheat sheet._
 
 ## Global
 
-These shortcuts work anywhere inside the Asyar launcher window.
+These shortcuts work anywhere inside the Conbind launcher window.
 
 | Shortcut                          | What it does                                           |
 | --------------------------------- | ------------------------------------------------------ |
-| The hotkey you chose during setup | Show or hide Asyar from anywhere on your computer      |
+| The hotkey you chose during setup | Show or hide Conbind from anywhere on your computer    |
 | `⌘,`                              | Open Settings                                          |
 | `⌘K`                              | Toggle the action panel                                |
 | `⌘P`                              | Toggle the search-bar dropdown (when one is shown)     |
@@ -19,19 +19,19 @@ These shortcuts work anywhere inside the Asyar launcher window.
 | `Tab`                             | Fill command arguments, or switch to AI / context mode |
 | `↑` / `↓`                         | Move between results                                   |
 | `Enter`                           | Run the selected result                                |
-| `Esc`                             | Clear the search → go back from a view → hide Asyar    |
+| `Esc`                             | Clear the search → go back from a view → hide Conbind  |
 
 The show/hide hotkey is user-configurable in **Settings → Shortcuts**.
 
-**Hyper Key (`✦`) Support:** If you configure a shortcut using all four modifiers (`Ctrl + Alt + Shift + Cmd/Super`), Asyar renders the combination with the clean `✦` glyph (e.g. `✦Space`).
+**Hyper Key (`✦`) Support:** If you configure a shortcut using all four modifiers (`Ctrl + Alt + Shift + Cmd/Super`), Conbind renders the combination with the clean `✦` glyph (e.g. `✦Space`).
 
 **Standalone Function Keys (`F1`–`F24`):** Function keys (including extended keys `F13`–`F24` and the Windows Copilot key `F23`) can be assigned as hotkeys directly without requiring modifiers.
 
-With an empty search field and the first result selected, press `↑` to recall the most recent query. Keep pressing `↑` for older queries and `↓` to move back toward an empty field. Asyar saves a query when you use a result or clear the field with `Esc`.
+With an empty search field and the first result selected, press `↑` to recall the most recent query. Keep pressing `↑` for older queries and `↓` to move back toward an empty field. Conbind saves a query when you use a result or clear the field with `Esc`.
 
 **Windows & Linux:** Action shortcuts (everything listed under _In a view_ and _Per-feature_, and the hints in the `⌘K` panel) adapt to your platform: **⌘** on macOS is **Ctrl** on Windows and Linux, so `⌘N` is `Ctrl+N` there. The tables below are written with the macOS symbols. Global hotkeys you record yourself keep the exact keys you pressed.
 
-**Linux on Wayland:** Because Wayland protocol security blocks background hotkey grabs, assign your shortcut inside your desktop compositor settings to run the `asyar` command. Executing `asyar` while the daemon is running acts as a toggle.
+**Linux on Wayland:** Because Wayland protocol security blocks background hotkey grabs, assign your shortcut inside your desktop compositor settings to run the `conbind` command. Executing `conbind` while the daemon is running acts as a toggle.
 
 ## In a view
 
@@ -45,9 +45,9 @@ These shortcuts apply when you have drilled into a result that opens a full view
 
 You can change what `Esc` does when a view is open in **Settings → Advanced → Escape Key**:
 
-- **Step Backwards** — clears the search first, then pops the view, then hides Asyar (the default).
-- **Hide Window** — hides Asyar immediately without clearing state.
-- **Reset Launcher** — hides Asyar and resets all state so the next open starts fresh.
+- **Step Backwards** — clears the search first, then pops the view, then hides Conbind (the default).
+- **Hide Window** — hides Conbind immediately without clearing state.
+- **Reset Launcher** — hides Conbind and resets all state so the next open starts fresh.
 
 ## Per-feature
 
@@ -105,7 +105,7 @@ A few built-in features add extra shortcuts while their view is active. Each one
 | `⌘⌥C`        | Copy Name                                                              |
 | `⌘T`         | Open in Terminal                                                       |
 | `⌘⇧P`        | Toggle Pin                                                             |
-| `Tab` / `⌘I` | Send to Asyar AI                                                       |
+| `Tab` / `⌘I` | Send to Conbind AI                                                     |
 | `⌘⇧F`        | Search Everywhere (deep OS-native search)                              |
 
 **Screen OCR**

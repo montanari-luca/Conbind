@@ -110,8 +110,8 @@ System prompt:
 To create it programmatically:
 
 ```ts
-import { buildGrammarFixAgentInput } from 'asyar-launcher/.../defaultAgent';
-import { agentService } from 'asyar-launcher/.../agentService.svelte';
+import { buildGrammarFixAgentInput } from 'conbind-launcher/.../defaultAgent';
+import { agentService } from 'conbind-launcher/.../agentService.svelte';
 
 await agentService.create(buildGrammarFixAgentInput('openai', 'gpt-4o-mini'));
 ```
@@ -132,11 +132,11 @@ IF NOT EXISTS` guard pattern as `runs_history.subject_id` and
   `tail_output` — upgraded installs gain the columns in place
   without dropping data.
 - The TS contract mirrors the Rust enums (camelCase string unions)
-  in [`built-in-features/agents/types.ts`](../../asyar-launcher/src/built-in-features/agents/agents/types.ts).
+  in [`built-in-features/agents/types.ts`](../../conbind-launcher/src/built-in-features/agents/agents/types.ts).
 - The silent dispatcher lives in
-  [`silentDispatch.ts`](../../asyar-launcher/src/built-in-features/agents/silentDispatch.ts);
+  [`silentDispatch.ts`](../../conbind-launcher/src/built-in-features/agents/silentDispatch.ts);
   the routing decision in
-  [`dispatch.ts`](../../asyar-launcher/src/built-in-features/agents/dispatch.ts)
+  [`dispatch.ts`](../../conbind-launcher/src/built-in-features/agents/dispatch.ts)
   is a single `if (agent.silent)` branch.
 
 ## Cross-links

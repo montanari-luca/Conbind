@@ -27,7 +27,7 @@ export interface ISearchService {
 **Usage:**
 
 ```typescript
-import type { ISearchService, RankableItem } from 'asyar-sdk/contracts';
+import type { ISearchService, RankableItem } from 'conbind-sdk/contracts';
 
 const search = context.getService<ISearchService>('search');
 

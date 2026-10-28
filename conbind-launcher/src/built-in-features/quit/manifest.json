@@ -1,0 +1,21 @@
+{
+  "id": "quit",
+  "name": "Conbind",
+  "icon": "icon:power",
+  "version": "1.0.0",
+  "lifecycle": {
+    "disableable": true
+  },
+  "description": "Quit the Conbind application",
+  "type": "extension",
+  "searchable": true,
+  "commands": [
+    {
+      "id": "quit-conbind",
+      "name": "Quit Conbind",
+      "icon": "icon:power",
+      "description": "Quit the Conbind application",
+      "mode": "background"
+    }
+  ]
+}

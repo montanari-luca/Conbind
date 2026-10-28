@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Unified CI verification runner for Asyar Project.
+ * Unified CI verification runner for Conbind Project.
  * Supports smart tiered verification (--frontend, --rust, --changed, --all).
  * Exits with non-zero code on any failure.
  */
@@ -11,7 +11,7 @@ import { existsSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const tauriRoot = resolve(root, 'asyar-launcher', 'src-tauri');
+const tauriRoot = resolve(root, 'conbind-launcher', 'src-tauri');
 
 function printHelp() {
   console.log(`
@@ -99,7 +99,7 @@ function getChangedFiles() {
 function isRustFile(filePath) {
   const norm = filePath.replace(/\\/g, '/');
   return (
-    norm.startsWith('asyar-launcher/src-tauri/') ||
+    norm.startsWith('conbind-launcher/src-tauri/') ||
     norm.endsWith('.rs') ||
     norm.endsWith('Cargo.toml') ||
     norm.endsWith('Cargo.lock')
@@ -161,7 +161,7 @@ if (runAll || (!runFrontend && !runRust)) {
 }
 
 const scopeLabel = runFrontend && runRust ? 'Full Matrix' : runFrontend ? 'Frontend' : 'Rust';
-console.log(`=== Asyar Local CI Verification Matrix (${scopeLabel}) ===\n`);
+console.log(`=== Conbind Local CI Verification Matrix (${scopeLabel}) ===\n`);
 
 const totalStartTime = Date.now();
 
@@ -170,7 +170,7 @@ if (runFrontend) {
   runStep('Prettier Format Check', 'pnpm format:check');
   runStep('Design System Compliance', 'pnpm check:design');
   runStep('Workspace CI Coverage', 'node --test scripts/workspace-ci.test.mjs');
-  runStep('Launcher Type Check', 'pnpm --dir asyar-launcher check');
+  runStep('Launcher Type Check', 'pnpm --dir conbind-launcher check');
   runStep('Workspace Frontend Tests', 'pnpm -r --if-present test:run');
 }
 
@@ -185,7 +185,7 @@ if (runRust) {
     );
     runStep('Rust Tests (cargo test)', 'cargo test --workspace', tauriRoot);
   } else {
-    console.warn('\n⚠️ asyar-launcher/src-tauri not found, skipping Rust checks.');
+    console.warn('\n⚠️ conbind-launcher/src-tauri not found, skipping Rust checks.');
   }
 }
 

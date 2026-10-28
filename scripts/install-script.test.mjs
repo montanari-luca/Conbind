@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 function makeFixture({ arch = 'x86_64', failDownload, omitHelper = false } = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'asyar-install-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'conbind-install-test-'));
   fixtures.push(root);
   const binDir = join(root, 'stub-bin');
   const installDir = join(root, 'install');
@@ -61,15 +61,15 @@ done
 printf '%s\\n' "$url" >> "$STUB_CURL_LOG"
 if [ -z "$output" ]; then
   if [ "$STUB_OMIT_HELPER" = '1' ]; then
-    printf '%s\\n' '{"assets":[{"browser_download_url":"https://example.test/asyar_1.2.3_amd64.AppImage"},{"browser_download_url":"https://example.test/asyar_1.2.3_aarch64.AppImage"}]}'
+    printf '%s\\n' '{"assets":[{"browser_download_url":"https://example.test/conbind_1.2.3_amd64.AppImage"},{"browser_download_url":"https://example.test/conbind_1.2.3_aarch64.AppImage"}]}'
     exit 0
   fi
-  printf '%s\\n' '{"assets":[{"browser_download_url":"https://example.test/asyar_1.2.3_amd64.AppImage"},{"browser_download_url":"https://example.test/asyar_1.2.3_aarch64.AppImage"},{"browser_download_url":"https://example.test/asyar-summon_amd64"},{"browser_download_url":"https://example.test/asyar-summon_aarch64"}]}'
+  printf '%s\\n' '{"assets":[{"browser_download_url":"https://example.test/conbind_1.2.3_amd64.AppImage"},{"browser_download_url":"https://example.test/conbind_1.2.3_aarch64.AppImage"},{"browser_download_url":"https://example.test/conbind-summon_amd64"},{"browser_download_url":"https://example.test/conbind-summon_aarch64"}]}'
   exit 0
 fi
 case "$url" in
   *"$STUB_FAIL_DOWNLOAD"*) exit 22 ;;
-  *asyar-summon_*) printf 'new-helper' > "$output" ;;
+  *conbind-summon_*) printf 'new-helper' > "$output" ;;
   *.AppImage) printf 'new-appimage' > "$output" ;;
   *) exit 22 ;;
 esac
@@ -83,7 +83,7 @@ esac
     curlLog,
     env: {
       ...process.env,
-      ASYAR_INSTALL_DIR: installDir,
+      CONBIND_INSTALL_DIR: installDir,
       HOME: root,
       PATH: `${binDir}${delimiter}${process.env.PATH}`,
       STUB_CURL_LOG: curlLog,
@@ -111,29 +111,29 @@ describe('Linux installer', () => {
 
     const output = runInstaller(fixture);
 
-    expect(readFileSync(join(fixture.installDir, 'asyar'), 'utf8')).toBe('new-appimage');
-    expect(readFileSync(join(fixture.installDir, 'asyar-summon'), 'utf8')).toBe('new-helper');
-    expect(statSync(join(fixture.installDir, 'asyar')).mode & 0o111).not.toBe(0);
-    expect(statSync(join(fixture.installDir, 'asyar-summon')).mode & 0o111).not.toBe(0);
+    expect(readFileSync(join(fixture.installDir, 'conbind'), 'utf8')).toBe('new-appimage');
+    expect(readFileSync(join(fixture.installDir, 'conbind-summon'), 'utf8')).toBe('new-helper');
+    expect(statSync(join(fixture.installDir, 'conbind')).mode & 0o111).not.toBe(0);
+    expect(statSync(join(fixture.installDir, 'conbind-summon')).mode & 0o111).not.toBe(0);
     expect(readFileSync(fixture.curlLog, 'utf8')).toContain(`_${assetArch}.AppImage`);
-    expect(readFileSync(fixture.curlLog, 'utf8')).toContain(`asyar-summon_${assetArch}`);
-    expect(output).toContain(join(fixture.installDir, 'asyar'));
-    expect(output).toContain(join(fixture.installDir, 'asyar-summon'));
+    expect(readFileSync(fixture.curlLog, 'utf8')).toContain(`conbind-summon_${assetArch}`);
+    expect(output).toContain(join(fixture.installDir, 'conbind'));
+    expect(output).toContain(join(fixture.installDir, 'conbind-summon'));
     expect(output).toContain("isn't on your PATH");
   });
 
   it.each([
     ['AppImage', 'amd64.AppImage'],
-    ['helper', 'asyar-summon_amd64'],
+    ['helper', 'conbind-summon_amd64'],
   ])('does not replace either installed file when the %s download fails', (_, failure) => {
     const fixture = makeFixture({ failDownload: failure });
-    writeFileSync(join(fixture.installDir, 'asyar'), 'old-appimage');
-    writeFileSync(join(fixture.installDir, 'asyar-summon'), 'old-helper');
+    writeFileSync(join(fixture.installDir, 'conbind'), 'old-appimage');
+    writeFileSync(join(fixture.installDir, 'conbind-summon'), 'old-helper');
 
     expect(() => runInstaller(fixture)).toThrow();
 
-    expect(readFileSync(join(fixture.installDir, 'asyar'), 'utf8')).toBe('old-appimage');
-    expect(readFileSync(join(fixture.installDir, 'asyar-summon'), 'utf8')).toBe('old-helper');
+    expect(readFileSync(join(fixture.installDir, 'conbind'), 'utf8')).toBe('old-appimage');
+    expect(readFileSync(join(fixture.installDir, 'conbind-summon'), 'utf8')).toBe('old-helper');
   });
 
   it('rejects unsupported Linux architectures', () => {
@@ -142,11 +142,11 @@ describe('Linux installer', () => {
     expect(() => runInstaller(fixture)).toThrow(/Unsupported Linux architecture/);
   });
 
-  it.each(['asyar', 'asyar-summon'])(
+  it.each(['conbind', 'conbind-summon'])(
     'rejects an existing %s directory before installation downloads',
     (directoryTarget) => {
       const fixture = makeFixture();
-      const otherTarget = directoryTarget === 'asyar' ? 'asyar-summon' : 'asyar';
+      const otherTarget = directoryTarget === 'conbind' ? 'conbind-summon' : 'conbind';
       mkdirSync(join(fixture.installDir, directoryTarget));
       writeFileSync(join(fixture.installDir, otherTarget), `old-${otherTarget}`);
 
@@ -164,25 +164,25 @@ describe('Linux installer', () => {
     const fixture = makeFixture();
     const targetDirectory = join(fixture.root, 'unexpected-target');
     mkdirSync(targetDirectory);
-    symlinkSync(targetDirectory, join(fixture.installDir, 'asyar-summon'), 'dir');
-    writeFileSync(join(fixture.installDir, 'asyar'), 'old-appimage');
+    symlinkSync(targetDirectory, join(fixture.installDir, 'conbind-summon'), 'dir');
+    writeFileSync(join(fixture.installDir, 'conbind'), 'old-appimage');
 
     expect(() => runInstaller(fixture)).toThrow(/directory/);
 
     expect(readdirSync(targetDirectory)).toEqual([]);
-    expect(readFileSync(join(fixture.installDir, 'asyar'), 'utf8')).toBe('old-appimage');
+    expect(readFileSync(join(fixture.installDir, 'conbind'), 'utf8')).toBe('old-appimage');
     expect(readFileSync(fixture.curlLog, 'utf8').trim().split('\n')).toHaveLength(1);
   });
 
   it('preserves the installed pair when the release has no helper asset', () => {
     const fixture = makeFixture({ omitHelper: true });
-    writeFileSync(join(fixture.installDir, 'asyar'), 'old-appimage');
-    writeFileSync(join(fixture.installDir, 'asyar-summon'), 'old-helper');
+    writeFileSync(join(fixture.installDir, 'conbind'), 'old-appimage');
+    writeFileSync(join(fixture.installDir, 'conbind-summon'), 'old-helper');
 
     expect(() => runInstaller(fixture)).toThrow(/Could not find the summon helper/);
 
-    expect(readFileSync(join(fixture.installDir, 'asyar'), 'utf8')).toBe('old-appimage');
-    expect(readFileSync(join(fixture.installDir, 'asyar-summon'), 'utf8')).toBe('old-helper');
+    expect(readFileSync(join(fixture.installDir, 'conbind'), 'utf8')).toBe('old-appimage');
+    expect(readFileSync(join(fixture.installDir, 'conbind-summon'), 'utf8')).toBe('old-helper');
     expect(readFileSync(fixture.curlLog, 'utf8').trim().split('\n')).toHaveLength(1);
   });
 });

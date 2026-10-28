@@ -2,9 +2,9 @@
 order: 1
 ---
 
-## 1. Introduction — The Asyar Ecosystem
+## 1. Introduction — The Conbind Ecosystem
 
-Asyar is a cross-platform launcher and productivity platform (macOS, Linux, and Windows). The extension system turns it from a built-in tool into a platform — any developer can add commands, search results, and rich UI panels that feel native to the app.
+Conbind is a cross-platform launcher and productivity platform (macOS, Linux, and Windows). The extension system turns it from a built-in tool into a platform — any developer can add commands, search results, and rich UI panels that feel native to the app.
 
 ### What an extension can do
 
@@ -12,7 +12,7 @@ Asyar is a cross-platform launcher and productivity platform (macOS, Linux, and 
 - **Return live search results** directly into the launcher as the user types (like a calculator or documentation search).
 - **Open a full view panel** rendered as a sandboxed iframe — build menus, data tables, detail pages, and interactive UIs.
 - **Show system notifications** via the system notification center.
-- **Read and write the clipboard**, including the full history managed by Asyar.
+- **Read and write the clipboard**, including the full history managed by Conbind.
 - **Read the user's current selection** — selected text in the frontmost app, or selected items in the frontmost file manager — to power "act on selection" workflows like translate, summarize, upload, or compress.
 - **Make outbound HTTP requests** through the host process (bypassing iframe CSP restrictions).
 - **Register keyboard-accessible actions** in the ⌘K Action Drawer — contextual secondary operations.
@@ -22,11 +22,11 @@ Asyar is a cross-platform launcher and productivity platform (macOS, Linux, and 
 
 ### The sandbox model
 
-Every installed extension runs inside a sandboxed `<iframe>`. The iframe loads your bundled HTML/JS/CSS through a custom `asyar-extension://` protocol — it is not a web page and has no internet origin. All communication with Asyar (firing notifications, reading the clipboard, navigating views) goes through a `postMessage` bridge that the SDK wraps for you.
+Every installed extension runs inside a sandboxed `<iframe>`. The iframe loads your bundled HTML/JS/CSS through a custom `conbind-extension://` protocol — it is not a web page and has no internet origin. All communication with Conbind (firing notifications, reading the clipboard, navigating views) goes through a `postMessage` bridge that the SDK wraps for you.
 
 **The practical consequences:**
 
-- Your extension **cannot crash Asyar**. A runtime error inside your iframe does not propagate to the host.
+- Your extension **cannot crash Conbind**. A runtime error inside your iframe does not propagate to the host.
 - Your extension **cannot access another extension's storage** or the host's DOM.
 - Every dependency — including Svelte itself — **must be bundled** into your `dist/` output.
 - **External CDN script tags are blocked** by the iframe's Content Security Policy. All networking must go through `NetworkService`.

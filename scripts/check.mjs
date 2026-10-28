@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Run asyar doctor and type checks across the project.
+ * Run conbind doctor and type checks across the project.
  * Cross-platform (Node.js, no bash dependencies).
  */
 import { execSync } from 'child_process';
@@ -12,11 +12,11 @@ const root = resolve(__dirname, '..');
 
 let hasErrors = false;
 
-// Run asyar doctor from the SDK directory
-console.log('Running asyar doctor...\n');
+// Run conbind doctor from the SDK directory
+console.log('Running conbind doctor...\n');
 try {
   execSync('node dist/cli/index.js doctor', {
-    cwd: resolve(root, 'asyar-sdk'),
+    cwd: resolve(root, 'conbind-sdk'),
     stdio: 'inherit',
   });
 } catch {
@@ -31,11 +31,11 @@ try {
   hasErrors = true;
 }
 
-// Run svelte-check in the asyar app
+// Run svelte-check in the conbind app
 console.log('\nRunning type checks (svelte-check)...\n');
 try {
   execSync('pnpm run check', {
-    cwd: resolve(root, 'asyar-launcher'),
+    cwd: resolve(root, 'conbind-launcher'),
     stdio: 'inherit',
   });
   console.log('\n✓ Type checks passed');

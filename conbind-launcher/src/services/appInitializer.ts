@@ -1,0 +1,484 @@
+import { logService } from './log/logService';
+import { initProviders } from './ai/initProviders';
+
+import { performanceService } from './performance/performanceService.svelte';
+import { runtimeService } from './runtime/runtimeService.svelte';
+import { clipboardPrivacyService } from './privacy/clipboardPrivacyService.svelte';
+import { secretRedactionService } from './privacy/secretRedactionService.svelte';
+import { encryptionService } from './privacy/encryptionService.svelte';
+import { applicationService } from './application/applicationsService';
+import extensionManager from './extension/extensionManager.svelte';
+import { commandService } from './extension/commandService.svelte'; // Import commandService instance
+import { onboardingViewInterception } from './extension/onboardingViewInterception';
+import { searchStores } from './search/stores/search.svelte'; // Import searchStores
+import { settingsService } from './settings/settingsService.svelte';
+import { type Event } from '@tauri-apps/api/event';
+import * as commands from '../lib/ipc/commands';
+import { runWhenIdle } from '../lib/idle';
+import { shortcutService } from '../built-in-features/shortcuts/shortcutService';
+import { shortcutStore } from '../built-in-features/shortcuts/shortcutStore.svelte';
+import { snippetStore } from '../built-in-features/snippets/snippetStore.svelte';
+import { snippetService } from '../built-in-features/snippets/snippetService';
+import { portalStore } from '../built-in-features/portals/portalStore.svelte';
+import { noteStore } from '../built-in-features/notes/noteStore.svelte';
+import { clipboardHistoryStore } from './clipboard/stores/clipboardHistoryStore.svelte';
+import { profileService } from './profile/profileService';
+import { extensionUpdateService } from './extension/extensionUpdateService.svelte';
+import { extensionOAuthService } from './oauth/extensionOAuthService.svelte';
+import { SnippetsSyncProvider } from './profile/providers/snippetsSyncProvider';
+import { NotesSyncProvider } from './profile/providers/notesSyncProvider';
+import { ShortcutsSyncProvider } from './profile/providers/shortcutsSyncProvider';
+import { PortalsSyncProvider } from './profile/providers/portalsSyncProvider';
+import { SettingsSyncProvider } from './profile/providers/settingsSyncProvider';
+import { ClipboardSyncProvider } from './profile/providers/clipboardSyncProvider';
+import { AISettingsSyncProvider } from './profile/providers/aiSettingsSyncProvider';
+import { ExtensionsSyncProvider } from './profile/providers/extensionsSyncProvider';
+import { ExtensionPreferencesSyncProvider } from './profile/providers/extensionPreferencesSyncProvider';
+import { systemEventsBridge } from './systemEvents/systemEventsBridge.svelte';
+import { appEventsBridge } from './appEvents/appEventsBridge.svelte';
+import { indexEventsBridge } from './applicationIndex/indexEventsBridge.svelte';
+import { browserEventsBridge } from './browser/browserEventsBridge.svelte';
+import { fsWatcherBridge } from './fsWatcher/fsWatcherBridge.svelte';
+import { networkWsPushBridge } from './network/networkWsPushBridge.svelte';
+import { stateChangedBridge } from './extensionState/stateChangedBridge.svelte';
+import { rpcReplyBridge } from './extensionState/rpcReplyBridge.svelte';
+import { initScanPathsSync } from './application/scanPathsSync.svelte';
+import { initVerboseLoggingSync } from './log/verboseLoggingSync.svelte';
+import { initFileIndexConfigSync } from './fileIndex/fileIndexConfigSync.svelte';
+import { trayClickBridge } from './statusBar/trayClickBridge.svelte';
+import { viewRegistry } from './extension/viewRegistry.svelte';
+import { workerRegistry } from './extension/workerRegistry.svelte';
+import { extensionReadinessListener } from './extension/extensionReadinessListener';
+import { iframeDeliveryListener } from './extension/iframeDeliveryListener.svelte';
+import { restoreWorkers } from '../lib/ipc/iframeLifecycleCommands';
+import { feedbackService } from './feedback/feedbackService.svelte';
+import { setInvokeFailureReporter } from '../lib/ipc/invokeSafe';
+import { appListen, startBridgeLoop } from '../lib/ipc/bridgeEvents';
+import { setAppInitialized, isAppInitialized } from './appInitState';
+
+// Flag to prevent multiple initializations
+let isInitialized = false;
+
+/**
+ * Registers all core profile sync providers.
+ * Idempotent — safe to call from any window context (main launcher or settings window).
+ */
+export function registerProfileProviders(): void {
+  if (profileService.getProviders().length > 0) return;
+  profileService.registerProvider(new SettingsSyncProvider());
+  profileService.registerProvider(new SnippetsSyncProvider());
+  profileService.registerProvider(new NotesSyncProvider());
+  profileService.registerProvider(new ShortcutsSyncProvider());
+  profileService.registerProvider(new PortalsSyncProvider());
+  profileService.registerProvider(new ClipboardSyncProvider());
+  profileService.registerProvider(new AISettingsSyncProvider());
+  profileService.registerProvider(new ExtensionsSyncProvider());
+  profileService.registerProvider(new ExtensionPreferencesSyncProvider());
+}
+
+export const appInitializer = {
+  async init(): Promise<boolean> {
+    if (isInitialized) {
+      logService.warn('Application already initialized.');
+      return true;
+    }
+    isInitialized = true; // Set early to prevent concurrent calls
+    setAppInitialized(true);
+
+    try {
+      // Start the eval-free event bridge loop first so early Rust events
+      // get buffered rather than lost before listeners register.
+      startBridgeLoop();
+
+      logService.info(`Application starting initialization...`);
+
+      // Route invoke failures to the diagnostics UI. Wired here (composition
+      // root) so the IPC transport doesn't import the feedback store.
+      setInvokeFailureReporter(feedbackService);
+
+      // Register AI provider descriptors before any settings view reads the registry.
+      initProviders();
+
+      await extensionOAuthService.init();
+      logService.info('Extension OAuth service initialized.');
+
+      // Register profile providers (used by settings backup export/import)
+      registerProfileProviders();
+      logService.info('Profile providers registered.');
+
+      // Initialize performance service first
+      await performanceService.init();
+
+      logService.custom('🔍 Performance monitoring initialized', 'PERF', 'cyan', 'cyan');
+      performanceService.logPerformanceReport(); // Initial report
+
+      // Initialize core services
+      // Seed the clipboard privacy filter (denylist + session stats) before
+      // clipboard monitoring starts, so the very first capture event is
+      // already gated against the persisted user denylist.
+      await clipboardPrivacyService.init().catch((err: unknown) => {
+        logService.warn(`Clipboard privacy init failed: ${err}`);
+      });
+
+      // Seed the secret-redaction filter (per-category toggles + catalog)
+      // before any clipboard / snippet / AI append fires.
+      await secretRedactionService.init().catch((err: unknown) => {
+        logService.warn(`Secret redaction init failed: ${err}`);
+      });
+
+      // Seed the encryption-status reactive store so the privacy UI
+      // can show 'active' / 'fallback' / 'unknown' the moment the
+      // user opens settings.
+      await encryptionService.init().catch((err: unknown) => {
+        logService.warn(`Encryption status init failed: ${err}`);
+      });
+
+      // Subscribe to on-demand runtime (bun/uv/claude) download progress
+      // events before any consumer can trigger a download.
+      await runtimeService.init().catch((err: unknown) => {
+        logService.warn(`Runtime service init failed: ${err}`);
+      });
+
+      // Must precede applicationService.init() — its first scan reads additionalScanPaths.
+      await settingsService.init();
+      initVerboseLoggingSync();
+
+      // Application scanning should never block extension loading or app startup if
+      // disk I/O is slow or an external volume takes time to respond.
+      await Promise.race([
+        applicationService.init(),
+        new Promise((resolve) => setTimeout(resolve, 5000)),
+      ]).catch((err: unknown) => {
+        logService.warn(`Initial application sync did not complete within timeout: ${err}`);
+      });
+
+      // Push the user-configured additionalScanPaths down to the Rust
+      // IndexWatcher and keep them in sync with settings changes. Runs
+      // after `applicationService.init()` so the initial scan already
+      // fired — the watcher only needs to know about extras going
+      // forward.
+      initScanPathsSync();
+
+      // Push settings.fileSearch down to Rust's FileIndexState the same
+      // way — the initial scan already fired at startup (lib.rs's
+      // detached-thread block), this only needs to catch config edits.
+      initFileIndexConfigSync();
+
+      // Initialize stores before extensionManager so extensions see real persisted data in initialize()
+      await shortcutStore.init();
+      await snippetStore.init();
+      await portalStore.init();
+      await noteStore.init();
+
+      // After a cloud restore from the settings window, reload stores so the main window
+      // picks up the newly written data without requiring a full restart.
+      appListen<void>('conbind:stores-restored', async () => {
+        await shortcutStore.reload();
+        await snippetStore.reload();
+        await portalStore.reload();
+        await noteStore.reload();
+        await clipboardHistoryStore.loadInitial();
+        logService.info('Stores reloaded after cloud restore.');
+      }).catch((err: any) => {
+        logService.warn(`Failed to register stores-restored listener: ${err}`);
+      });
+
+      // Bridge Rust `conbind:system-event` push events to extension iframes.
+      // Must be ready before extensions initialize so early subscriptions
+      // don't race the first emit.
+      systemEventsBridge.init().catch((err: any) => {
+        logService.warn(`systemEventsBridge init failed: ${err}`);
+      });
+      appEventsBridge.init().catch((err: any) => {
+        logService.warn(`appEventsBridge init failed: ${err}`);
+      });
+      indexEventsBridge.init().catch((err: any) => {
+        logService.warn(`indexEventsBridge init failed: ${err}`);
+      });
+      browserEventsBridge.init().catch((err: any) => {
+        logService.warn(`browserEventsBridge init failed: ${err}`);
+      });
+      fsWatcherBridge.init().catch((err: any) => {
+        logService.warn(`fsWatcherBridge init failed: ${err}`);
+      });
+      networkWsPushBridge.init().catch((err: any) => {
+        logService.warn(`networkWsPushBridge init failed: ${err}`);
+      });
+      trayClickBridge.init().catch((err: any) => {
+        logService.warn(`trayClickBridge init failed: ${err}`);
+      });
+      // Extension state push + RPC reply bridges. Must be ready before
+      // any `dispatch()` can race the first `state:set` or `request()`.
+      stateChangedBridge.init().catch((err: any) => {
+        logService.warn(`stateChangedBridge init failed: ${err}`);
+      });
+      rpcReplyBridge.init().catch((err: any) => {
+        logService.warn(`rpcReplyBridge init failed: ${err}`);
+      });
+
+      // Tier 2 iframe lifecycle listeners. Awaited so the IPC subscriptions
+      // are committed before `restoreWorkers()` below fires EVENT_MOUNT.
+      await viewRegistry.init();
+      await workerRegistry.init();
+      await iframeDeliveryListener.init();
+      extensionReadinessListener.init();
+
+      await extensionManager.init(); // Initialize ExtensionManager first
+
+      // Deferred to idle periods so cold-start presentation and initial query
+      // typing have zero contention from background worker restoration.
+      runWhenIdle(
+        () => {
+          restoreWorkers().catch((error) => {
+            void feedbackService.report({
+              source: 'frontend',
+              kind: 'extension-runtime/restore-workers-failed',
+              severity: 'error',
+              retryable: false,
+              developerDetail: `restore_workers failed: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          });
+        },
+        { timeout: 1500 },
+      );
+
+      // Initialize extension update service for silent auto-updates
+      const { viewManager } = await import('./extension/viewManager.svelte');
+      await extensionUpdateService.init(
+        () => {
+          const activeView = viewManager.getActiveView();
+          return activeView ? activeView.split('/')[0] : null;
+        },
+        () => extensionManager.reloadExtensions(),
+      );
+      extensionUpdateService.checkAndAutoApply(); // non-blocking initial check + auto-apply
+      commandService.initialize(extensionManager); // Initialize CommandService with ExtensionManager instance
+      void import('./dev/inspectorStore.svelte').then(({ setInspectorManifestProvider }) => {
+        setInspectorManifestProvider(
+          (id) =>
+            extensionManager.getManifestById(id) as { background?: { main?: string } } | undefined,
+        );
+      });
+
+      // Initialize app auto-update store (listens for Rust scheduler events)
+      const { initAppUpdateStore } = await import('./update/appUpdateStore.svelte');
+      await initAppUpdateStore();
+      logService.info('App update store initialized.');
+
+      // Check whether to surface a What's New notice (shown once after each
+      // update) or a one-time Feedback nudge (shown after real usage).
+      // Idle-deferred: purely cosmetic and independent of the remaining init
+      // chain, so it must not compete with first paint (native
+      // requestIdleCallback when the WebKit flag landed, deadline-gated
+      // setTimeout otherwise; see src/lib/idle.ts).
+      runWhenIdle(
+        () => {
+          void (async () => {
+            const { checkAndNotifyWhatsNew } = await import('./update/whatsNewNotifier');
+            await checkAndNotifyWhatsNew();
+            logService.info("What's New check complete.");
+
+            const { checkAndNotifyFeedback, checkAndNotifySpread } =
+              await import('./feedback/feedbackNotifier');
+            await checkAndNotifyFeedback();
+            logService.info('Feedback nudge check complete.');
+            await checkAndNotifySpread();
+            logService.info('Spread nudge check complete.');
+          })();
+        },
+        { timeout: 4000 },
+      );
+
+      // Initialize extension deeplink service (conbind://extensions/{extId}/{cmdId})
+      const { createDeeplinkService } = await import('./deeplink/deeplinkService.svelte');
+      const deeplinkService = createDeeplinkService({
+        getManifestById: (id) => extensionManager.getManifestById(id),
+        isExtensionEnabled: (id) => extensionManager.isExtensionEnabled(id),
+        hasCommand: (id) => commandService.commands.has(id),
+        executeCommand: (id, args) => commandService.executeCommand(id, args),
+        navigateToView: (path) => extensionManager.navigateToView(path),
+        showWindow: () => commands.showWindow(),
+        recordItemUsage: (id) => commands.recordItemUsage(id),
+      });
+      await deeplinkService.init();
+      logService.info('Extension deeplink service initialized.');
+
+      // Deliver any conbind:// link that cold-started the app. Safe to call now:
+      // the extension (above), auth, and OAuth deep-link listeners are all
+      // registered, so Rust's re-emit can't race listener setup.
+      await commands.flushPendingDeeplinks();
+
+      // Notification action dispatch bridge. Runs on every Tauri instance
+      // so clicking a button on an OS notification fires the declared
+      // extension command even when the launcher window is hidden.
+      const { NotificationActionBridge } =
+        await import('./notification/notificationActionBridge.svelte');
+      const notificationActionBridge = new NotificationActionBridge({
+        getManifestById: (id) => extensionManager.getManifestById(id),
+        isExtensionEnabled: (id) => extensionManager.isExtensionEnabled(id),
+        hasCommand: (id) => commandService.commands.has(id),
+        executeCommand: (id, args) => commandService.executeCommand(id, args),
+      });
+      await notificationActionBridge.init();
+      logService.info('Notification action bridge initialized.');
+
+      await shortcutService.init();
+      await snippetService.init();
+      appListen('user-shortcut-fired', (event) => {
+        // Suppress shortcut firing while the ShortcutCapture modal is open.
+        // OS shortcuts fire at kernel level before the browser sees the keydown,
+        // so preventDefault() in ShortcutCapture cannot stop them. This guard does.
+        if (shortcutStore.isCapturing) return;
+        shortcutService.handleFiredShortcut(event.payload as string);
+      });
+
+      appListen<{ keywordLen: number; expansion: string }>('expand-snippet', async (event) => {
+        const { keywordLen, expansion } = event.payload;
+        await snippetService.expandSnippet(keywordLen, expansion);
+      });
+
+      appListen<{ keyword: string; expansion: string }>(
+        'snippet:promote-from-cache',
+        async (event) => {
+          const { keyword, expansion } = event.payload;
+          snippetStore.add({
+            id: crypto.randomUUID(),
+            keyword,
+            expansion,
+            name: `${expansion} (${keyword})`,
+            createdAt: Date.now(),
+          });
+        },
+      );
+
+      appListen<{ shortcode: string }>('shortcode-miss', async (event) => {
+        const { agentService } = await import('../built-in-features/agents/agentService.svelte');
+        const agent = agentService.agents.find((a) => a.inputSource === 'shortcodeMiss');
+        if (agent) {
+          const { dispatchSilentAgentCommand } =
+            await import('../built-in-features/agents/silentDispatch');
+          const rawShortcode = event.payload.shortcode.trim();
+          const trigger = agent.shortcodeTrigger || ':';
+          let userText = rawShortcode;
+          if (userText.startsWith(trigger) && userText.endsWith(trigger)) {
+            userText = userText.slice(trigger.length, -trigger.length);
+          } else {
+            // Fallback for edge cases
+            userText = userText.replaceAll(trigger, '');
+          }
+
+          void dispatchSilentAgentCommand({
+            agentId: agent.id,
+            userText,
+            rawInputLength: rawShortcode.length,
+          });
+        }
+      });
+
+      // Apply theme changes triggered from the Settings window
+      appListen<{ themeId: string | null }>('conbind:theme-changed', async ({ payload }) => {
+        const { applyTheme, removeTheme } = await import('./theme/themeService');
+        if (payload.themeId) {
+          applyTheme(payload.themeId).catch((err) => {
+            logService.error(`[AppInitializer] Failed to apply theme: ${err}`);
+          });
+        } else {
+          removeTheme();
+        }
+      });
+
+      // Apply launch-view changes triggered from the Settings window
+      appListen<{ launchView: 'default' | 'compact' }>(
+        'conbind:launch-view-changed',
+        ({ payload }) => {
+          settingsService.currentSettings.appearance.launchView = payload.launchView;
+        },
+      );
+
+      // Generic "run this command in the launcher" signal, used by buttons
+      // in the Settings window (a separate webview with no extensionManager
+      // of its own) that deep-link into a Tier 1 view — e.g. Backup tab's
+      // "Import from Raycast" button. `commandId` is the full
+      // `cmd_<extensionId>_<commandId>` object id.
+      appListen<{ commandId: string }>('conbind:run-command', async ({ payload }) => {
+        await commands.showWindow();
+        try {
+          await commandService.executeCommand(payload.commandId);
+        } catch (e) {
+          logService.error(
+            `[AppInitializer] conbind:run-command failed for ${payload.commandId}: ${e}`,
+          );
+        }
+      });
+
+      // Per-extension onboarding completion: when the extension calls
+      // `context.proxies.onboarding.complete()`, Rust marks it onboarded
+      // and emits this event. The launcher's TS view-handler interception
+      // (in ExtensionLoader.ts) stashed the originally-requested view
+      // before redirecting to the onboarding view; this listener drains
+      // that stash and navigates back so the user lands where they
+      // originally asked. (Tier 2 view-mode commands bypass the Rust
+      // dispatch path, so Plan B's Rust re-dispatch doesn't cover them.)
+      appListen<{ extensionId: string }>('conbind:extension-onboarded', ({ payload }) => {
+        const entry = onboardingViewInterception.take(payload.extensionId);
+        if (entry) {
+          logService.debug(
+            `[onboarding] re-navigating ${payload.extensionId} → ${entry.viewPath} after complete()`,
+          );
+          extensionManager.navigateToView(entry.viewPath);
+        }
+      }).catch((err) => {
+        logService.warn(`Failed to register conbind:extension-onboarded listener: ${err}`);
+      });
+
+      // Pass the payload straight into resync() as an override — the
+      // settings-store bridge arrives on a separate IPC channel with no
+      // ordering guarantee against this emit.
+      appListen<{ additionalScanPaths?: string[] }>(
+        'conbind:app-scan-paths-changed',
+        async ({ payload }) => {
+          await applicationService.resync(payload ?? undefined);
+        },
+      ).catch((err) => {
+        logService.warn(`Failed to register app-scan-paths-changed listener: ${err}`);
+      });
+
+      // Tray click events are now routed to each extension's own iframe
+      // via `trayClickBridge` — each extension owns an independent tray
+      // icon (see `extension_tray` in Rust), and handlers are fired
+      // inside the extension's SDK proxy. The launcher no longer
+      // navigates on tray clicks.
+
+      const serviceInitMetrics = performanceService.stopTiming('service-init');
+      logService.custom(
+        `🔌 Core services initialized in ${serviceInitMetrics.duration?.toFixed(2)}ms`,
+        'PERF',
+        'green',
+      );
+
+      const initMetrics = performanceService.stopTiming('app-initialization');
+      logService.custom(
+        `⚡ App initialized in ${initMetrics.duration?.toFixed(2)}ms`,
+        'PERF',
+        'green',
+        'bgGreen',
+      );
+
+      // Log performance report once startup work has drained (idle-time,
+      // deadline-capped; diagnostics only, never worth competing for a frame)
+      runWhenIdle(() => performanceService.logPerformanceReport(), { timeout: 2500 });
+
+      logService.info(`Application initialization complete.`);
+      return true;
+    } catch (error) {
+      logService.error(`Failed to initialize application: ${error}`);
+      isInitialized = false; // Reset flag on error
+      setAppInitialized(false);
+      return false;
+    }
+  },
+
+  isAppInitialized(): boolean {
+    return isAppInitialized();
+  },
+};

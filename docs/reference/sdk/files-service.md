@@ -29,7 +29,7 @@ strictly less information than the byte read already granted. `glob`
 enumerates existing in-scope files matching a pattern — for names that
 can't be known in advance, like content-addressed cache files
 (`librarycache/<appid>/<sha1>.jpg`). `thumbnail` returns an
-`asyar-thumb://` URL for an in-scope image, generated and cached by the
+`conbind-thumb://` URL for an in-scope image, generated and cached by the
 same pipeline the launcher's own file previews use — set it directly as a
 dynamic command's `icon` and it renders like the launcher's native
 application icons. Extension thumbnails are images-only by design, so the
@@ -133,7 +133,7 @@ interface IFilesService {
    * to `[]`; a pattern outside the declared scope rejects. */
   glob(pattern: string, opts?: FileGlobOptions): Promise<string[]>;
   globEntries(pattern: string, opts?: FileGlobEntriesOptions): Promise<FileGlobEntry[]>;
-  /** Thumbnail of an in-scope file as an `asyar-thumb://` URL, usable
+  /** Thumbnail of an in-scope file as an `conbind-thumb://` URL, usable
    * directly as a dynamic command's `icon`. Images only, identical on
    * every platform: non-image types resolve `null`. Rejects on scope
    * denials. */
@@ -197,7 +197,7 @@ const hits = await files.glob(
 );
 if (hits.length > 0) {
   const icon = await files.thumbnail(hits[0], { maxDim: 64 });
-  // → 'asyar-thumb://localhost/<key>.png', ready for dynamic command registration
+  // → 'conbind-thumb://localhost/<key>.png', ready for dynamic command registration
 }
 ```
 

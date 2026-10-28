@@ -1,0 +1,863 @@
+import { untrack } from 'svelte';
+import { t } from '../i18n';
+import { logService } from '../log/logService';
+import { toFullActionId } from './actionId';
+import type { ExtensionAction, IActionService } from 'conbind-sdk/contracts';
+import { ActionContext } from 'conbind-sdk/contracts';
+import * as commands from '../../lib/ipc/commands';
+import { searchService } from '../search/SearchService';
+import type { SearchResult } from '../search/interfaces/SearchResult';
+import { searchStores } from '../search/stores/search.svelte';
+import { feedbackService } from '../feedback/feedbackService.svelte';
+
+type SelectedItemProvider = () => SearchResult | undefined;
+let globalSelectedItemProvider: SelectedItemProvider = () => undefined;
+
+export function setSelectedItemProvider(provider: SelectedItemProvider): void {
+  globalSelectedItemProvider = provider;
+}
+import { commandService } from '../extension/commandService.svelte';
+import { applicationService } from '../application/applicationService';
+import type { UninstallScanResult } from '../application/applicationService';
+import { writeText } from 'tauri-plugin-clipboard-x-api';
+import { canRunAsAdmin, hasAppFilePath } from './appLocation';
+import { getHostPlatform } from '../../lib/keyboard/hostPlatform';
+import { assertActionShortcut } from '../../lib/keyboard/actionShortcut';
+import { isBuiltInFeature } from '../extension/extensionDiscovery';
+import { developerSettingsService } from '../settings/developerSettingsService.svelte';
+import { compareActionTier, type ActionPlacement } from './actionTier';
+
+// Module-level platform detection for the Uninstall action. macOS moves the
+// .app bundle to Trash via `trash::delete`; Windows resolves the .lnk
+// shortcut's display name against the registry's Uninstall keys and launches
+// the vendor UninstallString. Linux is unsupported — packaging is too
+// fragmented (apt/dnf/pacman/flatpak/snap/AppImage) for a single first-party
+// path — and the action stays hidden there.
+const HOST_PLATFORM = getHostPlatform();
+const IS_MACOS = HOST_PLATFORM === 'macos';
+const IS_WINDOWS = HOST_PLATFORM === 'windows';
+const UNINSTALL_SUPPORTED = IS_MACOS || IS_WINDOWS;
+
+/** Human-readable byte size. Matches Finder-style rounding (1 KB = 1000 B). */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1000) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = bytes / 1000;
+  let unitIdx = 0;
+  while (value >= 1000 && unitIdx < units.length - 1) {
+    value /= 1000;
+    unitIdx++;
+  }
+  return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIdx]}`;
+}
+
+/** Message body for the macOS uninstall confirm sheet. */
+function buildMacosConfirmMessage(appName: string, scan: UninstallScanResult): string {
+  const lines: string[] = [];
+  const total = formatBytes(scan.totalBytes);
+  if (scan.dataPaths.length === 0) {
+    lines.push(t('core_actions.uninstall_msg_mac_none', { name: appName, total }));
+  } else {
+    lines.push(
+      scan.dataPaths.length === 1
+        ? t('core_actions.uninstall_msg_mac_files_one', { name: appName, total })
+        : t('core_actions.uninstall_msg_mac_files_other', {
+            name: appName,
+            count: scan.dataPaths.length,
+            total,
+          }),
+    );
+  }
+  return lines.join(' ');
+}
+
+// This interface might need adjustment if ApplicationAction should also use the enum
+export interface ApplicationAction {
+  id: string;
+  label: string;
+  icon?: string;
+  description?: string;
+  category?: string;
+  extensionId?: string;
+  disabled?: boolean;
+  context?: ActionContext; // Use the enum type here too for consistency
+  confirm?: boolean;
+  destructive?: boolean;
+  /** Panel position for built-ins; unmarked actions are the selected item's own. See `actionTier`. */
+  placement?: ActionPlacement;
+  execute: () => Promise<void> | void;
+  shortcut?: string;
+  visible?: () => boolean;
+}
+
+function sameActionMetadata(a: ApplicationAction, b: ApplicationAction): boolean {
+  if (a.visible || b.visible) return false;
+  return (
+    a.id === b.id &&
+    a.label === b.label &&
+    a.icon === b.icon &&
+    a.description === b.description &&
+    a.category === b.category &&
+    a.extensionId === b.extensionId &&
+    a.context === b.context &&
+    a.confirm === b.confirm &&
+    a.destructive === b.destructive &&
+    a.placement === b.placement &&
+    a.shortcut === b.shortcut &&
+    a.disabled === b.disabled
+  );
+}
+
+/**
+ * ActionService implementation for the main application
+ * Connects extension actions to the application UI
+ */
+export class ActionService implements IActionService {
+  private allActions: Map<string, ApplicationAction> = new Map();
+  private currentContext: ActionContext = ActionContext.CORE;
+  private currentExtensionId?: string;
+  private sendToExtension?: (
+    extensionId: string,
+    actionId: string,
+    role?: 'view' | 'worker',
+    payload?: unknown,
+  ) => void;
+  // Which iframe role registered the handler for a given full actionId
+  // (`act_<extensionId>_<shortId>`). Populated by the IPC router from the
+  // calling iframe's data-role attribute when the SDK calls
+  // actions:registerActionHandler. Consumed by executeAction so the launcher
+  // posts conbind:action:execute to the iframe that actually owns the handler.
+  // Absent = legacy single-iframe extension or handler never registered.
+  private handlerRoles: Map<string, 'view' | 'worker'> = new Map();
+
+  // Svelte 5 reactive state
+  public filteredActions = $state<ApplicationAction[]>([]);
+
+  constructor() {
+    this.registerBuiltInActions();
+    this.updateState();
+    // Registered actions keep plain-string labels, so re-register the built-ins
+    // when the locale changes (system locale resolves asynchronously after boot).
+    $effect.root(() => {
+      $effect(() => {
+        // `t()` reads the reactive locale, so this effect re-runs when it changes.
+        t('core_actions.settings');
+        untrack(() => {
+          this.registerBuiltInActions();
+          this.updateState();
+        });
+      });
+    });
+  }
+
+  setExtensionForwarder(
+    fn: (
+      extensionId: string,
+      actionId: string,
+      role?: 'view' | 'worker',
+      payload?: unknown,
+    ) => void,
+  ): void {
+    this.sendToExtension = fn;
+  }
+
+  private instanceSelectedItemProvider: SelectedItemProvider | null = null;
+
+  setSelectedItemProvider(provider: SelectedItemProvider): void {
+    this.instanceSelectedItemProvider = provider;
+  }
+
+  getSelectedSearchItem(): SearchResult | undefined {
+    if (this.instanceSelectedItemProvider) {
+      return this.instanceSelectedItemProvider();
+    }
+    return globalSelectedItemProvider();
+  }
+
+  /**
+   * Stamp which iframe role owns the handler for an extension action handler.
+   * Called by ExtensionIpcRouter when the SDK round-trips
+   * actions:registerActionHandler. The short `actionId` is whatever the
+   * extension passed to registerActionHandler; we key on the full
+   * `act_<extensionId>_<actionId>` so lookups on dispatch are direct.
+   */
+  recordActionHandlerRole(extensionId: string, actionId: string, role: 'view' | 'worker'): void {
+    this.handlerRoles.set(toFullActionId(extensionId, actionId), role);
+  }
+
+  getActionHandlerRole(fullActionId: string): 'view' | 'worker' | undefined {
+    return this.handlerRoles.get(fullActionId);
+  }
+
+  /**
+   * Set the current action context and optional active extensionId
+   */
+  setContext(context: ActionContext, extensionId?: string | { commandId?: string }): void {
+    const extId = typeof extensionId === 'string' ? extensionId : undefined;
+    // Only update if context or extensionId actually changes
+    if (this.currentContext !== context || this.currentExtensionId !== extId) {
+      this.currentContext = context;
+      this.currentExtensionId = extId;
+      logService.debug(`Action context set to: ${context}${extId ? ` (extension: ${extId})` : ''}`);
+      this.updateState(); // Update the Svelte state with filtered actions
+    }
+  }
+
+  /**
+   * Get the current action context
+   */
+  getContext(): ActionContext {
+    return this.currentContext;
+  }
+
+  /**
+   * Register an action from an extension or core
+   */
+  registerAction(action: ExtensionAction | ApplicationAction): void {
+    action = this.admitShortcut(action);
+
+    // Ensure it conforms to ApplicationAction structure internally
+    const appAction: ApplicationAction = {
+      id: action.id,
+      label: 'title' in action ? action.title : action.label, // Handle both interfaces
+      icon: action.icon,
+      description: action.description,
+      extensionId: 'extensionId' in action ? action.extensionId : undefined,
+      category: action.category,
+      // Use the context provided, default if necessary, ensure it's the enum type
+      context: action.context || ActionContext.EXTENSION_VIEW,
+      confirm: 'confirm' in action ? action.confirm : undefined,
+      destructive: 'destructive' in action ? action.destructive : undefined,
+      placement: 'placement' in action ? action.placement : undefined,
+      shortcut: 'shortcut' in action ? action.shortcut : undefined,
+      execute: action.execute,
+      disabled: 'disabled' in action ? action.disabled : undefined,
+      visible: 'visible' in action ? (action as any).visible : undefined,
+    };
+
+    const prev = this.allActions.get(appAction.id);
+    if (prev && sameActionMetadata(prev, appAction)) {
+      prev.execute = appAction.execute;
+      prev.visible = appAction.visible;
+      return;
+    }
+
+    this.allActions.set(appAction.id, appAction); // Store in the master list
+    logService.debug(
+      `Registered action: ${appAction.id} from ${
+        appAction.extensionId || 'core'
+      }, context: ${appAction.context || 'default'}`,
+    );
+
+    // Update the state if the action matches the current context
+    this.updateState();
+  }
+
+  /**
+   * Built-ins fail fast on a bad shortcut. A Tier 2 extension's action is kept
+   * and only its shortcut is dropped (with a warning): its author may still use
+   * the old display-only formats (`⌘N`), and losing the whole action over a
+   * hint would break a published extension.
+   */
+  private admitShortcut<T extends ExtensionAction | ApplicationAction>(action: T): T {
+    const extensionId = 'extensionId' in action ? action.extensionId : undefined;
+    if (!extensionId || isBuiltInFeature(extensionId)) {
+      this.assertShortcutRegistrable(action);
+      return action;
+    }
+    try {
+      this.assertShortcutRegistrable(action);
+      return action;
+    } catch (error) {
+      logService.warn(
+        `[ActionService] Ignoring shortcut of '${action.id}' (${extensionId}): ${error}`,
+      );
+      return { ...action, shortcut: undefined };
+    }
+  }
+
+  /**
+   * A declared `shortcut` both shows a hint and binds the key, so it is held
+   * to the canonical grammar at the door: a bad one throws instead of
+   * rendering a hint that nothing answers.
+   *  - Destructive actions never get a direct shortcut; they live in ⌘K.
+   *  - Two actions in one scope (same context and owner) that are both
+   *    unconditionally visible would fight over the chord on every keypress,
+   *    so the second registration is refused. Actions that gate on `visible()`
+   *    may share a chord; `getShortcutCandidates()` orders any residual tie.
+   */
+  private assertShortcutRegistrable(action: ExtensionAction | ApplicationAction): void {
+    const shortcut = 'shortcut' in action ? action.shortcut : undefined;
+    if (shortcut === undefined) return;
+    assertActionShortcut(shortcut, action.id);
+    if ('destructive' in action && action.destructive) {
+      throw new Error(
+        `Action '${action.id}' is destructive and cannot bind shortcut '${shortcut}'; destructive actions are only reachable through the ⌘K panel`,
+      );
+    }
+    const visible = 'visible' in action ? (action as ApplicationAction).visible : undefined;
+    if (visible) return;
+    const scope = (a: { context?: ActionContext; extensionId?: string }) =>
+      `${a.context ?? ActionContext.EXTENSION_VIEW}|${a.extensionId ?? ''}`;
+    const mine = scope({
+      context: action.context,
+      extensionId: 'extensionId' in action ? action.extensionId : undefined,
+    });
+    for (const other of this.allActions.values()) {
+      if (other.id === action.id || other.visible || other.shortcut !== shortcut) continue;
+      if (scope(other) === mine) {
+        throw new Error(
+          `Action '${action.id}' cannot bind shortcut '${shortcut}': '${other.id}' already binds it in the same scope`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Unregister an action
+   */
+  unregisterAction(actionId: string): void {
+    const hadAction = this.allActions.delete(actionId);
+    const hadRole = this.handlerRoles.delete(actionId);
+    if (hadAction) {
+      logService.debug(`Unregistered action: ${actionId}`);
+      this.updateState();
+    } else if (!hadRole && developerSettingsService.verboseLogging) {
+      // #901 made this path a silent no-op — idempotent re-registration
+      // effects were spamming it on every keystroke. Unconditionally missing
+      // both the action AND its handler role, though, is a real bug class
+      // (typo'd id, double-unregister, extension lifecycle race) rather than
+      // idempotent churn, so it still deserves a warning — just confined to
+      // verbose logging, where it's near-silent for everyone else.
+      logService.warn(`Attempted to unregister non-existent action: ${actionId}`);
+    }
+  }
+
+  /**
+   * Remove all actions registered by a specific extension.
+   * Call this when an extension view is closed to prevent stale actions from persisting.
+   */
+  clearActionsForExtension(extensionId: string): void {
+    let changed = false;
+    for (const [id, action] of this.allActions) {
+      if (action.extensionId === extensionId) {
+        this.allActions.delete(id);
+        changed = true;
+      }
+    }
+    // Drop stored handler-role entries even if no metadata exists — the SDK
+    // may have rolled up handlers before registerAction arrived, or an
+    // extension may have registered a handler for a manifest-only action.
+    const rolePrefix = `act_${extensionId}_`;
+    for (const key of this.handlerRoles.keys()) {
+      if (key.startsWith(rolePrefix)) {
+        this.handlerRoles.delete(key);
+      }
+    }
+    if (changed) {
+      logService.debug(`[ActionService] Cleared all actions for extension: ${extensionId}`);
+      this.updateState();
+    }
+  }
+
+  /**
+   * Get all registered actions (primarily for internal use or debugging)
+   * Note: This returns ALL actions, not filtered by context.
+   */
+  getAllActions(): ApplicationAction[] {
+    return Array.from(this.allActions.values());
+  }
+
+  /**
+   * Get actions filtered by the current context
+   */
+  private getFilteredActions(): ApplicationAction[] {
+    const filtered = Array.from(this.allActions.values())
+      .filter(this.filterActionsByContext.bind(this))
+      .sort(compareActionTier);
+
+    // Log details about filtered actions
+    logService.debug(
+      `Filtering actions for context: ${this.currentContext}. Found ${filtered.length} actions.`,
+    );
+
+    return filtered;
+  }
+
+  /**
+   * The actions a key press may trigger right now: the ⌘K panel's actions for
+   * the current context (same filter, not the same order: this ranks chord
+   * precedence, not panel position), minus the ones without a shortcut.
+   * Recomputed on every call (not read from `filteredActions`) because
+   * `visible()` depends on the selected search item, which can change between
+   * the last `updateState()` and a keypress. View-scoped actions come before
+   * global/core ones, so inside a view the view wins a shared chord.
+   */
+  getShortcutCandidates(): ApplicationAction[] {
+    const rank = (a: ApplicationAction) =>
+      a.context === ActionContext.CORE || a.context === ActionContext.GLOBAL ? 1 : 0;
+    return Array.from(this.allActions.values())
+      .filter((a) => a.shortcut && !a.disabled && this.filterActionsByContext(a))
+      .sort((a, b) => rank(a) - rank(b));
+  }
+
+  /**
+   * Get actions based on a specific context (implements IActionService method)
+   */
+  getActions(context?: ActionContext): ExtensionAction[] {
+    const targetContext = context || this.currentContext;
+    if (targetContext === ActionContext.COMMAND_RESULT) {
+      logService.warn(
+        'getActions(COMMAND_RESULT) called directly; may not return correct results.',
+      );
+    }
+    return Array.from(this.allActions.values())
+      .filter((action) => action.context === targetContext) // Simple context filter for this specific method
+      .map((action) => ({
+        // Map back to ExtensionAction interface
+        id: action.id,
+        title: action.label,
+        description: action.description,
+        icon: action.icon,
+        // Ensure extensionId is a string, default to 'core' if undefined
+        extensionId: action.extensionId || 'core',
+        category: action.category,
+        context: action.context, // Pass context through
+        execute: action.execute,
+      }));
+  }
+
+  /**
+   * Filter actions based on the current internal context
+   */
+  private filterActionsByContext(action: ApplicationAction): boolean {
+    // If a visibility callback is defined and returns false, hide the action
+    if (action.visible && !action.visible()) {
+      return false;
+    }
+
+    // Handle EXTENSION_VIEW context specifically
+    if (this.currentContext === ActionContext.EXTENSION_VIEW) {
+      if (action.context === ActionContext.EXTENSION_VIEW) {
+        if (this.currentExtensionId && action.extensionId) {
+          return action.extensionId === this.currentExtensionId;
+        }
+        return !action.extensionId;
+      }
+      if (action.context === ActionContext.GLOBAL) {
+        return true;
+      }
+      return false;
+    }
+
+    // Handle specific contexts (SEARCH_VIEW, etc.)
+    if (action.context === this.currentContext && this.currentContext !== ActionContext.CORE) {
+      return true;
+    }
+
+    // Handle GLOBAL actions - show them in CORE context
+    if (action.context === ActionContext.GLOBAL && this.currentContext === ActionContext.CORE) {
+      return true;
+    }
+
+    // Fallback: If context is CORE, show CORE actions only if no context-specific actions are available
+    if (this.currentContext === ActionContext.CORE && action.context === ActionContext.CORE) {
+      const specificActionCount = Array.from(this.allActions.values()).filter(
+        (a) =>
+          a.context === this.currentContext &&
+          a.context !== ActionContext.CORE &&
+          a.context !== ActionContext.GLOBAL,
+      ).length;
+      return specificActionCount === 0;
+    }
+
+    return false;
+  }
+
+  /**
+   * Execute an action by ID
+   */
+  async executeAction(actionId: string): Promise<void> {
+    const action = this.allActions.get(actionId); // Get from the master list
+    if (!action) {
+      throw new Error(`Action not found: ${actionId}`);
+    }
+
+    logService.info(`Executing action: ${actionId} from ${action.extensionId || 'core'}`);
+
+    try {
+      if (typeof action.execute === 'function') {
+        await action.execute();
+      } else if (action.extensionId && this.sendToExtension) {
+        // Forward the stored role (if any) so the iframe manager can target
+        // the correct iframe. undefined = legacy/unknown — let the forwarder
+        // fall back to view-prefer default.
+        this.sendToExtension(action.extensionId, actionId, this.handlerRoles.get(actionId));
+      } else {
+        throw new Error(`Action execute is not a function: ${actionId}`);
+      }
+    } catch (error) {
+      logService.error(`Error executing action ${actionId}: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Dispatch a Tier 2 result-action: look up which iframe role registered the
+   * handler for (extensionId, actionId) and post the action-execute envelope
+   * with the payload. Falls back to the 'worker' role since search-result
+   * handlers are registered from the worker in activate().
+   */
+  executeExtensionAction(extensionId: string, actionId: string, payload?: unknown): boolean {
+    // The SDK's action registry keys handlers on the full `act_<ext>_<short>`
+    // id (both registerActionHandler and the conbind:action:execute receiver),
+    // so the envelope must carry the full id — callers pass the short id.
+    const fullActionId = toFullActionId(extensionId, actionId);
+    const role = this.handlerRoles.get(fullActionId);
+    this.sendToExtension?.(extensionId, fullActionId, role ?? 'worker', payload);
+    return true;
+  }
+
+  /**
+   * Register built-in application actions
+   */
+  private registerBuiltInActions() {
+    this.registerAction({
+      id: 'settings',
+      label: t('core_actions.settings'),
+      icon: 'icon:settings',
+      description: t('core_actions.settings_desc'),
+      category: t('categories.system'),
+      context: ActionContext.CORE,
+      placement: 'launcher',
+      execute: async () => {
+        logService.info('Executing built-in action: Open Settings');
+        try {
+          await commands.showSettingsWindow();
+        } catch (err) {
+          logService.error(`Failed to open settings window: ${err}`);
+        }
+      },
+    });
+
+    this.registerAction({
+      id: 'reset_search',
+      label: t('core_actions.reset_search'),
+      icon: 'icon:refresh',
+      description: t('core_actions.reset_search_desc'),
+      category: t('categories.system'),
+      context: ActionContext.CORE,
+      placement: 'launcher',
+      visible: () => developerSettingsService.isDeveloperMode,
+      execute: async () => {
+        logService.info('Executing built-in action: Reset Search Index');
+        await searchService.resetIndex();
+      },
+    });
+
+    this.registerAction({
+      id: 'factory_reset',
+      label: t('core_actions.factory_reset'),
+      icon: 'icon:trash',
+      description: t('core_actions.factory_reset_desc'),
+      category: t('categories.danger'),
+      context: ActionContext.CORE,
+      confirm: true,
+      destructive: true,
+      visible: () => developerSettingsService.isDeveloperMode,
+      execute: async () => {
+        logService.info('Executing built-in action: Factory Reset');
+        const confirmed = await feedbackService.confirmAlert({
+          title: t('core_actions.factory_reset_title'),
+          message: t('core_actions.factory_reset_message'),
+          confirmText: t('core_actions.factory_reset_confirm'),
+          cancelText: t('common.cancel'),
+          variant: 'danger',
+        });
+        if (!confirmed) return;
+        // Rust wipes app_data_dir + the OS keychain, but localStorage lives
+        // outside app_data_dir and lib/persistence/extensionStore.ts mirrors
+        // some Tauri-store data (portals, snippets-enabled) into it with a
+        // migrate-back-on-load fallback — clear it here or "erased" data
+        // resurrects itself on next launch.
+        localStorage.clear();
+        // Rust writes a sentinel and calls app.exit(0); the wipe runs at the
+        // next cold start before any DB connection is opened. The promise
+        // does not resolve on this page because the process exits.
+        await commands.factoryReset();
+      },
+    });
+
+    this.registerAction({
+      id: 'reveal_application',
+      label: IS_MACOS
+        ? t('core_actions.reveal_app_mac')
+        : IS_WINDOWS
+          ? t('core_actions.reveal_app_win')
+          : t('core_actions.reveal_app'),
+      icon: 'icon:folder',
+      description: t('core_actions.reveal_app_desc'),
+      category: t('categories.item'),
+      context: ActionContext.CORE,
+      visible: () => {
+        const item = this.getSelectedSearchItem();
+        return item?.type === 'application' && hasAppFilePath(item.path);
+      },
+      execute: async () => {
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'application' || !hasAppFilePath(item.path)) return;
+        // Failures (e.g. the app was moved) surface through invokeSafe's feedback.
+        await applicationService.revealApplication(item.path);
+      },
+    });
+
+    this.registerAction({
+      id: 'copy_application_path',
+      label: t('core_actions.copy_app_path'),
+      icon: 'icon:clipboard',
+      description: t('core_actions.copy_app_path_desc'),
+      category: t('categories.item'),
+      context: ActionContext.CORE,
+      visible: () => {
+        const item = this.getSelectedSearchItem();
+        return item?.type === 'application' && hasAppFilePath(item.path);
+      },
+      execute: async () => {
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'application' || !hasAppFilePath(item.path)) return;
+        await writeText(item.path);
+        await feedbackService.showHUD(t('core_actions.copy_app_path_hud'));
+      },
+    });
+
+    this.registerAction({
+      id: 'run_application_as_admin',
+      label: t('core_actions.run_as_admin'),
+      icon: 'icon:lock',
+      description: t('core_actions.run_as_admin_desc'),
+      category: t('categories.item'),
+      context: ActionContext.CORE,
+      visible: () => {
+        const item = this.getSelectedSearchItem();
+        return item?.type === 'application' && canRunAsAdmin(item.path, HOST_PLATFORM);
+      },
+      execute: async () => {
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'application' || !canRunAsAdmin(item.path, HOST_PLATFORM)) {
+          return;
+        }
+        // A dismissed UAC prompt is not an error; real failures surface through
+        // invokeSafe's feedback.
+        await applicationService.runApplicationAsAdmin(item.path!);
+      },
+    });
+
+    this.registerAction({
+      id: 'uninstall_application',
+      label: t('core_actions.uninstall_app'),
+      icon: 'icon:trash',
+      description: IS_MACOS
+        ? t('core_actions.uninstall_desc_mac')
+        : t('core_actions.uninstall_desc_win'),
+      category: t('categories.danger'),
+      context: ActionContext.CORE,
+      confirm: true,
+      destructive: true,
+      visible: () => {
+        if (!UNINSTALL_SUPPORTED) return false;
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'application') return false;
+        if (!item.path) return false;
+        // macOS-only: hard block system-protected apps from even showing the
+        // action. Rust repeats the check as defense-in-depth, but this keeps
+        // the UI honest. Windows has no equivalent single-prefix system
+        // boundary — the registry SystemComponent flag is the backstop
+        // instead, enforced by ensure_windows_entry_allowed in Rust.
+        if (IS_MACOS && item.path.startsWith('/System/')) return false;
+        return true;
+      },
+      execute: async () => {
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'application' || !item.path) return;
+
+        const appName = item.name;
+        const appPath = item.path;
+
+        // macOS: pre-scan user-data paths so the confirm sheet can show the
+        // user exactly what will be trashed + total reclaimed space. If the
+        // scan fails, fall back to the app-only confirm — worst case the
+        // user re-runs it manually. Windows skips the scan entirely; the
+        // vendor uninstaller handles data cleanup.
+        let dataPaths: string[] = [];
+        let confirmMessage: string;
+
+        if (IS_MACOS) {
+          try {
+            const scan = await applicationService.scanUninstallTargets(appPath);
+            dataPaths = scan.dataPaths.map((p) => p.path);
+            confirmMessage = buildMacosConfirmMessage(appName, scan);
+          } catch (error) {
+            logService.warn(
+              `Uninstall scan failed for '${appPath}'. Falling back to app-only confirm: ${String(error)}`,
+            );
+            confirmMessage = t('core_actions.uninstall_msg_mac_fallback', { name: appName });
+          }
+        } else {
+          // Windows
+          confirmMessage = t('core_actions.uninstall_msg_win', { name: appName });
+        }
+
+        const confirmButton = IS_MACOS
+          ? t('core_actions.uninstall_confirm_mac')
+          : t('core_actions.uninstall_confirm_win');
+        const successHud = IS_MACOS
+          ? t('core_actions.uninstall_hud_mac')
+          : t('core_actions.uninstall_hud_win');
+
+        const confirmed = await feedbackService.confirmAlert({
+          title: t('core_actions.uninstall_title', { name: appName }),
+          message: confirmMessage,
+          confirmText: confirmButton,
+          variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        try {
+          await applicationService.uninstallApplication(appPath, dataPaths);
+          await feedbackService.showHUD(successHud);
+        } catch (err) {
+          logService.error(`Uninstall failed for '${appPath}': ${err}`);
+          const reason = err instanceof Error ? err.message : String(err);
+          await feedbackService.showHUD(t('core_actions.uninstall_failed', { reason }), {
+            severity: 'error',
+          });
+        }
+      },
+    });
+
+    this.registerAction({
+      id: 'copy_deeplink',
+      label: t('core_actions.copy_deeplink'),
+      icon: 'icon:link',
+      description: t('core_actions.copy_deeplink_desc'),
+      category: t('categories.share'),
+      context: ActionContext.CORE,
+      placement: 'manage',
+      shortcut: 'Mod+Shift+C',
+      visible: () => {
+        const item = this.getSelectedSearchItem();
+        return item?.type === 'command';
+      },
+      execute: async () => {
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'command' || !item.extensionId) return;
+
+        const extensionId = item.extensionId;
+        const commandId = item.objectId.slice('cmd_'.length + extensionId.length + 1);
+        const url = `conbind://extensions/${encodeURIComponent(extensionId)}/${encodeURIComponent(commandId)}`;
+
+        await writeText(url);
+        await feedbackService.showHUD(t('core_actions.deeplink_copied'));
+      },
+    });
+
+    this.registerAction({
+      id: 'view_extension_commands',
+      label: t('core_actions.view_extension_commands'),
+      icon: 'icon:list',
+      description: t('core_actions.view_extension_commands_desc'),
+      category: t('categories.extension'),
+      context: ActionContext.CORE,
+      placement: 'manage',
+      shortcut: 'Mod+Shift+E',
+      visible: () => {
+        const item = this.getSelectedSearchItem();
+        return !!(item && item.type === 'command' && item.extensionId);
+      },
+      execute: async () => {
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'command' || !item.extensionId) return;
+
+        const extensionId = item.extensionId;
+        const slug = extensionId.split('.').pop() ?? extensionId;
+        searchStores.query = `@${slug} `;
+      },
+    });
+
+    this.registerAction({
+      id: 'configure_extension',
+      label: t('core_actions.configure_extension'),
+      icon: 'icon:settings',
+      description: t('core_actions.configure_extension_desc'),
+      category: t('categories.extension'),
+      context: ActionContext.CORE,
+      placement: 'manage',
+      shortcut: 'Mod+Shift+,',
+      visible: () => {
+        const item = this.getSelectedSearchItem();
+        return !!(item && item.type === 'command' && item.extensionId);
+      },
+      execute: async () => {
+        const item = this.getSelectedSearchItem();
+        if (!item || item.type !== 'command' || !item.extensionId) return;
+
+        await commands.showSettingsWindow('extensions', item.extensionId);
+      },
+    });
+  }
+
+  /**
+   * Update the reactive state with currently relevant actions based on context.
+   */
+  private updateState() {
+    this.filteredActions = this.getFilteredActions();
+  }
+
+  /**
+   * No-op on the host side — this method exists only on the SDK proxy for
+   * Tier 2 extensions to register iframe-local handlers (notification
+   * actions, search-result actions). Tier 1 built-ins pass `execute` to
+   * registerAction() directly.
+   */
+  registerActionHandler(_actionId: string, _handler: () => Promise<void> | void): void {
+    // intentional no-op
+  }
+
+  /**
+   * Wire an execute callback into an already-registered action without
+   * overwriting its other fields (visible, label, context, etc.).
+   *
+   * Use this for Tier 1 built-in extensions that want to respond to
+   * manifest-declared actions: the host registers the action metadata +
+   * visible() callback; the extension calls setActionExecutor() in
+   * initialize() to supply the actual handler.
+   *
+   * No-op if the action does not exist yet.
+   */
+  setActionExecutor(actionId: string, executor: () => Promise<void> | void): void {
+    const action = this.allActions.get(actionId);
+    if (!action) return;
+    action.execute = executor;
+  }
+
+  /**
+   * Public trigger for re-filtering actions.
+   * Call when external state (e.g. selected search result) changes
+   * and visible() callbacks need re-evaluation.
+   */
+  refreshFiltered(): void {
+    this.updateState();
+  }
+}
+
+export const actionService = new ActionService();
+
+// Backward compatibility for actionStore
+export const actionStore = {
+  get subscribe() {
+    return (fn: (v: ApplicationAction[]) => void) => {
+      fn(actionService.filteredActions);
+      return () => {};
+    };
+  },
+};

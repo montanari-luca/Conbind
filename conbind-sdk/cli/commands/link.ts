@@ -1,0 +1,225 @@
+import { Command } from 'commander';
+import chalk from 'chalk';
+import * as fs from 'fs';
+import * as path from 'path';
+import { execSync } from 'child_process';
+import chokidar from 'chokidar';
+import { readManifest } from '../lib/manifest';
+import { getExtensionsDir, getDevExtensionsFile } from '../lib/platform';
+import { runViteBuild, verifyBuildOutput } from './build';
+
+function writeDevExtensionsAtomic(filePath: string, data: Record<string, string>): void {
+  const content = JSON.stringify(data, null, 2);
+  const tmpFile = `${filePath}.tmp.${process.pid}.${Date.now()}`;
+  fs.writeFileSync(tmpFile, content, 'utf-8');
+  fs.renameSync(tmpFile, filePath);
+}
+
+function updateDevExtensions(
+  extensionId: string,
+  extensionDir: string,
+  isDevFlavor?: boolean,
+): void {
+  const devExtensionsFile = getDevExtensionsFile(isDevFlavor);
+  const devExtensionsDir = path.dirname(devExtensionsFile);
+
+  if (!fs.existsSync(devExtensionsDir)) {
+    fs.mkdirSync(devExtensionsDir, { recursive: true });
+  }
+
+  let registry: Record<string, string> = {};
+  if (fs.existsSync(devExtensionsFile)) {
+    try {
+      registry = JSON.parse(fs.readFileSync(devExtensionsFile, 'utf-8'));
+    } catch {
+      registry = {};
+    }
+  }
+
+  registry[extensionId] = extensionDir;
+  writeDevExtensionsAtomic(devExtensionsFile, registry);
+}
+
+function removeDevExtension(extensionId: string, isDevFlavor?: boolean): void {
+  const devExtensionsFile = getDevExtensionsFile(isDevFlavor);
+  if (!fs.existsSync(devExtensionsFile)) {
+    return;
+  }
+
+  let registry: Record<string, string> = {};
+  try {
+    registry = JSON.parse(fs.readFileSync(devExtensionsFile, 'utf-8'));
+  } catch {
+    return;
+  }
+
+  if (registry[extensionId]) {
+    delete registry[extensionId];
+    writeDevExtensionsAtomic(devExtensionsFile, registry);
+  }
+}
+
+export function registerLink(program: Command) {
+  program
+    .command('link')
+    .description('Link extension to Conbind extensions directory for local testing')
+    .option('--watch', 'Watch src/ for changes and rebuild automatically')
+    .option('--no-build', 'Link existing build output without rebuilding')
+    .option('--copy', 'Use file copy instead of symlink (fallback mode)')
+    .option('--dev', 'Link to the dev flavor (org.conbind.dev) instead of production')
+    .action(async (opts) => {
+      const cwd = process.cwd();
+      const manifest = readManifest(cwd);
+      const targetDir = path.join(getExtensionsDir(opts.dev), manifest.id);
+
+      if (manifest.type === 'theme') {
+        // Themes have no build step — just link the source directory
+        if (opts.copy) {
+          await copyThemeLink(cwd, targetDir);
+        } else {
+          await symlinkOrCopy(cwd, targetDir);
+        }
+        updateDevExtensions(manifest.id, cwd, opts.dev);
+        return;
+      }
+
+      // Existing output must still match the manifest when rebuilding is skipped.
+      if (opts.build !== false) await runViteBuild(cwd);
+      verifyBuildOutput(cwd, manifest);
+
+      if (opts.copy) {
+        // Explicit copy mode — use old behavior
+        await copyLink(cwd, targetDir);
+      } else {
+        // Default — try symlink, fall back to copy
+        await symlinkOrCopy(cwd, targetDir);
+      }
+      updateDevExtensions(manifest.id, cwd, opts.dev);
+
+      if (opts.watch) {
+        console.log(chalk.cyan('\nWatching src/ for changes...'));
+        const watcher = chokidar.watch(path.join(cwd, 'src'), {
+          ignoreInitial: true,
+        });
+        watcher.on('change', async (filePath) => {
+          console.log(chalk.gray(`\nChanged: ${path.relative(cwd, filePath)}`));
+          try {
+            await runViteBuild(cwd);
+            verifyBuildOutput(cwd, manifest);
+            console.log(chalk.green('✓') + ' Rebuilt — changes are live');
+          } catch {
+            console.log(chalk.red('✗ Build failed — fix errors and save again'));
+          }
+        });
+      }
+    });
+}
+
+export function registerUnlink(program: Command) {
+  program
+    .command('unlink')
+    .description('Unlink extension from Conbind extensions directory')
+    .option('--dev', 'Unlink from the dev flavor (org.conbind.dev) instead of production')
+    .action(async (opts) => {
+      const cwd = process.cwd();
+      const manifest = readManifest(cwd);
+      const targetDir = path.join(getExtensionsDir(opts.dev), manifest.id);
+
+      if (fs.existsSync(targetDir)) {
+        const stat = fs.lstatSync(targetDir);
+        if (stat.isSymbolicLink() || stat.isFIFO()) {
+          fs.unlinkSync(targetDir);
+        } else {
+          fs.rmSync(targetDir, { recursive: true, force: true });
+        }
+      }
+
+      removeDevExtension(manifest.id, opts.dev);
+      console.log(chalk.green('✓') + ` Unlinked ${manifest.id}`);
+    });
+}
+
+async function symlinkOrCopy(cwd: string, targetDir: string) {
+  // Remove existing link or directory
+  if (fs.existsSync(targetDir)) {
+    const stat = fs.lstatSync(targetDir);
+    if (stat.isSymbolicLink() || stat.isFIFO()) {
+      fs.unlinkSync(targetDir);
+    } else {
+      fs.rmSync(targetDir, { recursive: true, force: true });
+    }
+  }
+
+  // Ensure parent directory exists
+  fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+
+  try {
+    createSymlink(cwd, targetDir);
+    console.log(chalk.green('✓') + ` Symlinked: ${targetDir}`);
+    console.log(chalk.gray(`  → ${cwd}`));
+    console.log(chalk.gray('  Rebuilds are reflected immediately — no re-link needed.'));
+  } catch (err: any) {
+    // Symlink failed — fall back to copy with explanation
+    console.log(chalk.yellow('⚠ Symlink failed, falling back to file copy'));
+    console.log(chalk.gray(`  Reason: ${err.message}`));
+    await copyLink(cwd, targetDir);
+  }
+}
+
+function createSymlink(target: string, linkPath: string) {
+  if (process.platform === 'win32') {
+    // Directory junction — no admin required on Windows
+    execSync(`mklink /J "${linkPath}" "${target}"`, { stdio: 'pipe' });
+  } else {
+    // macOS and Linux — standard symlink
+    fs.symlinkSync(target, linkPath, 'dir');
+  }
+}
+
+async function copyLink(cwd: string, targetDir: string) {
+  // Remove existing
+  if (fs.existsSync(targetDir)) {
+    fs.rmSync(targetDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  // Copy manifest.json
+  fs.copyFileSync(path.join(cwd, 'manifest.json'), path.join(targetDir, 'manifest.json'));
+
+  // Copy dist/
+  copyDir(path.join(cwd, 'dist'), path.join(targetDir, 'dist'));
+
+  console.log(chalk.green('✓') + ` Copied to: ${targetDir}`);
+  console.log(chalk.gray('  Run "conbind link" again after each rebuild to update.'));
+}
+
+function copyDir(src: string, dest: string) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyDir(srcPath, destPath);
+    else fs.copyFileSync(srcPath, destPath);
+  }
+}
+
+async function copyThemeLink(cwd: string, targetDir: string) {
+  if (fs.existsSync(targetDir)) {
+    fs.rmSync(targetDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  fs.copyFileSync(path.join(cwd, 'manifest.json'), path.join(targetDir, 'manifest.json'));
+  fs.copyFileSync(path.join(cwd, 'theme.json'), path.join(targetDir, 'theme.json'));
+
+  const fontsDir = path.join(cwd, 'fonts');
+  if (fs.existsSync(fontsDir)) {
+    copyDir(fontsDir, path.join(targetDir, 'fonts'));
+  }
+
+  console.log(chalk.green('✓') + ` Copied to: ${targetDir}`);
+  console.log(chalk.gray('  Run "conbind link" again after editing theme.json to update.'));
+}
+
+// Export for use in dev.ts
+export { copyLink, copyThemeLink, symlinkOrCopy };

@@ -72,7 +72,7 @@ await cache.clear();
 Caches are stored in a dedicated `extension_cache` SQLite table. Isolation is enforced by the Rust backend using your `extensionId`.
 
 - **Lazy Expiration:** When you call `get()`, the backend checks the `expires_at` column. If the timestamp has passed, the row is deleted and `get()` returns `null`.
-- **Proactive Pruning:** On every launcher startup, Asyar runs a maintenance task to prune all expired entries across all extensions to keep the database slim.
+- **Proactive Pruning:** On every launcher startup, Conbind runs a maintenance task to prune all expired entries across all extensions to keep the database slim.
 
 **When to use Cache vs Storage:**
 

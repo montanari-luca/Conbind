@@ -19,10 +19,10 @@ sidecar process**.
 The feature is split across a process boundary because the two halves live in
 different worlds:
 
-| Half                              | Where it runs                                                                                                                                          | Responsibility                                                                             |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| **Orchestrator** (Tier 1)         | The launcher WebView ([`src/built-in-features/create-extension/ai-builder/`](../../asyar-launcher/src/built-in-features/create-extension/ai-builder/)) | UI, job state, notifications, deep-links, secret-scan, register + activate                 |
-| **Sidecar** (`asyar-ext-builder`) | Its own OS process ([`asyar-ext-builder/`](../../asyar-ext-builder/))                                                                                  | Runs the Claude Agent SDK: feasibility gate, scaffold, code, `pnpm` build loop, smoke test |
+| Half                                | Where it runs                                                                                                                                            | Responsibility                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Orchestrator** (Tier 1)           | The launcher WebView ([`src/built-in-features/create-extension/ai-builder/`](../../conbind-launcher/src/built-in-features/create-extension/ai-builder/)) | UI, job state, notifications, deep-links, secret-scan, register + activate                 |
+| **Sidecar** (`conbind-ext-builder`) | Its own OS process ([`conbind-ext-builder/`](../../conbind-ext-builder/))                                                                                | Runs the Claude Agent SDK: feasibility gate, scaffold, code, `pnpm` build loop, smoke test |
 
 The WebView cannot spawn native processes, run `pnpm`, or do raw filesystem/shell
 work — so the coding muscle has to be a child process. This mirrors how MCP ships
@@ -34,30 +34,30 @@ digraph ai_builder {
   view   [shape=box,label="BuildProgressView\n+ buildJobStore"];
   orch   [shape=box,label="orchestrator.ts\n(event routing)"];
   rust   [shape=box,label="ext_builder/*.rs\n(spawn + stream + stdin)"];
-  side   [shape=box,label="asyar-ext-builder\n(bun sidecar.js)"];
+  side   [shape=box,label="conbind-ext-builder\n(bun sidecar.js)"];
   claude [shape=box,label="claude runtime\n(on-demand via RuntimeManager)"];
 
   view -> orch;
   orch -> rust   [label="invoke()"];
   rust -> side   [label="spawn bun sidecar.js"];
-  rust -> view   [label="asyar:ext-builder:event\n(stdout lines)"];
+  rust -> view   [label="conbind:ext-builder:event\n(stdout lines)"];
   view -> rust   [label="answers (stdin)"];
   side -> claude [label="query() spawns"];
 }
 ```
 
-The Rust bridge ([`ext_builder/process.rs`](../../asyar-launcher/src-tauri/src/ext_builder/process.rs))
-spawns the sidecar, streams each stdout line as the `asyar:ext-builder:event` Tauri
+The Rust bridge ([`ext_builder/process.rs`](../../conbind-launcher/src-tauri/src/ext_builder/process.rs))
+spawns the sidecar, streams each stdout line as the `conbind:ext-builder:event` Tauri
 event, and forwards answers to the sidecar's stdin. The orchestrator parses each
 line and drives the single active job in
-[`buildJobStore.svelte.ts`](../../asyar-launcher/src/built-in-features/create-extension/ai-builder/buildJobStore.svelte.ts)
+[`buildJobStore.svelte.ts`](../../conbind-launcher/src/built-in-features/create-extension/ai-builder/buildJobStore.svelte.ts)
 (states `working`/`waiting`/`done`/`failed`); the progress view is a pure window
 onto that store.
 
 ## The stdio protocol
 
 Communication is newline-delimited JSON, defined identically on both sides
-([`buildProtocol.ts`](../../asyar-launcher/src/built-in-features/create-extension/ai-builder/buildProtocol.ts)
+([`buildProtocol.ts`](../../conbind-launcher/src/built-in-features/create-extension/ai-builder/buildProtocol.ts)
 ↔ sidecar `protocol.ts`).
 
 | Direction          | Event     | Meaning                                                      |
@@ -80,9 +80,9 @@ job. The user can leave and return freely — the job outlives the view.
 The gate is the sidecar's first action and is emitted as a `verdict` **before any
 file is written** — so an impossible request stops having touched nothing. It
 reasons against a curated capability spec
-([`capabilitySpec/capabilities.json`](../../asyar-launcher/src/built-in-features/create-extension/ai-builder/capabilitySpec/capabilities.json)),
+([`capabilitySpec/capabilities.json`](../../conbind-launcher/src/built-in-features/create-extension/ai-builder/capabilitySpec/capabilities.json)),
 which is kept honest by a test that fails if it drifts from the SDK's authoritative
-`VALID_PERMISSIONS` (`asyar-sdk/cli/lib/manifest.ts`). The capability list and the
+`VALID_PERMISSIONS` (`conbind-sdk/cli/lib/manifest.ts`). The capability list and the
 authoring guide stay **local** (the gate's correctness must not depend on a network
 fetch).
 
@@ -108,8 +108,8 @@ The build inherently runs author-controlled code (`pnpm install` runs the agent'
   prompt-injection from fetched docs.
 - **Secret scan in Rust.** A build-time third-party key (used only for the verify
   smoke test) is scanned out of the generated files by
-  [`ext_builder/secret_scan.rs`](../../asyar-launcher/src-tauri/src/ext_builder/secret_scan.rs)
-  — Rust, not the WebView, because the build dir (`~/AsyarExtensions/<id>`) is outside
+  [`ext_builder/secret_scan.rs`](../../conbind-launcher/src-tauri/src/ext_builder/secret_scan.rs)
+  — Rust, not the WebView, because the build dir (`~/ConbindExtensions/<id>`) is outside
   the WebView's filesystem capability allowlist. If the key appears verbatim in any
   file, the build fails closed.
 - **Path-traversal guards** on the chosen extension id, in both the sidecar and the
@@ -140,32 +140,32 @@ subprocess — it is not a pure HTTP client. Two consequences shaped the design:
    convenience of placing a binary there manually.
 
 **Build-order requirement:** the release pipeline must run `bun run build:js` in
-`asyar-ext-builder/` **before** `tauri build`, or an empty placeholder ships and the
+`conbind-ext-builder/` **before** `tauri build`, or an empty placeholder ships and the
 feature is dead.
 
 ## After the build: My Extensions & Publish
 
-- **My Extensions** ([`CreatedExtensionsView.svelte`](../../asyar-launcher/src/built-in-features/create-extension/ai-builder/CreatedExtensionsView.svelte))
-  lists everything in `~/AsyarExtensions/` via the Rust
-  [`list_created_extensions`](../../asyar-launcher/src-tauri/src/ext_builder/created.rs)
+- **My Extensions** ([`CreatedExtensionsView.svelte`](../../conbind-launcher/src/built-in-features/create-extension/ai-builder/CreatedExtensionsView.svelte))
+  lists everything in `~/ConbindExtensions/` via the Rust
+  [`list_created_extensions`](../../conbind-launcher/src-tauri/src/ext_builder/created.rs)
   command (the scan, sort, and search filter all live in Rust). Per-row actions reuse
   the open/publish helpers.
-- **Publish to Asyar Store** confirms (it creates a public GitHub repo), then opens a
-  terminal running `asyar publish` in the extension's directory — reusing the existing
+- **Publish to Conbind Store** confirms (it creates a public GitHub repo), then opens a
+  terminal running `conbind publish` in the extension's directory — reusing the existing
   [CLI publish flow](../how-to/publishing.md) wholesale rather than reimplementing it.
 
 ## Source map
 
-| Concern                             | File                                          |
-| ----------------------------------- | --------------------------------------------- |
-| Job state machine                   | `ai-builder/buildJobStore.svelte.ts`          |
-| Event routing                       | `ai-builder/orchestrator.ts`                  |
-| Question ⇄ notification ⇄ stdin     | `ai-builder/questionBridge.ts`                |
-| Progress view                       | `ai-builder/BuildProgressView.svelte`         |
-| Protocol types                      | `ai-builder/buildProtocol.ts`                 |
-| Sidecar spawn / stream / stdin      | `src-tauri/src/ext_builder/process.rs`        |
-| Tauri commands                      | `src-tauri/src/ext_builder/commands.rs`       |
-| Enumerate / search built extensions | `src-tauri/src/ext_builder/created.rs`        |
-| Secret scan (Rust)                  | `src-tauri/src/ext_builder/secret_scan.rs`    |
-| Sidecar entry + Agent SDK           | `asyar-ext-builder/src/main.ts`, `builder.ts` |
-| Bash allowlist                      | `asyar-ext-builder/src/utils.ts`              |
+| Concern                             | File                                            |
+| ----------------------------------- | ----------------------------------------------- |
+| Job state machine                   | `ai-builder/buildJobStore.svelte.ts`            |
+| Event routing                       | `ai-builder/orchestrator.ts`                    |
+| Question ⇄ notification ⇄ stdin     | `ai-builder/questionBridge.ts`                  |
+| Progress view                       | `ai-builder/BuildProgressView.svelte`           |
+| Protocol types                      | `ai-builder/buildProtocol.ts`                   |
+| Sidecar spawn / stream / stdin      | `src-tauri/src/ext_builder/process.rs`          |
+| Tauri commands                      | `src-tauri/src/ext_builder/commands.rs`         |
+| Enumerate / search built extensions | `src-tauri/src/ext_builder/created.rs`          |
+| Secret scan (Rust)                  | `src-tauri/src/ext_builder/secret_scan.rs`      |
+| Sidecar entry + Agent SDK           | `conbind-ext-builder/src/main.ts`, `builder.ts` |
+| Bash allowlist                      | `conbind-ext-builder/src/utils.ts`              |

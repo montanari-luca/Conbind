@@ -1,0 +1,8 @@
+import { createPushBridge } from '../eventPushBridge/createPushBridge';
+
+/** Routes Rust subscription events through the shared worker-aware delivery bridge. */
+export const browserEventsBridge = createPushBridge(
+  'conbind:browser-event',
+  'conbind:event:browser-event:push',
+  'browserEventsBridge',
+);

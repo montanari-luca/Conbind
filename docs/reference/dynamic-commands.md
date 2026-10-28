@@ -51,7 +51,7 @@ evicted, leaving the user wondering why their items disappeared.
 The SDK enforces this two ways:
 
 1. The proxy method `commandsService.replaceDynamicCommands(...)`
-   asserts `window.__ASYAR_ROLE__ === "worker"` before sending. Calling
+   asserts `window.__CONBIND_ROLE__ === "worker"` before sending. Calling
    it from `view.ts` rejects with a clear error.
 2. The launcher's Rust IPC handler rejects calls from extensions whose
    manifest does not declare `background.main`. An extension with no
@@ -63,7 +63,7 @@ the second is the load-bearing security check.
 ## The API
 
 ```ts
-import type { DynamicCommandRegistration, ICommandService } from 'asyar-sdk/contracts';
+import type { DynamicCommandRegistration, ICommandService } from 'conbind-sdk/contracts';
 // ...inside your worker.ts
 const commandsService = workerContext.getService<ICommandService>('commands');
 
@@ -220,12 +220,12 @@ specific platform feature — those concerns belong in the extension.
 
 ```ts
 // extensions/apple-shortcuts/src/worker.ts
-import { ExtensionContext as WorkerExtensionContext } from 'asyar-sdk/worker';
+import { ExtensionContext as WorkerExtensionContext } from 'conbind-sdk/worker';
 import type {
   ICommandService,
   IShellService,
   IFileSystemWatcherService,
-} from 'asyar-sdk/contracts';
+} from 'conbind-sdk/contracts';
 
 const ctx = new WorkerExtensionContext();
 const commandsService = ctx.getService<ICommandService>('commands');
@@ -267,6 +267,6 @@ await fsWatcher.watch(['~/Library/Shortcuts/'], async () => {
 - [Command Arguments](./command-arguments.md) — argument schema reference.
 - [Script Headers](./script-headers.md) — the built-in `scripts` extension
   is the canonical dynamic-command consumer; its registrations are driven
-  by `# @asyar.*` comments inside script files instead of a worker.
+  by `# @conbind.*` comments inside script files instead of a worker.
 - [SDK · file-system-watcher](./sdk/file-system-watcher.md) — the natural
   invalidation signal for file-system-driven sources.

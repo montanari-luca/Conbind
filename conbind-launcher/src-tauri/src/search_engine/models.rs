@@ -1,0 +1,592 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
+#[serde(tag = "category", rename_all = "camelCase")]
+pub enum SearchableItem {
+    Application(Application),
+    Command(Command),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Application {
+    #[serde(default)]
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    #[serde(default)] // Add this default for usage count
+    pub usage_count: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub last_used_at: Option<u32>,
+    /// Platform-native bundle / process identifier when discoverable:
+    /// - macOS: `CFBundleIdentifier` from `Contents/Info.plist` (e.g. `com.apple.Safari`)
+    /// - Linux: `StartupWMClass` from the `.desktop` entry, or the basename of `Exec=`
+    ///   as a fallback (e.g. `firefox`)
+    /// - Windows: not extracted — `.lnk` shortcuts don't carry a bundle id
+    ///
+    /// Consumed by `IApplicationService.isRunning()` — extensions should prefer
+    /// this field over `name` when calling `isRunning`, with `name` as a fallback.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Command {
+    pub id: String,
+    pub name: String,
+    pub extension: String,
+    pub trigger: String,
+    #[serde(rename = "type")]
+    pub command_type: String,
+    #[serde(default)] // Add this default for usage count
+    pub usage_count: u32,
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub last_used_at: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtitle: Option<String>,
+    /// Right-side row label shown in root search. `None` falls back to the
+    /// owning extension's display name in the frontend mapper.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub type_label: Option<String>,
+    /// `true` when the registration declares an argument schema. Set on the
+    /// dynamic-command path only; manifest commands stay `false` and the
+    /// frontend derives their answer from the loaded manifest instead.
+    #[serde(default)]
+    pub has_arguments: bool,
+    /// `true` for runtime-registered commands from
+    /// `commandsService.replaceDynamicCommands(...)`. Manifest-declared
+    /// commands always serialize as `false`. Defaults to `false` so older
+    /// persisted rows decode without migration.
+    #[serde(default)]
+    pub is_dynamic: bool,
+}
+
+// SearchResult remains the same for frontend compatibility
+#[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResult {
+    pub object_id: String,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub result_type: String, // 'application' or 'command'
+    pub score: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extension_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub type_label: Option<String>,
+    #[serde(default)]
+    pub has_arguments: bool,
+    #[serde(default)]
+    pub favorite: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub style: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
+    /// Tier ordinal from `ranker::Tier` (0=Pinned, 5=Files, 6=FrecencyOnly), computed
+    /// by `merged_search`'s classify pass. Lets the frontend consume Rust's
+    /// tier directly instead of re-deriving it with its own approximation.
+    pub tier: u8,
+}
+
+/// Result-level priority hint. `Top` pins the result above all tier 1–5
+/// results (synthetic answers like Calculator's expression result).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ResultPriority {
+    Top,
+}
+
+/// Represents a search result contributed by a frontend extension.
+/// Sent from TypeScript to Rust for unified ranking.
+#[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalSearchResult {
+    pub object_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(rename = "type")]
+    pub result_type: String,
+    pub score: f32,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub extension_id: Option<String>,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub style: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority: Option<ResultPriority>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AliasMatch {
+    pub object_id: String,
+    pub item_type: String,
+    pub auto_execute: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MergedSearchResponse {
+    pub results: Vec<SearchResult>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alias_match: Option<AliasMatch>,
+}
+
+// Helper to get the name for sorting/searching
+impl SearchableItem {
+    pub fn get_name(&self) -> &str {
+        match self {
+            SearchableItem::Application(a) => &a.name,
+            SearchableItem::Command(c) => &c.name,
+        }
+    }
+
+    /// Every name a query may be matched against, display name first.
+    ///
+    /// Callers that score a query must try all of these and keep the best
+    /// hit. Matching only `get_name()` makes localized macOS apps
+    /// unreachable under the name they carry on disk: `Photos.app` presents
+    /// as "Fotos" on a German system, so a user typing "Photos" would find
+    /// nothing. The bundle file name is already available via `path`, so it
+    /// needs no separate storage — it is only surfaced for matching and
+    /// never shown, since `name` remains what the UI renders.
+    pub fn search_names(&self) -> Vec<&str> {
+        match self {
+            SearchableItem::Application(a) => {
+                let mut names = vec![a.name.as_str()];
+                // Windows UWP apps are indexed under a synthetic
+                // "shell:AppsFolder\<AUMID>" identifier, not a real bundle
+                // path — file_stem() on that would chop the dotted AUMID
+                // (PackageFamilyName!AppId) and produce a bogus alternate
+                // name, e.g. "Microsoft" from every Microsoft-published app.
+                let is_real_bundle_path = !a.path.starts_with(r"shell:AppsFolder\");
+                if is_real_bundle_path {
+                    if let Some(stem) = std::path::Path::new(a.path.as_str())
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                    {
+                        if !stem.eq_ignore_ascii_case(&a.name) {
+                            names.push(stem);
+                        }
+                    }
+                }
+                names
+            }
+            SearchableItem::Command(c) => vec![c.name.as_str()],
+        }
+    }
+    // Helper to get the type string
+    pub fn get_type_str(&self) -> &str {
+        match self {
+            SearchableItem::Application(_) => "application",
+            SearchableItem::Command(_) => "command",
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        match self {
+            SearchableItem::Application(app) => &app.id,
+            SearchableItem::Command(cmd) => &cmd.id,
+        }
+    }
+
+    pub fn usage_count(&self) -> u32 {
+        match self {
+            SearchableItem::Application(app) => app.usage_count,
+            SearchableItem::Command(cmd) => cmd.usage_count,
+        }
+    }
+
+    pub fn last_used_at(&self) -> Option<u32> {
+        match self {
+            SearchableItem::Application(app) => app.last_used_at,
+            SearchableItem::Command(cmd) => cmd.last_used_at,
+        }
+    }
+}
+
+/// Max length the cloud-sync backend accepts for an item id
+/// (`items.*.id` `max:64` in `CloudSyncController::pushItems`).
+const MAX_APP_ID_LEN: usize = 64;
+
+/// Builds a stable `app_` id for an application, guaranteed to fit within
+/// `MAX_APP_ID_LEN`. `unique_key` is whatever makes the app unique on this
+/// machine (its absolute path on macOS/Linux, its AUMID on Windows).
+///
+/// Deeply nested paths (e.g. macOS system utilities) would otherwise produce
+/// an id over the server's length limit and get the whole sync batch
+/// rejected, so those fall back to a short deterministic hash of `unique_key`.
+pub fn build_app_id(name: &str, unique_key: &str) -> String {
+    let sanitized_name = name.replace([' ', '/'], "_");
+    let sanitized_key = unique_key.replace([' ', '/'], "_");
+    let full = format!("app_{sanitized_name}_{sanitized_key}");
+    if full.chars().count() <= MAX_APP_ID_LEN {
+        return full;
+    }
+
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    unique_key.hash(&mut hasher);
+    let hash = format!("{:x}", hasher.finish());
+
+    let budget = MAX_APP_ID_LEN.saturating_sub("app_".len() + "_".len() + hash.len());
+    let truncated_name: String = sanitized_name.chars().take(budget).collect();
+    format!("app_{truncated_name}_{hash}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_app(id: &str, name: &str) -> SearchableItem {
+        SearchableItem::Application(Application {
+            id: id.to_string(),
+            name: name.to_string(),
+            path: format!("/Applications/{}.app", name),
+            usage_count: 2,
+            icon: None,
+            last_used_at: None,
+            bundle_id: None,
+        })
+    }
+
+    fn make_cmd(id: &str, name: &str) -> SearchableItem {
+        SearchableItem::Command(Command {
+            id: id.to_string(),
+            name: name.to_string(),
+            extension: "test-ext".to_string(),
+            trigger: name.to_lowercase(),
+            command_type: "command".to_string(),
+            usage_count: 1,
+            icon: None,
+            last_used_at: None,
+            subtitle: None,
+            type_label: None,
+            has_arguments: false,
+            is_dynamic: false,
+        })
+    }
+
+    #[test]
+    fn test_build_app_id_starts_with_app_prefix() {
+        let id = build_app_id("Finder", "/Applications/Finder.app");
+        assert!(
+            id.starts_with("app_"),
+            "Expected 'app_' prefix, got: {}",
+            id
+        );
+    }
+
+    #[test]
+    fn test_build_app_id_is_deterministic() {
+        let path = "/Applications/Safari.app";
+        assert_eq!(build_app_id("Safari", path), build_app_id("Safari", path));
+    }
+
+    #[test]
+    fn test_build_app_id_differs_for_different_paths() {
+        assert_ne!(
+            build_app_id("Chrome", "/Applications/Chrome.app"),
+            build_app_id("Firefox", "/Applications/Firefox.app")
+        );
+    }
+
+    #[test]
+    fn test_build_app_id_readable_for_short_paths() {
+        assert_eq!(
+            build_app_id("Slack", "/Applications/Slack.app"),
+            "app_Slack__Applications_Slack.app"
+        );
+    }
+
+    #[test]
+    fn test_build_app_id_never_exceeds_max_len_for_deeply_nested_paths() {
+        let long_path = "/System/Applications/Utilities/Activity Monitor.app";
+        let id = build_app_id("Activity Monitor", long_path);
+        assert!(
+            id.chars().count() <= MAX_APP_ID_LEN,
+            "id exceeds {} chars ({}): {}",
+            MAX_APP_ID_LEN,
+            id.chars().count(),
+            id
+        );
+    }
+
+    #[test]
+    fn test_build_app_id_stable_and_prefixed_for_long_paths() {
+        let long_path = "/System/Applications/Utilities/Activity Monitor.app";
+        let id = build_app_id("Activity Monitor", long_path);
+        assert!(id.starts_with("app_"));
+        assert_eq!(id, build_app_id("Activity Monitor", long_path));
+    }
+
+    #[test]
+    fn test_build_app_id_differs_for_different_long_paths() {
+        assert_ne!(
+            build_app_id(
+                "Activity Monitor",
+                "/System/Applications/Utilities/Activity Monitor.app"
+            ),
+            build_app_id("Console", "/System/Applications/Utilities/Console.app")
+        );
+    }
+
+    #[test]
+    fn test_application_get_name() {
+        let item = make_app("app_finder", "Finder");
+        assert_eq!(item.get_name(), "Finder");
+    }
+
+    #[test]
+    fn test_command_get_name() {
+        let item = make_cmd("cmd_search", "Search Google");
+        assert_eq!(item.get_name(), "Search Google");
+    }
+
+    #[test]
+    fn test_application_get_type_str() {
+        let item = make_app("app_arc", "Arc");
+        assert_eq!(item.get_type_str(), "application");
+    }
+
+    #[test]
+    fn test_command_get_type_str() {
+        let item = make_cmd("cmd_find", "Find");
+        assert_eq!(item.get_type_str(), "command");
+    }
+
+    #[test]
+    fn test_search_names_ignores_uwp_synthetic_path() {
+        // UWP apps are indexed under a synthetic "shell:AppsFolder\<AUMID>"
+        // identifier, not a real bundle path. AUMIDs are dotted
+        // (PackageFamilyName!AppId, e.g.
+        // "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App"), so file_stem()
+        // on the raw string would chop it at that dot and produce
+        // "Microsoft" — a bogus alternate name that would make every
+        // Microsoft-published app match a search for "Microsoft".
+        let item = SearchableItem::Application(Application {
+            id: "app_calculator".to_string(),
+            name: "Calculator".to_string(),
+            path: r"shell:AppsFolder\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App".to_string(),
+            usage_count: 0,
+            icon: None,
+            last_used_at: None,
+            bundle_id: None,
+        });
+        assert_eq!(
+            item.search_names(),
+            vec!["Calculator"],
+            "a UWP path must not contribute a bogus file-stem alternate name"
+        );
+    }
+
+    #[test]
+    fn test_command_subtitle_defaults_to_none() {
+        let json = r#"{
+            "id": "cmd_test_hello",
+            "name": "Hello",
+            "extension": "test",
+            "trigger": "hello",
+            "type": "command"
+        }"#;
+        let cmd: Command = serde_json::from_str(json).unwrap();
+        assert_eq!(cmd.subtitle, None);
+    }
+
+    #[test]
+    fn test_command_subtitle_round_trips() {
+        let cmd = Command {
+            id: "cmd_test_weather".to_string(),
+            name: "Weather".to_string(),
+            extension: "test".to_string(),
+            trigger: "weather".to_string(),
+            command_type: "command".to_string(),
+            usage_count: 0,
+            icon: None,
+            last_used_at: None,
+            subtitle: Some("72 F".to_string()),
+            type_label: None,
+            has_arguments: false,
+            is_dynamic: false,
+        };
+        let json = serde_json::to_string(&cmd).unwrap();
+        let deserialized: Command = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.subtitle, Some("72 F".to_string()));
+    }
+
+    #[test]
+    fn test_command_is_dynamic_defaults_to_false_when_missing() {
+        let json = r#"{
+            "id": "cmd_test_x",
+            "name": "X",
+            "extension": "test",
+            "trigger": "x",
+            "type": "command"
+        }"#;
+        let cmd: Command = serde_json::from_str(json).unwrap();
+        assert!(!cmd.is_dynamic);
+    }
+
+    #[test]
+    fn test_command_is_dynamic_round_trips() {
+        let cmd = Command {
+            id: "cmd_ext_dyn_uuid-1".to_string(),
+            name: "Run lights".to_string(),
+            extension: "ext".to_string(),
+            trigger: "run lights".to_string(),
+            command_type: "command".to_string(),
+            usage_count: 0,
+            icon: None,
+            last_used_at: None,
+            subtitle: None,
+            type_label: None,
+            has_arguments: false,
+            is_dynamic: true,
+        };
+        let json = serde_json::to_string(&cmd).unwrap();
+        let deserialized: Command = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.is_dynamic);
+    }
+}
+
+#[cfg(test)]
+mod bindings_export {
+    use super::*;
+    use crate::search_engine::commands::UpdateCommandMetadataInput;
+    use specta_typescript::{BigIntExportBehavior, Typescript};
+
+    /// Run `cargo test export_bindings -- --ignored` from src-tauri/ to regenerate
+    /// the launcher and SDK TypeScript bindings whenever Rust model types change.
+    #[test]
+    #[ignore = "Only run manually to regenerate TypeScript bindings"]
+    fn export_bindings() {
+        let types = specta::TypeCollection::default()
+            .register::<crate::storage::clipboard::CaptureResult>()
+            .register::<Application>()
+            .register::<Command>()
+            .register::<SearchableItem>()
+            .register::<SearchResult>()
+            .register::<ExternalSearchResult>()
+            .register::<ResultPriority>()
+            .register::<UpdateCommandMetadataInput>()
+            .register::<crate::search_engine::ranker::RankInput>()
+            .register::<crate::search_engine::ranker::TierResult>()
+            .register::<AliasMatch>()
+            .register::<MergedSearchResponse>()
+            .register::<crate::aliases::ItemAlias>()
+            .register::<crate::aliases::commands::AliasConflict>()
+            .register::<crate::file_index::types::FileHit>()
+            .register::<crate::file_index::types::FileMetadata>()
+            .register::<crate::file_index::types::FileSearchResponse>()
+            .register::<crate::file_index::types::IndexStatus>()
+            .register::<crate::file_index::types::FileIndexConfig>()
+            .register::<crate::file_index::types::FileType>()
+            .register::<crate::file_index::types::HitSource>()
+            .register::<crate::file_index::types::IndexStateKind>()
+            .register::<crate::file_index::types::WorkMeter>()
+            .register::<crate::commands::files::FileReadRangeOptions>()
+            .register::<crate::commands::files::ReadAlign>()
+            .register::<crate::commands::files::FileChunk>()
+            .register::<crate::commands::files::FileGlobOptions>()
+            .register::<crate::commands::files::FileGlobEntriesOptions>()
+            .register::<crate::commands::files::FileGlobEntry>()
+            .register::<crate::commands::files::GlobSort>()
+            .register::<crate::calculator::CalcResult>()
+            .register::<crate::calculator::CalcKind>()
+            .register::<crate::ai::types::ChatMessage>()
+            .register::<crate::ai::types::GeminiGrounding>()
+            .register::<crate::ai::types::ProviderConfig>()
+            .register::<crate::ai::types::CliStatus>()
+            .register::<crate::ai::types::CliAccountInfo>()
+            .register::<crate::ai::types::ModelInfo>()
+            .register::<crate::ai::types::ChatParams>()
+            .register::<crate::ai::types::ChatStreamEvent>()
+            .register::<crate::ai::types::StreamEventPayload>()
+            .register::<crate::ai::types::ChatStreamEventPayload>()
+            .register::<crate::agents::editor::AgentProviderDescriptor>()
+            .register::<crate::agents::runner::AgentRunConfig>()
+            .register::<crate::agents::runner::AgentStreamEvent>()
+            .register::<crate::system_actions::SystemAction>()
+            .register::<crate::launcher_placement::LauncherPlacement>()
+            .register::<crate::launcher_placement::LauncherMonitorChoice>()
+            .register::<crate::launcher_placement::LauncherAnchor>()
+            .register::<crate::locale::ParsedLocale>()
+            .register::<crate::locale::NumberFormat>()
+            .register::<crate::window_management::types::AppWindowInfo>()
+            .register::<crate::storage::snippets::Snippet>();
+
+        Typescript::default()
+            .bigint(BigIntExportBehavior::Number)
+            .export_to(std::path::PathBuf::from("../src/bindings.ts"), &types)
+            .expect("Failed to export TypeScript bindings to src/bindings.ts");
+
+        let calculator_types = specta::TypeCollection::default()
+            .register::<crate::calculator::CalcResult>()
+            .register::<crate::calculator::CalcKind>();
+
+        Typescript::default()
+            .bigint(BigIntExportBehavior::Number)
+            .export_to(
+                std::path::PathBuf::from("../../conbind-sdk/src/generated/calculator.ts"),
+                &calculator_types,
+            )
+            .expect("Failed to export SDK calculator bindings");
+
+        let files_types = specta::TypeCollection::default()
+            .register::<crate::commands::files::FileReadRangeOptions>()
+            .register::<crate::commands::files::ReadAlign>()
+            .register::<crate::commands::files::FileChunk>()
+            .register::<crate::commands::files::FileGlobOptions>()
+            .register::<crate::commands::files::FileGlobEntriesOptions>()
+            .register::<crate::commands::files::FileGlobEntry>()
+            .register::<crate::commands::files::GlobSort>();
+
+        Typescript::default()
+            .bigint(BigIntExportBehavior::Number)
+            .export_to(
+                std::path::PathBuf::from("../../conbind-sdk/src/generated/files.ts"),
+                &files_types,
+            )
+            .expect("Failed to export SDK files bindings");
+    }
+
+    #[test]
+    fn sdk_calculator_bindings_are_generated_from_rust() {
+        let bindings = std::fs::read_to_string("../../conbind-sdk/src/generated/calculator.ts")
+            .expect("SDK calculator bindings are missing; run the export_bindings test");
+        assert!(bindings.contains("export type CalcResult"));
+        assert!(bindings.contains("export type CalcKind"));
+    }
+
+    #[test]
+    fn sdk_files_bindings_are_generated_from_rust() {
+        let bindings = std::fs::read_to_string("../../conbind-sdk/src/generated/files.ts")
+            .expect("SDK files bindings are missing; run the export_bindings test");
+        for name in [
+            "FileReadRangeOptions",
+            "ReadAlign",
+            "FileChunk",
+            "FileGlobOptions",
+            "FileGlobEntriesOptions",
+            "FileGlobEntry",
+            "GlobSort",
+        ] {
+            assert!(bindings.contains(&format!("export type {name}")));
+        }
+    }
+}

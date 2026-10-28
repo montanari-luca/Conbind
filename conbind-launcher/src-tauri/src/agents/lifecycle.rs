@@ -1,0 +1,800 @@
+use crate::error::AppError;
+use crate::storage::agents::{
+    get_agent, insert_agent, list_agents, update_agent, AgentRow, SilentInputSource,
+    SilentOutputAction,
+};
+use rusqlite::Connection;
+
+pub const DEFAULT_AGENT_SYSTEM_PROMPT: &str = "You are Conbind Assistant, a friendly and helpful AI built into the Conbind launcher. Help the user with quick questions, explanations, drafting, summarizing, and general thinking-through. Be concise, accurate, and direct. If you don't know something, say so. Use Markdown for code and lists when it improves clarity.";
+
+/// Fixed id for the bundled Grammar Fix agent. It is an identity key, not a
+/// display name: renaming the agent never changes it. Agents are not
+/// cloud-synced but the hotkey bound to `cmd_agents_dyn_<id>` is, so a random
+/// id per install left every reset with a fresh orphan shortcut row. Only this
+/// seeded agent gets a fixed id; user-created agents keep uuids.
+pub const GRAMMAR_FIX_AGENT_ID: &str = "grammar-fix";
+
+pub const GRAMMAR_FIX_SYSTEM_PROMPT: &str = "You rewrite English text with corrected grammar, spelling, and phrasing.\nPreserve the original tone, voice, language, register, and formatting.\n\nOutput rules:\n- Output the corrected text only. Match the input's length — a short\n  input gets a short output, a long input gets a long output.\n- No preamble. No explanation. No alternatives. No quotation marks\n  around the output. No \"Here is...\" or \"Sure, ...\".\n- If the input is already correct, output it unchanged.\n\nExamples:\n\nInput: the cat sit on mat\nOutput: The cat sits on the mat.\n\nInput: i recieved you're message yesterday and ill respond asap\nOutput: I received your message yesterday and I'll respond ASAP.\n\nInput: We was going too the store wen it started raining\nOutput: We were going to the store when it started raining.\n\nInput: This is a perfectly fine sentence already.\nOutput: This is a perfectly fine sentence already.\n\nNow correct the user's next message the same way.";
+
+const INLINE_EMOJI_SYSTEM_PROMPT: &str = "You are an inline emoji resolver. The user just typed a {trigger}shortcode{trigger} pattern that did not match any known shortcode. Call the emoji_find tool with the inner word as the description. Reply with exactly one emoji character if confident, or empty string if not. No prose, no quotes.";
+
+fn now_ms() -> i64 {
+    chrono::Utc::now().timestamp_millis()
+}
+
+fn validate_provider_model(provider_id: &str, model_id: &str) -> Result<(), AppError> {
+    if provider_id.trim().is_empty() {
+        return Err(AppError::Validation(
+            "provider_id must not be empty".to_string(),
+        ));
+    }
+    if model_id.trim().is_empty() {
+        return Err(AppError::Validation(
+            "model_id must not be empty".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn default_agent(provider_id: &str, model_id: &str) -> AgentRow {
+    let now = now_ms();
+    AgentRow {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: "Conbind Assistant".to_string(),
+        description: Some("Your built-in AI assistant. Editable from the Agents view.".to_string()),
+        system_prompt: DEFAULT_AGENT_SYSTEM_PROMPT.to_string(),
+        provider_id: provider_id.to_string(),
+        model_id: model_id.to_string(),
+        tool_selection: vec![],
+        silent: false,
+        input_source: SilentInputSource::Argument,
+        output_action: SilentOutputAction::ReplaceSelection,
+        cache_responses: false,
+        shortcode_trigger: ":".to_string(),
+        created_at: Some(now),
+        updated_at: Some(now),
+    }
+}
+
+/// Resolve the user's chosen default agent by id.
+///
+/// Returns `None` when no id is stored or the stored id no longer points at a
+/// live agent. It deliberately does NOT fall back to "the first agent in the
+/// DB" — that fallback made a provider the user never picked appear as the ★
+/// default (e.g. a leftover Anthropic agent from onboarding). A default is
+/// shown only when it was explicitly chosen.
+pub fn resolve_default_agent(
+    conn: &Connection,
+    default_agent_id: Option<&str>,
+) -> Result<Option<AgentRow>, AppError> {
+    match default_agent_id.filter(|id| !id.trim().is_empty()) {
+        Some(id) => Ok(get_agent(conn, id)?),
+        None => Ok(None),
+    }
+}
+
+/// The earliest-inserted agent, or `None` when there are no agents.
+///
+/// Used only where "any existing agent" is a sensible template (e.g. seeding
+/// the emoji fallback agent's provider/model at startup) — never for resolving
+/// the user-facing default.
+pub fn first_agent(conn: &Connection) -> Result<Option<AgentRow>, AppError> {
+    Ok(list_agents(conn)?.into_iter().next())
+}
+
+pub fn upsert_default_agent(
+    conn: &Connection,
+    default_agent_id: Option<&str>,
+    provider_id: &str,
+    model_id: &str,
+) -> Result<AgentRow, AppError> {
+    validate_provider_model(provider_id, model_id)?;
+
+    let by_id = default_agent_id
+        .filter(|id| !id.trim().is_empty())
+        .map(|id| get_agent(conn, id))
+        .transpose()?
+        .flatten();
+
+    // Falls back to the well-known name when `default_agent_id` is absent or
+    // dangling (e.g. settings hadn't loaded yet, or the id was lost) — the
+    // same idempotency pattern `seed_grammar_fix_agent` and
+    // `seed_emoji_fallback_agent` use, so a missing id reuses the existing
+    // built-in assistant instead of minting a duplicate.
+    let existing = match by_id {
+        Some(agent) => Some(agent),
+        None => list_agents(conn)?
+            .into_iter()
+            .find(|agent| agent.name == "Conbind Assistant"),
+    };
+
+    if let Some(mut existing) = existing {
+        existing.provider_id = provider_id.to_string();
+        existing.model_id = model_id.to_string();
+        existing.updated_at = Some(now_ms());
+        update_agent(conn, &existing)?;
+        return Ok(existing);
+    }
+
+    let agent = default_agent(provider_id, model_id);
+    insert_agent(conn, &agent)?;
+    Ok(agent)
+}
+
+pub fn seed_grammar_fix_agent(
+    conn: &Connection,
+    provider_id: &str,
+    model_id: &str,
+) -> Result<AgentRow, AppError> {
+    validate_provider_model(provider_id, model_id)?;
+    // Id first: the user may have renamed it. Name second: installs that
+    // predate the fixed id hold a uuid-keyed "Grammar Fix".
+    if let Some(existing) = list_agents(conn)?
+        .into_iter()
+        .find(|agent| agent.id == GRAMMAR_FIX_AGENT_ID || agent.name == "Grammar Fix")
+    {
+        return Ok(existing);
+    }
+    let now = now_ms();
+    let agent = AgentRow {
+        id: GRAMMAR_FIX_AGENT_ID.to_string(),
+        name: "Grammar Fix".to_string(),
+        description: Some(
+            "Silent agent: replace selected text with the grammar-corrected version.".to_string(),
+        ),
+        system_prompt: GRAMMAR_FIX_SYSTEM_PROMPT.to_string(),
+        provider_id: provider_id.to_string(),
+        model_id: model_id.to_string(),
+        tool_selection: vec![],
+        silent: true,
+        input_source: SilentInputSource::Selection,
+        output_action: SilentOutputAction::ReplaceSelection,
+        cache_responses: false,
+        shortcode_trigger: ":".to_string(),
+        created_at: Some(now),
+        updated_at: Some(now),
+    };
+    insert_agent(conn, &agent)?;
+    Ok(agent)
+}
+
+/// Seed the inline emoji fallback agent if it does not already exist.
+///
+/// The agent uses `input_source: ShortcodeMiss` — it is woken by the Rust
+/// shortcode-miss listener rather than direct user dispatch. It is stored in
+/// the DB like any other agent so the user can edit its model, system prompt,
+/// and tools. Returns the existing agent unchanged if one with this name
+/// already exists.
+pub fn seed_emoji_fallback_agent(
+    conn: &Connection,
+    provider_id: &str,
+    model_id: &str,
+) -> Result<AgentRow, AppError> {
+    validate_provider_model(provider_id, model_id)?;
+    if let Some(existing) = list_agents(conn)?
+        .into_iter()
+        .find(|agent| agent.name == "Inline Emoji Fallback")
+    {
+        return Ok(existing);
+    }
+    let now = now_ms();
+    let agent = AgentRow {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: "Inline Emoji Fallback".to_string(),
+        description: Some(
+            "Resolves unknown :shortcode: patterns to a single emoji. \
+             Triggered automatically on shortcode-miss events."
+                .to_string(),
+        ),
+        system_prompt: INLINE_EMOJI_SYSTEM_PROMPT.to_string(),
+        provider_id: provider_id.to_string(),
+        model_id: model_id.to_string(),
+        tool_selection: vec!["org.conbind.emoji:emoji_find".to_string()],
+        silent: true,
+        input_source: SilentInputSource::ShortcodeMiss,
+        output_action: SilentOutputAction::Paste,
+        cache_responses: true,
+        shortcode_trigger: ":".to_string(),
+        created_at: Some(now),
+        updated_at: Some(now),
+    };
+    insert_agent(conn, &agent)?;
+    Ok(agent)
+}
+
+/// Looks up the first stored agent whose `input_source` is `ShortcodeMiss`.
+/// Returns `None` if no such agent has been seeded yet.
+pub fn find_shortcode_miss_agent(conn: &Connection) -> Result<Option<AgentRow>, AppError> {
+    Ok(list_agents(conn)?
+        .into_iter()
+        .find(|agent| agent.input_source == SilentInputSource::ShortcodeMiss))
+}
+
+/// Reduces a `ShortcodeMiss` agent's raw reply to a single emoji, or an empty
+/// string if the model ignored its instructions and answered conversationally
+/// instead of calling `emoji_find`. Only a reply that trims to exactly one
+/// non-ASCII grapheme is trusted — anything else (prose, punctuation, plain
+/// ASCII) is treated the same as "no match" rather than pasted verbatim.
+pub fn sanitize_emoji_fallback_output(text: &str) -> String {
+    use unicode_segmentation::UnicodeSegmentation;
+
+    let trimmed = text.trim();
+    let is_single_non_ascii_grapheme = UnicodeSegmentation::graphemes(trimmed, true).count() == 1
+        && trimmed.chars().next().is_some_and(|c| !c.is_ascii());
+
+    if is_single_non_ascii_grapheme {
+        trimmed.to_string()
+    } else {
+        String::new()
+    }
+}
+
+fn provider_is_usable(
+    provider_id: &str,
+    providers: &[crate::agents::editor::AgentProviderDescriptor],
+    configs: &std::collections::HashMap<String, crate::ai::types::ProviderConfig>,
+) -> bool {
+    let Some(config) = configs.get(provider_id) else {
+        return false;
+    };
+    let ptype = config.provider_type.as_deref().unwrap_or(provider_id);
+    providers
+        .iter()
+        .find(|provider| provider.id == ptype)
+        .is_some_and(|provider| crate::agents::editor::is_provider_usable(provider, Some(config)))
+}
+
+/// Resolves the agent that should actually run for `agent_id`. If the
+/// agent's own provider is unusable (disabled, missing, or missing required
+/// credentials) and the current default agent's provider IS usable, persists
+/// the correction on the row and returns the healed agent — so a stale
+/// reference (e.g. a silent agent seeded against a provider the user later
+/// removed) self-heals instead of failing every run. Returns `(agent, true)`
+/// when a correction was persisted, `(agent, false)` otherwise.
+///
+/// Leaves the agent untouched when there's nothing sane to fall back to: no
+/// default agent, the broken agent IS the default agent, or the default
+/// agent's own provider is also unusable. Callers keep their existing
+/// provider-validation error handling for that case.
+pub fn resolve_runnable_agent(
+    conn: &Connection,
+    agent_id: &str,
+    default_agent_id: Option<&str>,
+    providers: &[crate::agents::editor::AgentProviderDescriptor],
+    configs: &std::collections::HashMap<String, crate::ai::types::ProviderConfig>,
+) -> Result<(AgentRow, bool), AppError> {
+    let agent = get_agent(conn, agent_id)?
+        .ok_or_else(|| AppError::NotFound(format!("agent '{agent_id}' not found")))?;
+
+    if provider_is_usable(&agent.provider_id, providers, configs) {
+        return Ok((agent, false));
+    }
+
+    let Some(fallback) = resolve_default_agent(conn, default_agent_id)? else {
+        return Ok((agent, false));
+    };
+    if fallback.id == agent.id || !provider_is_usable(&fallback.provider_id, providers, configs) {
+        return Ok((agent, false));
+    }
+
+    let mut healed = agent;
+    healed.provider_id = fallback.provider_id;
+    healed.model_id = fallback.model_id;
+    healed.updated_at = Some(now_ms());
+    update_agent(conn, &healed)?;
+    Ok((healed, true))
+}
+
+pub fn derive_thread_title(user_text: &str) -> String {
+    let collapsed = user_text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if collapsed.is_empty() {
+        return "New thread".to_string();
+    }
+    let chars = collapsed.chars().collect::<Vec<_>>();
+    const TITLE_LIMIT: usize = 40;
+    // Prefer the hard limit when the only word boundary is in the title's first half.
+    const MIN_WORD_BOUNDARY_INDEX: usize = TITLE_LIMIT / 2;
+    if chars.len() <= TITLE_LIMIT {
+        return collapsed;
+    }
+    let window_end = (TITLE_LIMIT + 1).min(chars.len());
+    let cut = chars[..window_end]
+        .iter()
+        .rposition(|character| character.is_whitespace())
+        .filter(|index| *index > MIN_WORD_BOUNDARY_INDEX)
+        .unwrap_or(TITLE_LIMIT);
+    format!("{}…", chars[..cut].iter().collect::<String>().trim_end())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::agents::{get_agent, insert_agent, list_agents, AgentRow};
+    use rusqlite::Connection;
+    use std::collections::HashMap;
+
+    fn conn() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::storage::agents::init_table(&conn).unwrap();
+        conn
+    }
+
+    fn existing_agent(id: &str, name: &str) -> AgentRow {
+        AgentRow {
+            id: id.to_string(),
+            name: name.to_string(),
+            description: Some("User-edited description".to_string()),
+            system_prompt: "User-edited prompt".to_string(),
+            provider_id: "openai".to_string(),
+            model_id: "gpt-old".to_string(),
+            tool_selection: vec!["builtin:search".to_string()],
+            silent: false,
+            input_source: crate::storage::agents::SilentInputSource::Argument,
+            output_action: crate::storage::agents::SilentOutputAction::ReplaceSelection,
+            cache_responses: false,
+            shortcode_trigger: ":".to_string(),
+            created_at: Some(1),
+            updated_at: Some(1),
+        }
+    }
+
+    #[test]
+    fn upsert_default_creates_the_canonical_profile() {
+        let conn = conn();
+
+        let agent = upsert_default_agent(&conn, None, "anthropic", "claude-sonnet").unwrap();
+
+        assert_eq!(agent.name, "Conbind Assistant");
+        assert_eq!(agent.provider_id, "anthropic");
+        assert_eq!(agent.model_id, "claude-sonnet");
+        assert_eq!(agent.system_prompt, DEFAULT_AGENT_SYSTEM_PROMPT);
+        assert_eq!(list_agents(&conn).unwrap(), vec![agent]);
+    }
+
+    #[test]
+    fn upsert_default_preserves_user_edits_and_changes_provider_only() {
+        let conn = conn();
+        let existing = existing_agent("default-1", "My Assistant");
+        insert_agent(&conn, &existing).unwrap();
+
+        let updated =
+            upsert_default_agent(&conn, Some("default-1"), "anthropic", "claude-sonnet").unwrap();
+
+        assert_eq!(updated.name, "My Assistant");
+        assert_eq!(updated.system_prompt, "User-edited prompt");
+        assert_eq!(updated.tool_selection, vec!["builtin:search"]);
+        assert_eq!(updated.provider_id, "anthropic");
+        assert_eq!(updated.model_id, "claude-sonnet");
+    }
+
+    #[test]
+    fn grammar_fix_seed_uses_a_stable_id_so_synced_shortcuts_survive_a_reset() {
+        let first = seed_grammar_fix_agent(&conn(), "openai", "gpt-4o-mini").unwrap();
+        let after_reset = seed_grammar_fix_agent(&conn(), "openai", "gpt-4o-mini").unwrap();
+
+        assert_eq!(first.id, GRAMMAR_FIX_AGENT_ID);
+        assert_eq!(after_reset.id, first.id);
+    }
+
+    #[test]
+    fn grammar_fix_seed_finds_the_agent_by_id_after_the_user_renames_it() {
+        let conn = conn();
+        let mut seeded = seed_grammar_fix_agent(&conn, "openai", "gpt-4o-mini").unwrap();
+        seeded.name = "My Proofreader".to_string();
+        crate::storage::agents::update_agent(&conn, &seeded).unwrap();
+
+        let again = seed_grammar_fix_agent(&conn, "openai", "gpt-4o-mini").unwrap();
+
+        assert_eq!(again.id, GRAMMAR_FIX_AGENT_ID);
+        assert_eq!(again.name, "My Proofreader");
+        assert_eq!(list_agents(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn grammar_fix_seed_is_idempotent_in_sqlite() {
+        let conn = conn();
+
+        let first = seed_grammar_fix_agent(&conn, "openai", "gpt-4o-mini").unwrap();
+        let second = seed_grammar_fix_agent(&conn, "anthropic", "claude-haiku").unwrap();
+
+        assert_eq!(first.id, second.id);
+        assert_eq!(second.provider_id, "openai");
+        assert!(second.silent);
+        assert_eq!(
+            second.input_source,
+            crate::storage::agents::SilentInputSource::Selection
+        );
+        assert_eq!(list_agents(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn resolve_default_returns_the_registered_agent_or_none() {
+        let conn = conn();
+        let first = existing_agent("a", "First");
+        let second = existing_agent("b", "Second");
+        insert_agent(&conn, &first).unwrap();
+        insert_agent(&conn, &second).unwrap();
+
+        // A valid id resolves to that exact agent.
+        assert_eq!(
+            resolve_default_agent(&conn, Some("b")).unwrap(),
+            Some(second)
+        );
+        // A dangling id resolves to None — never a silent fall back to another
+        // agent, so the UI only shows a ★ default the user actually chose.
+        assert_eq!(resolve_default_agent(&conn, Some("missing")).unwrap(), None);
+        // No id at all means no default has been chosen yet.
+        assert_eq!(resolve_default_agent(&conn, None).unwrap(), None);
+    }
+
+    #[test]
+    fn first_agent_returns_earliest_by_db_order_or_none_when_empty() {
+        let conn = conn();
+        assert_eq!(first_agent(&conn).unwrap(), None);
+
+        let first = existing_agent("a", "First");
+        let second = existing_agent("b", "Second");
+        insert_agent(&conn, &first).unwrap();
+        insert_agent(&conn, &second).unwrap();
+
+        assert_eq!(first_agent(&conn).unwrap(), Some(first));
+    }
+
+    #[test]
+    fn emoji_fallback_seed_is_idempotent_in_sqlite() {
+        let conn = conn();
+
+        let first = seed_emoji_fallback_agent(&conn, "openai", "gpt-4o-mini").unwrap();
+        let second = seed_emoji_fallback_agent(&conn, "anthropic", "claude-haiku").unwrap();
+
+        assert_eq!(first.id, second.id);
+        // Idempotent: provider from the first call is retained.
+        assert_eq!(second.provider_id, "openai");
+        assert!(second.silent);
+        assert_eq!(
+            second.input_source,
+            crate::storage::agents::SilentInputSource::ShortcodeMiss
+        );
+        assert_eq!(
+            second.output_action,
+            crate::storage::agents::SilentOutputAction::Paste
+        );
+        assert_eq!(second.tool_selection, vec!["org.conbind.emoji:emoji_find"]);
+        assert_eq!(list_agents(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn find_shortcode_miss_agent_returns_seeded_agent() {
+        let conn = conn();
+
+        assert!(find_shortcode_miss_agent(&conn).unwrap().is_none());
+
+        let seeded = seed_emoji_fallback_agent(&conn, "anthropic", "claude-haiku").unwrap();
+        let found = find_shortcode_miss_agent(&conn).unwrap();
+
+        assert_eq!(
+            found.as_ref().map(|a| a.id.as_str()),
+            Some(seeded.id.as_str())
+        );
+    }
+
+    #[test]
+    fn sanitize_emoji_fallback_output_passes_through_a_single_emoji() {
+        assert_eq!(sanitize_emoji_fallback_output("🎉"), "🎉");
+    }
+
+    #[test]
+    fn sanitize_emoji_fallback_output_trims_surrounding_whitespace() {
+        assert_eq!(sanitize_emoji_fallback_output("  🎉\n"), "🎉");
+    }
+
+    #[test]
+    fn sanitize_emoji_fallback_output_rejects_prose() {
+        assert_eq!(
+            sanitize_emoji_fallback_output(
+                "# Party Suggestions\n\nHere are some ideas for \"party\":"
+            ),
+            ""
+        );
+    }
+
+    #[test]
+    fn sanitize_emoji_fallback_output_rejects_empty_or_whitespace_only() {
+        assert_eq!(sanitize_emoji_fallback_output(""), "");
+        assert_eq!(sanitize_emoji_fallback_output("   \n  "), "");
+    }
+
+    #[test]
+    fn sanitize_emoji_fallback_output_rejects_a_single_ascii_character() {
+        assert_eq!(sanitize_emoji_fallback_output("x"), "");
+        assert_eq!(sanitize_emoji_fallback_output(":"), "");
+    }
+
+    #[test]
+    fn derives_a_compact_title_from_the_first_message() {
+        assert_eq!(derive_thread_title("  hello\n\n world  "), "hello world");
+        assert_eq!(derive_thread_title("   "), "New thread");
+        let title = derive_thread_title(
+            "This is a long message that should be truncated at a word boundary near forty",
+        );
+        assert!(title.ends_with('…'));
+        assert!(title.chars().count() <= 41);
+    }
+
+    #[test]
+    fn upsert_default_does_not_duplicate_when_id_exists() {
+        let conn = conn();
+        insert_agent(&conn, &existing_agent("default-1", "Assistant")).unwrap();
+
+        upsert_default_agent(&conn, Some("default-1"), "openai", "gpt-new").unwrap();
+
+        assert_eq!(list_agents(&conn).unwrap().len(), 1);
+        assert_eq!(
+            get_agent(&conn, "default-1").unwrap().unwrap().model_id,
+            "gpt-new"
+        );
+    }
+
+    #[test]
+    fn upsert_default_does_not_duplicate_when_id_is_repeatedly_missing() {
+        let conn = conn();
+
+        let first = upsert_default_agent(&conn, None, "anthropic", "claude-sonnet").unwrap();
+        let second = upsert_default_agent(&conn, None, "openai", "gpt-4o").unwrap();
+
+        assert_eq!(first.id, second.id);
+        assert_eq!(second.provider_id, "openai");
+        assert_eq!(second.model_id, "gpt-4o");
+        assert_eq!(list_agents(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn upsert_default_recovers_via_name_when_stored_id_is_dangling() {
+        let conn = conn();
+        let first = upsert_default_agent(&conn, None, "anthropic", "claude-sonnet").unwrap();
+
+        let second =
+            upsert_default_agent(&conn, Some("stale-id-not-in-db"), "openai", "gpt-4o").unwrap();
+
+        assert_eq!(first.id, second.id);
+        assert_eq!(second.provider_id, "openai");
+        assert_eq!(list_agents(&conn).unwrap().len(), 1);
+    }
+
+    fn provider(
+        id: &str,
+        requires_api_key: bool,
+        requires_base_url: bool,
+    ) -> crate::agents::editor::AgentProviderDescriptor {
+        crate::agents::editor::AgentProviderDescriptor {
+            id: id.into(),
+            name: id.into(),
+            requires_api_key,
+            requires_base_url,
+        }
+    }
+
+    fn provider_config(
+        enabled: bool,
+        api_key: Option<&str>,
+        base_url: Option<&str>,
+    ) -> crate::ai::types::ProviderConfig {
+        crate::ai::types::ProviderConfig {
+            enabled,
+            name: None,
+            provider_type: None,
+            api_key: api_key.map(str::to_owned),
+            base_url: base_url.map(str::to_owned),
+            ..Default::default()
+        }
+    }
+
+    fn emoji_fallback_agent() -> AgentRow {
+        AgentRow {
+            id: "emoji-agent".to_string(),
+            name: "Inline Emoji Fallback".to_string(),
+            description: None,
+            system_prompt: "resolve emoji".to_string(),
+            provider_id: "ollama".to_string(),
+            model_id: "qwen2.5:7b".to_string(),
+            tool_selection: vec!["org.conbind.emoji:emoji_find".to_string()],
+            silent: true,
+            input_source: crate::storage::agents::SilentInputSource::ShortcodeMiss,
+            output_action: crate::storage::agents::SilentOutputAction::Paste,
+            cache_responses: true,
+            shortcode_trigger: ":".to_string(),
+            created_at: Some(1),
+            updated_at: Some(1),
+        }
+    }
+
+    #[test]
+    fn resolve_runnable_agent_returns_agent_unchanged_when_its_own_provider_is_usable() {
+        let conn = conn();
+        let mut agent = emoji_fallback_agent();
+        agent.provider_id = "anthropic".to_string();
+        agent.model_id = "claude-sonnet-5".to_string();
+        insert_agent(&conn, &agent).unwrap();
+        let providers = vec![provider("anthropic", true, false)];
+        let configs = HashMap::from([(
+            "anthropic".to_string(),
+            provider_config(true, Some("sk-ant"), None),
+        )]);
+
+        let (resolved, healed) =
+            resolve_runnable_agent(&conn, &agent.id, None, &providers, &configs).unwrap();
+
+        assert_eq!(resolved, agent);
+        assert!(!healed);
+    }
+
+    #[test]
+    fn resolve_runnable_agent_falls_back_and_persists_when_own_provider_is_disabled() {
+        let conn = conn();
+        let agent = emoji_fallback_agent();
+        insert_agent(&conn, &agent).unwrap();
+        let default_agent =
+            upsert_default_agent(&conn, None, "anthropic", "claude-sonnet-5").unwrap();
+        let providers = vec![
+            provider("ollama", false, true),
+            provider("anthropic", true, false),
+        ];
+        let configs = HashMap::from([
+            ("ollama".to_string(), provider_config(false, None, None)),
+            (
+                "anthropic".to_string(),
+                provider_config(true, Some("sk-ant"), None),
+            ),
+        ]);
+
+        let (resolved, healed) = resolve_runnable_agent(
+            &conn,
+            &agent.id,
+            Some(&default_agent.id),
+            &providers,
+            &configs,
+        )
+        .unwrap();
+
+        assert!(healed);
+        assert_eq!(resolved.provider_id, "anthropic");
+        assert_eq!(resolved.model_id, "claude-sonnet-5");
+        assert_eq!(resolved.id, agent.id);
+        assert_eq!(resolved.name, "Inline Emoji Fallback");
+        let persisted = get_agent(&conn, &agent.id).unwrap().unwrap();
+        assert_eq!(persisted.provider_id, "anthropic");
+        assert_eq!(persisted.model_id, "claude-sonnet-5");
+    }
+
+    #[test]
+    fn resolve_runnable_agent_falls_back_when_own_provider_has_no_config_entry() {
+        let conn = conn();
+        let mut agent = emoji_fallback_agent();
+        agent.provider_id = "openrouter".to_string();
+        agent.model_id = "openrouter/free".to_string();
+        insert_agent(&conn, &agent).unwrap();
+        let default_agent =
+            upsert_default_agent(&conn, None, "anthropic", "claude-sonnet-5").unwrap();
+        let providers = vec![provider("anthropic", true, false)];
+        let configs = HashMap::from([(
+            "anthropic".to_string(),
+            provider_config(true, Some("sk-ant"), None),
+        )]);
+
+        let (resolved, healed) = resolve_runnable_agent(
+            &conn,
+            &agent.id,
+            Some(&default_agent.id),
+            &providers,
+            &configs,
+        )
+        .unwrap();
+
+        assert!(healed);
+        assert_eq!(resolved.provider_id, "anthropic");
+    }
+
+    #[test]
+    fn resolve_runnable_agent_falls_back_when_missing_required_api_key() {
+        let conn = conn();
+        let mut agent = emoji_fallback_agent();
+        agent.provider_id = "anthropic".to_string();
+        agent.model_id = "claude-old".to_string();
+        insert_agent(&conn, &agent).unwrap();
+        let default_agent =
+            upsert_default_agent(&conn, None, "openrouter", "openrouter/free").unwrap();
+        let providers = vec![
+            provider("anthropic", true, false),
+            provider("openrouter", true, false),
+        ];
+        let configs = HashMap::from([
+            (
+                "anthropic".to_string(),
+                provider_config(true, Some("   "), None),
+            ),
+            (
+                "openrouter".to_string(),
+                provider_config(true, Some("sk-or"), None),
+            ),
+        ]);
+
+        let (resolved, healed) = resolve_runnable_agent(
+            &conn,
+            &agent.id,
+            Some(&default_agent.id),
+            &providers,
+            &configs,
+        )
+        .unwrap();
+
+        assert!(healed);
+        assert_eq!(resolved.provider_id, "openrouter");
+    }
+
+    #[test]
+    fn resolve_runnable_agent_does_not_fall_back_onto_itself() {
+        let conn = conn();
+        let mut agent = emoji_fallback_agent();
+        agent.id = "default-agent".to_string();
+        insert_agent(&conn, &agent).unwrap();
+        let providers = vec![provider("ollama", false, true)];
+        let configs = HashMap::from([("ollama".to_string(), provider_config(false, None, None))]);
+
+        let (resolved, healed) =
+            resolve_runnable_agent(&conn, &agent.id, Some(&agent.id), &providers, &configs)
+                .unwrap();
+
+        assert!(!healed);
+        assert_eq!(resolved, agent);
+    }
+
+    #[test]
+    fn resolve_runnable_agent_leaves_unchanged_when_no_default_agent() {
+        let conn = conn();
+        let agent = emoji_fallback_agent();
+        insert_agent(&conn, &agent).unwrap();
+        let providers = vec![provider("ollama", false, true)];
+        let configs = HashMap::from([("ollama".to_string(), provider_config(false, None, None))]);
+
+        let (resolved, healed) =
+            resolve_runnable_agent(&conn, &agent.id, None, &providers, &configs).unwrap();
+
+        assert!(!healed);
+        assert_eq!(resolved, agent);
+    }
+
+    #[test]
+    fn resolve_runnable_agent_leaves_unchanged_when_default_is_also_unusable() {
+        let conn = conn();
+        let agent = emoji_fallback_agent();
+        insert_agent(&conn, &agent).unwrap();
+        let default_agent = upsert_default_agent(&conn, None, "openai", "gpt-4o").unwrap();
+        let providers = vec![
+            provider("ollama", false, true),
+            provider("openai", true, false),
+        ];
+        let configs = HashMap::from([
+            ("ollama".to_string(), provider_config(false, None, None)),
+            ("openai".to_string(), provider_config(false, None, None)),
+        ]);
+
+        let (resolved, healed) = resolve_runnable_agent(
+            &conn,
+            &agent.id,
+            Some(&default_agent.id),
+            &providers,
+            &configs,
+        )
+        .unwrap();
+
+        assert!(!healed);
+        assert_eq!(resolved, agent);
+    }
+
+    #[test]
+    fn resolve_runnable_agent_errors_on_missing_agent_id() {
+        let conn = conn();
+        let result = resolve_runnable_agent(&conn, "nonexistent", None, &[], &HashMap::new());
+        assert!(matches!(result, Err(crate::error::AppError::NotFound(_))));
+    }
+}

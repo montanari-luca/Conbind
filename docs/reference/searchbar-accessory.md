@@ -95,8 +95,8 @@ Add a `searchBarAccessory` object to a view-mode command in
 ## SDK API
 
 The view bag exposes a `searchBarAccessory` singleton with three methods.
-Import it from `asyar-sdk/view` — the worker bag does not include it,
-and a misimport from `asyar-sdk/worker` fails at module load.
+Import it from `conbind-sdk/view` — the worker bag does not include it,
+and a misimport from `conbind-sdk/worker` fails at module load.
 
 ### `onChange(handler): () => void`
 
@@ -105,7 +105,7 @@ Fires once on view mount with the seed value (persisted, then manifest
 `set({ value })`.
 
 ```typescript
-import { searchBarAccessory } from 'asyar-sdk/view';
+import { searchBarAccessory } from 'conbind-sdk/view';
 
 const off = searchBarAccessory.onChange((value) => {
   // re-filter or re-fetch your view's content
@@ -169,14 +169,14 @@ uninstalled, alongside its storage, preferences, and cache.
 ## Tier 1 vs Tier 2
 
 For Tier 2 extensions (the typical case): `import { searchBarAccessory }
-from "asyar-sdk/view"` and use `onChange` / `set` / `clear` as
+from "conbind-sdk/view"` and use `onChange` / `set` / `clear` as
 documented above.
 
 For Tier 1 built-in features: same conceptual API, but consume the
 launcher's `searchBarAccessoryService` singleton directly via
 `subscribe(extensionId, commandId, handler)`. The clipboard-history
 built-in is the reference consumer — see
-[`built-in-features/clipboard-history/`](../../asyar-launcher/src/built-in-features/clipboard-history/)
+[`built-in-features/clipboard-history/`](../../conbind-launcher/src/built-in-features/clipboard-history/)
 for an example.
 
 ## Manifest mode rule
@@ -211,7 +211,7 @@ function calls with no iframe involved.
 
 ## Validation at build time
 
-The SDK CLI's `asyar build` validates the manifest shape — empty
+The SDK CLI's `conbind build` validates the manifest shape — empty
 options, default-not-in-options, and accessory on a non-view command all
 fail before the extension can ship. Run validation explicitly with
-`asyar validate`. See [CLI reference](./cli.md).
+`conbind validate`. See [CLI reference](./cli.md).

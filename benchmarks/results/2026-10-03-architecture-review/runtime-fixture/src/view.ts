@@ -1,4 +1,4 @@
-import { ExtensionContext } from '../../../../../asyar-sdk/src/view';
+import { ExtensionContext } from '../../../../../conbind-sdk/src/view';
 import manifest from '../manifest.json';
 const context = new ExtensionContext();
 context.setExtensionId(manifest.id);

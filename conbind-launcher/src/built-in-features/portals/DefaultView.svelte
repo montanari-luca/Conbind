@@ -1,0 +1,390 @@
+<script lang="ts">
+  import { tick, untrack } from 'svelte';
+  import { portalStore, type Portal } from './portalStore.svelte';
+  import { portalsUiState } from './index.svelte';
+  import { syncPortalToIndex, removePortalFromIndex, deletePortal } from './portalLifecycle';
+  import { parseUrlPlaceholders } from '../../lib/placeholders';
+  import PortalForm from './PortalForm.svelte';
+  import {
+    SplitListDetail,
+    LauncherListRow,
+    IconBox,
+    Badge,
+    MetadataList,
+    EmptyState,
+  } from '../../components';
+  import { feedbackService } from '../../services/feedback/feedbackService.svelte';
+  import { actionService } from '../../services/action/actionService.svelte';
+  import { ActionContext } from 'conbind-sdk/contracts';
+  import { t } from '../../services/i18n';
+
+  type Mode = 'view' | 'create' | 'edit';
+  let mode = $state<Mode>('view');
+  let editingPortal = $state<Portal | null>(null);
+
+  $effect(() => {
+    if (portalsUiState.openMode === 'new') {
+      // A second "New Portal" (⌘N) while the form is open must not reset the
+      // draft the user is typing.
+      if (untrack(() => mode) === 'view') {
+        mode = 'create';
+        editingPortal = null;
+      }
+      portalsUiState.openMode = 'list';
+    }
+  });
+
+  let portals = $derived(portalStore.portals);
+  let selectedIndex = $derived(portalsUiState.selectedIndex);
+  let selectedPortal = $derived(
+    selectedIndex >= 0 && selectedIndex < portals.length ? portals[selectedIndex] : null,
+  );
+
+  $effect(() => {
+    if (portals.length === 0) {
+      portalsUiState.selectedIndex = -1;
+    } else if (selectedIndex < 0 || selectedIndex >= portals.length) {
+      portalsUiState.selectedIndex = 0;
+    }
+  });
+
+  $effect(() => {
+    const portal = selectedPortal;
+    if (!portal || mode !== 'view') {
+      actionService.unregisterAction('portals:edit');
+      actionService.unregisterAction('portals:duplicate');
+      actionService.unregisterAction('portals:delete');
+      return;
+    }
+    actionService.registerAction({
+      id: 'portals:edit',
+      title: t('features.portals.action_edit'),
+      icon: 'icon:pencil',
+      extensionId: 'portals',
+      category: t('categories.portals'),
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        startEdit(portal);
+      },
+    });
+    actionService.registerAction({
+      id: 'portals:duplicate',
+      title: t('features.portals.action_duplicate'),
+      icon: 'icon:copy',
+      extensionId: 'portals',
+      category: t('categories.portals'),
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        await handleDuplicate(portal);
+      },
+    });
+    actionService.registerAction({
+      id: 'portals:delete',
+      title: t('features.portals.action_delete'),
+      icon: 'icon:trash',
+      extensionId: 'portals',
+      category: t('categories.portals'),
+      destructive: true,
+      context: ActionContext.EXTENSION_VIEW,
+      execute: async () => {
+        await handleDelete(portal);
+      },
+    });
+    return () => {
+      actionService.unregisterAction('portals:edit');
+      actionService.unregisterAction('portals:duplicate');
+      actionService.unregisterAction('portals:delete');
+    };
+  });
+
+  const dateFormat = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  function startCreate() {
+    editingPortal = null;
+    mode = 'create';
+  }
+
+  function startEdit(portal: Portal) {
+    editingPortal = portal;
+    mode = 'edit';
+  }
+
+  function cancelEdit() {
+    mode = 'view';
+    editingPortal = null;
+  }
+
+  async function handleSave(portal: Portal) {
+    try {
+      if (mode === 'edit' && editingPortal) {
+        const editingId = editingPortal.id;
+        portalStore.update(editingId, portal);
+        await removePortalFromIndex(editingId);
+        await syncPortalToIndex({ ...portal, id: editingId });
+      } else {
+        portalStore.add(portal);
+        await syncPortalToIndex(portal);
+        const idx = portalStore.portals.findIndex((p) => p.id === portal.id);
+        if (idx >= 0) portalsUiState.selectedIndex = idx;
+      }
+    } catch (err) {
+      feedbackService.report({
+        source: 'frontend',
+        kind: 'manual',
+        severity: 'error',
+        retryable: false,
+        context: { message: t('features.portals.ui.save_failed', { error: String(err) }) },
+      });
+    } finally {
+      cancelEdit();
+    }
+  }
+
+  async function handleDelete(portal: Portal) {
+    const confirmed = await feedbackService.confirmAlert({
+      title: t('features.portals.delete_confirm_title'),
+      message: t('features.portals.ui.delete_confirm', { name: portal.name }),
+      confirmText: t('common.delete'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await deletePortal(portal.id);
+    } catch (err) {
+      feedbackService.report({
+        source: 'frontend',
+        kind: 'manual',
+        severity: 'warning',
+        retryable: false,
+        context: { message: t('features.portals.ui.remove_failed', { error: String(err) }) },
+      });
+    }
+  }
+
+  async function handleDuplicate(portal: Portal) {
+    const dup: Portal = {
+      ...portal,
+      id: crypto.randomUUID(),
+      name: portal.name + ' Copy',
+      createdAt: Date.now(),
+    };
+    portalStore.add(dup);
+    try {
+      await syncPortalToIndex(dup);
+    } catch (err) {
+      feedbackService.report({
+        source: 'frontend',
+        kind: 'manual',
+        severity: 'warning',
+        retryable: false,
+        context: { message: t('features.portals.ui.index_failed', { error: String(err) }) },
+      });
+    }
+    await tick();
+    const idx = portalStore.portals.findIndex((p) => p.id === dup.id);
+    if (idx >= 0) portalsUiState.selectedIndex = idx;
+  }
+</script>
+
+<div class="view-container">
+  <SplitListDetail
+    items={portals}
+    {selectedIndex}
+    leftWidth={260}
+    minLeftWidth={200}
+    maxLeftWidth={500}
+    ariaLabel="Portals"
+    emptyMessage={t('features.portals.no_portals')}
+  >
+    {#snippet listItem(portal, index)}
+      <LauncherListRow
+        data-index={index}
+        selected={selectedIndex === index}
+        title={portal.name}
+        subtitle={portal.url}
+        onclick={() => (portalsUiState.selectedIndex = index)}
+      >
+        {#snippet leading()}
+          <IconBox size="md">
+            {#snippet content()}
+              {portal.icon}
+            {/snippet}
+          </IconBox>
+        {/snippet}
+      </LauncherListRow>
+    {/snippet}
+
+    {#snippet detail()}
+      {#if mode === 'create' || mode === 'edit'}
+        <div class="form-panel">
+          <div class="form-header">
+            <h2 class="form-title">{mode === 'edit' ? 'Edit Portal' : 'New Portal'}</h2>
+          </div>
+          <div class="form-body custom-scrollbar">
+            <PortalForm
+              portal={editingPortal ?? undefined}
+              isEditing={mode === 'edit'}
+              onsave={handleSave}
+              oncancel={cancelEdit}
+            />
+          </div>
+        </div>
+      {:else if selectedPortal}
+        {@const tokens = parseUrlPlaceholders(selectedPortal.url)}
+        <div class="portal-detail-content custom-scrollbar">
+          <div class="detail-header">
+            <div class="detail-title-row">
+              <IconBox size="lg">
+                {#snippet content()}
+                  {selectedPortal.icon}
+                {/snippet}
+              </IconBox>
+              <h2 class="portal-name">{selectedPortal.name}</h2>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">{t('features.portals.ui.url')}</div>
+            <pre class="portal-url">{selectedPortal.url}</pre>
+          </div>
+
+          {#if tokens.length > 0}
+            <div class="field-group">
+              <div class="field-label">{t('features.portals.ui.placeholders')}</div>
+              <div class="placeholder-row">
+                {#each tokens as token}
+                  <Badge text={token} variant="default" mono />
+                {/each}
+              </div>
+            </div>
+          {/if}
+        </div>
+        <MetadataList
+          title={t('common.information')}
+          items={[
+            {
+              label: t('features.portals.ui.command'),
+              value: selectedPortal.name,
+              title: `cmd_portals_${selectedPortal.id}`,
+            },
+            {
+              label: t('features.portals.ui.placeholders'),
+              value: `${tokens.length} placeholder${tokens.length === 1 ? '' : 's'}`,
+            },
+            {
+              label: t('features.portals.ui.created'),
+              value: dateFormat.format(selectedPortal.createdAt),
+            },
+          ]}
+        />
+      {:else}
+        <EmptyState
+          message={portals.length === 0
+            ? t('features.portals.no_portals')
+            : t('features.portals.select_portal')}
+          description={portals.length === 0
+            ? t('features.portals.no_portals_description')
+            : t('features.portals.select_portal_description')}
+        >
+          {#snippet icon()}
+            <svg class="w-16 h-16 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
+            </svg>
+          {/snippet}
+          {#if portals.length === 0}
+            <button class="btn-primary mt-4" onclick={startCreate}
+              >{t('features.portals.ui.add_first')}</button
+            >
+          {/if}
+        </EmptyState>
+      {/if}
+    {/snippet}
+  </SplitListDetail>
+</div>
+
+<style>
+  .portal-detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-5);
+  }
+  .detail-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .portal-name {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .field-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .portal-url {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-md);
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4) var(--space-5);
+    margin: 0;
+  }
+  .placeholder-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .form-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .form-header {
+    padding: var(--space-7) var(--space-8) 0;
+    flex-shrink: 0;
+  }
+  .form-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--space-6);
+  }
+  .form-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 var(--space-8) var(--space-6);
+  }
+</style>

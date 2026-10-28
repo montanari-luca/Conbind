@@ -1,5 +1,5 @@
 
- RUN  v4.1.10 /private/tmp/asyar-branch-benchmark/asyar-launcher
+ RUN  v4.1.10 /private/tmp/conbind-branch-benchmark/conbind-launcher
 
  ❯ src/services/search/searchOrchestrator.test.ts (19 tests | 1 failed) 7ms
      × prefers worker actionId over the aggregator navigation closure 2ms

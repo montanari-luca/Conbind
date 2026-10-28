@@ -1,17 +1,17 @@
 # Fixed branch build and evidence
 
-HEAD: `571edac84fc1682d0bc46a851a6dd73caaa0ae06`, plus the unstaged source patch in `compiled-changes.patch`. Baseline main and pre-fix branch bundles are preserved. The signed fixed app was copied separately to `/private/tmp/asyar-benchmark-apps/fixed/Asyar Dev.app` after successful bundling.
+HEAD: `571edac84fc1682d0bc46a851a6dd73caaa0ae06`, plus the unstaged source patch in `compiled-changes.patch`. Baseline main and pre-fix branch bundles are preserved. The signed fixed app was copied separately to `/private/tmp/conbind-benchmark-apps/fixed/Conbind Dev.app` after successful bundling.
 
-Build uses pinned Rust 1.97.0, `CARGO_PROFILE_RELEASE_STRIP=none`, Dev identifier/profile/keychain `org.asyar.dev`, release optimization, and the existing Developer ID signing identity. Unstripped disk sizes are not normal release sizes.
+Build uses pinned Rust 1.97.0, `CARGO_PROFILE_RELEASE_STRIP=none`, Dev identifier/profile/keychain `org.conbind.dev`, release optimization, and the existing Developer ID signing identity. Unstripped disk sizes are not normal release sizes.
 
 The standard Tauri build guard rejected these reported package versions: Rust Tauri 2.12.1 versus JS API 2.11.0, and Rust log plugin 2.9.0 versus JS plugin 2.8.0. The installed API package and workspace lock actually contain 2.12.1; the API discrepancy is unexplained. This diagnostic build explicitly uses `--ignore-version-mismatches`. Normal guarded release compatibility remains unverified.
 
-Native WebKit evidence: `webkit-worker-proof.swift` creates an actual module Worker using a blob bootstrap, the `asyar-extension:` scheme, production-equivalent worker/script CSP, and a relative dependency import. The unrestricted run returned `{"role":"worker","dom":"undefined","answer":42}`. Sandboxed execution could not access WebKit storage/services. This proves native WebKit loading, not the packaged launcher's entire runtime.
+Native WebKit evidence: `webkit-worker-proof.swift` creates an actual module Worker using a blob bootstrap, the `conbind-extension:` scheme, production-equivalent worker/script CSP, and a relative dependency import. The unrestricted run returned `{"role":"worker","dom":"undefined","answer":42}`. Sandboxed execution could not access WebKit storage/services. This proves native WebKit loading, not the packaged launcher's entire runtime.
 
 Agent Accessibility check returned `false`, without prompting or changing permissions. No fresh benchmark has been measured. From trusted Terminal with Accessibility, after closing builds/tests and keeping input idle:
 
 ```bash
-bash /Users/khoshbin/develop/Asyar-Project/benchmarks/results/2026-10-03-architecture-review/run-fixed-comparison.sh
+bash /Users/khoshbin/develop/Conbind-Project/benchmarks/results/2026-10-03-architecture-review/run-fixed-comparison.sh
 ```
 
 The unchanged harness measures main and fixed sequentially against installed Raycast stable and Beta, saving separate timestamped reports. Existing `run-comparison.sh` still targets the pre-fix branch; do not use it as evidence for the fixed implementation. Profile/cache/run-order caveats in the original review still apply.

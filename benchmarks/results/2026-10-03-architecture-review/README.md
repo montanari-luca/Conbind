@@ -7,7 +7,7 @@ Reviewed `arch/principles-and-zero-ipc` at `3e1a94084a48cca8cecb3967bfa703c84708
 ## What is improving
 
 - Data affinity is a better rule than requiring every filter to cross IPC. `rankItems` now filters UI-resident arrays locally while native application/file ranking stays in Rust.
-- `asyar-search`, `asyar-calculator`, `asyar-storage`, and `asyar-platform` establish useful reusable boundaries. Storage no longer depends on Tauri; host adapters translate its errors.
+- `conbind-search`, `conbind-calculator`, `conbind-storage`, and `conbind-platform` establish useful reusable boundaries. Storage no longer depends on Tauri; host adapters translate its errors.
 - Bootstrap phases make initialization order more reviewable. Search persistence now shares DataStore and its configured SQLite pool.
 - Provider hooks and auth subscriptions remove several direct dependency cycles. Typed IPC rejection distinguishes failure from legitimate nullable values.
 - Separating presentation reset from daemon restoration is the right lifecycle model.
@@ -38,21 +38,21 @@ Reviewed `arch/principles-and-zero-ipc` at `3e1a94084a48cca8cecb3967bfa703c84708
 
 ## Benchmark status and manual run
 
-The README compares Asyar 0.1.1-38 against Raycast 1.104.23 and Beta 0.69.0.0, measured July 17. Those numbers cannot establish this branch's performance today.
+The README compares Conbind 0.1.1-38 against Raycast 1.104.23 and Beta 0.69.0.0, measured July 17. Those numbers cannot establish this branch's performance today.
 
-Exact-commit source archives and locked dependencies were prepared under /private/tmp. Both comparison builds use release optimizations, Asyar Dev identity/profile/keychain, and the same pinned compiler. Symbol stripping is disabled for both because macOS 27 rejects generated release proc-macro dylibs with a misaligned LINKEDIT string pool. Consequently app disk sizes are diagnostic and are not directly comparable to normally stripped releases.
+Exact-commit source archives and locked dependencies were prepared under /private/tmp. Both comparison builds use release optimizations, Conbind Dev identity/profile/keychain, and the same pinned compiler. Symbol stripping is disabled for both because macOS 27 rejects generated release proc-macro dylibs with a misaligned LINKEDIT string pool. Consequently app disk sizes are diagnostic and are not directly comparable to normally stripped releases.
 
 The execution process lacks macOS Accessibility permission. No fresh latency/CPU/memory comparison has been measured, and no performance improvement is claimed.
 
 Run from a Terminal with Accessibility permission:
 
 ```bash
-bash /Users/khoshbin/develop/Asyar-Project/benchmarks/results/2026-10-03-architecture-review/run-comparison.sh
+bash /Users/khoshbin/develop/Conbind-Project/benchmarks/results/2026-10-03-architecture-review/run-comparison.sh
 ```
 
 Optional matching hotkeys can be appended, for example `--raycast-hotkey cmd+space`. Leave the machine plugged in, close heavy apps, and avoid keyboard/mouse input for roughly 15 minutes. The same unchanged harness runs main first, then branch, each against installed Raycast stable and Beta. Outputs are preserved separately in main/latest.md and branch/latest.md, including raw samples.
 
-Both Asyar bundles share the existing isolated org.asyar.dev profile sequentially. These are realistic local-profile comparisons, not fresh/default-profile published numbers. Database migrations, caches, extension configuration, run order, and machine activity can affect results. Repeat in controlled conditions before attributing small differences to architecture. The harness measures window visibility and resize as proxies; it does not prove complete rendering or exercise all zero-IPC feature views. A single 15-sample p99 is not robust statistical evidence.
+Both Conbind bundles share the existing isolated org.conbind.dev profile sequentially. These are realistic local-profile comparisons, not fresh/default-profile published numbers. Database migrations, caches, extension configuration, run order, and machine activity can affect results. Repeat in controlled conditions before attributing small differences to architecture. The harness measures window visibility and resize as proxies; it does not prove complete rendering or exercise all zero-IPC feature views. A single 15-sample p99 is not robust statistical evidence.
 
 Merge only after fixing the reproduced regressions, protecting migration failure paths, demonstrating real worker runtime operation, and covering the extracted crates in CI. Benchmark results can show performance changes; they cannot override correctness blockers.
 

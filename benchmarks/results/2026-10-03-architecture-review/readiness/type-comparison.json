@@ -8,7 +8,7 @@
   "main_only": [
     {
       "file": "src/built-in-features/store/sdkCompatibility.ts",
-      "message": "Could not find a declaration file for module 'semver'. '/Users/khoshbin/develop/Asyar-Project/node_modules/.pnpm/semver@7.8.1/node_modules/semver/index.js' implicitly has an 'any' type.",
+      "message": "Could not find a declaration file for module 'semver'. '/Users/khoshbin/develop/Conbind-Project/node_modules/.pnpm/semver@7.8.1/node_modules/semver/index.js' implicitly has an 'any' type.",
       "count": 1
     }
   ],

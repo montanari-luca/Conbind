@@ -2,7 +2,7 @@
 
 This test fixture declares `dist/daemon/main.js`, intentionally differing from `dist/worker.js`. It uses the real SDK worker and view entries. Build with `node build.mjs` from this directory; generated `dist` files must not be edited.
 
-Use the separate `/private/tmp/asyar-benchmark-apps/fixed/Asyar Dev.app`. Open Settings → Extensions → **Install from File…** and select `../runtime-fixture.asyar`. Restart the fixed app when prompted; approve only its declared storage permissions. Run these checks with benchmarks stopped:
+Use the separate `/private/tmp/conbind-benchmark-apps/fixed/Conbind Dev.app`. Open Settings → Extensions → **Install from File…** and select `../runtime-fixture.conbind`. Restart the fixed app when prompted; approve only its declared storage permissions. Run these checks with benchmarks stopped:
 
 1. Open **Probe Worker Status**. Expect `role: "worker"`, `dom: "undefined"`, `permitted: true`, and a permission-denied message for notes (the fixture declares no notes permission). This is real worker → host service IPC and view → worker RPC.
 2. Type **worker probe** in root search. Select **Architecture Worker Probe** and press Enter. Reopen the status view: `actions` must increase. Run **Probe Background Action** and check another increment.
@@ -16,7 +16,7 @@ These steps are pending; the fixture's presence does not establish packaged-runt
 To regenerate the installable package after rebuilding:
 
 ```bash
-cd /Users/khoshbin/develop/Asyar-Project/benchmarks/results/2026-10-03-architecture-review/runtime-fixture
+cd /Users/khoshbin/develop/Conbind-Project/benchmarks/results/2026-10-03-architecture-review/runtime-fixture
 node build.mjs
-zip -FS -qr ../runtime-fixture.asyar manifest.json dist
+zip -FS -qr ../runtime-fixture.conbind manifest.json dist
 ```

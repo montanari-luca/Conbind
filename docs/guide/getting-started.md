@@ -1,62 +1,62 @@
 # Getting Started
 
-> Install Asyar, finish first-run setup, and run your first search.
+> Install Conbind, finish first-run setup, and run your first search.
 
-![The Asyar launcher open with a search query](../images/getting-started-hero.png)
-_Figure: the Asyar launcher, opened with the global hotkey._
+![The Conbind launcher open with a search query](../images/getting-started-hero.png)
+_Figure: the Conbind launcher, opened with the global hotkey._
 
 ## Install
 
 Download the latest release for your operating system from [asyar.org](https://asyar.org) and run the installer.
 
-- **macOS:** Open the `.dmg`, drag Asyar to your Applications folder, then open it. Because Asyar is not yet on the Mac App Store, macOS may show a security prompt the first time — open **System Settings → Privacy & Security** and click **Open Anyway**.
+- **macOS:** Open the `.dmg`, drag Conbind to your Applications folder, then open it. Because Conbind is not yet on the Mac App Store, macOS may show a security prompt the first time — open **System Settings → Privacy & Security** and click **Open Anyway**.
 - **Windows / Linux:** Run the downloaded installer and follow the on-screen steps.
 
-Once Asyar starts, a small icon appears in the menu bar (macOS) or system tray (Windows/Linux) to confirm it is running. The onboarding flow opens automatically.
+Once Conbind starts, a small icon appears in the menu bar (macOS) or system tray (Windows/Linux) to confirm it is running. The onboarding flow opens automatically.
 
 ## First-run setup (hotkey, accessibility, theme)
 
 ![The first-run onboarding, choosing a global hotkey](../images/getting-started-onboarding.png)
 _Figure: the onboarding step where you pick your global hotkey._
 
-Asyar walks you through a short onboarding flow the first time you launch it. Here is what each step does:
+Conbind walks you through a short onboarding flow the first time you launch it. Here is what each step does:
 
 1. **Welcome** — A quick introduction, plus theme and window-mode pickers. If you're switching from Raycast, click **Import from Raycast…** here to bring over your snippets, quicklinks, and app hotkeys — see [Import from Raycast](./features/raycast-import.md). Click **Start the tour** to continue.
 
-2. **Pick your global hotkey** — Press the key combination you want to use to summon Asyar from anywhere on your computer. Click inside the recorder, press your desired keys (for example, a modifier + letter, or a standalone function key like `F1`–`F24`), then click **Continue**. You can change this at any time in Settings.
+2. **Pick your global hotkey** — Press the key combination you want to use to summon Conbind from anywhere on your computer. Click inside the recorder, press your desired keys (for example, a modifier + letter, or a standalone function key like `F1`–`F24`), then click **Continue**. You can change this at any time in Settings.
 
-3. **Grant accessibility access (macOS only)** — On macOS, Asyar uses the Accessibility API to paste text snippets and capture your selected text. Click **Open System Settings**, find Asyar in the list, and enable the toggle. Windows and Linux users can skip this step — it is not required there. On macOS, text expansion won't work until you grant it.
+3. **Grant accessibility access (macOS only)** — On macOS, Conbind uses the Accessibility API to paste text snippets and capture your selected text. Click **Open System Settings**, find Conbind in the list, and enable the toggle. Windows and Linux users can skip this step — it is not required there. On macOS, text expansion won't work until you grant it.
 
-4. **Pick a theme** — Browse a selection of community themes and install one in one click, or stick with the built-in Asyar theme. This step is optional; you can change or add themes any time from the extension store.
+4. **Pick a theme** — Browse a selection of community themes and install one in one click, or stick with the built-in Conbind theme. This step is optional; you can change or add themes any time from the extension store.
 
-5. **Try a few extensions** — Asyar shows a curated list of popular extensions for your platform. Check the ones you want and click **Install selected**, or create your own with the **Create Extension with AI** tool.
+5. **Try a few extensions** — Conbind shows a curated list of popular extensions for your platform. Check the ones you want and click **Install selected**, or create your own with the **Create Extension with AI** tool.
 
 6. **One-keystroke AI commands & Zero-Key Setup** — Connect to local authenticated CLIs (Google `agy` or OpenAI `codex`) without an API key, or enter an API key, and set up your initial silent AI commands (like the **Grammar Fix** command: select text in any app, press the hotkey, and the selected text is replaced with the corrected version).
 
-7. **Done & Walkthrough** — Onboarding is complete. Press your new hotkey to open the launcher, or explore the [Walkthrough](./features/walkthrough.md) to turn Asyar features into daily habits as tasks tick themselves off from real use.
+7. **Done & Walkthrough** — Onboarding is complete. Press your new hotkey to open the launcher, or explore the [Walkthrough](./features/walkthrough.md) to turn Conbind features into daily habits as tasks tick themselves off from real use.
 
 You can re-run onboarding at any time from **Settings → General → Re-run onboarding**.
 
 ## Your global hotkey
 
-The global hotkey you chose during setup shows or hides Asyar from anywhere on your computer — even when Asyar is not the active app. It works system-wide, so you do not need to switch apps first.
+The global hotkey you chose during setup shows or hides Conbind from anywhere on your computer — even when Conbind is not the active app. It works system-wide, so you do not need to switch apps first.
 
 To change your hotkey after setup, open **Settings → General** (or **Settings → Shortcuts**) and click inside the shortcut recorder. Press your new combination and click **Save**.
 
-Asyar supports:
+Conbind supports:
 
 - **Modifier combinations**: For example `⌥Space`, `⌘Space`, or `Ctrl+Alt+Space`.
 - **Hyper Key combinations (`✦`)**: Using all four modifiers (`Ctrl + Alt + Shift + Cmd/Super`) displays as the clean `✦` glyph.
 - **Standalone function keys (`F1`–`F24`) & Copilot key**: Function keys (including extended function keys like `F13`–`F24` and the Windows Copilot key `F23`) can be assigned directly without any modifier keys. This allows you to use remapped keys (such as `Caps Lock` mapped to `F16` via Karabiner-Elements or PowerToys), hardware macro pads, or Stream Decks as dedicated one-tap launcher triggers.
 - **Typing protection**: Standard alphanumeric characters (`A–Z`, `0–9`, space, punctuation) strictly require at least one modifier key so that normal typing in other applications is never intercepted.
 
-> **Linux (Wayland) Users:** Wayland compositors do not allow background apps to capture global hotkeys directly. Instead, bind a custom shortcut in your desktop settings (GNOME, KDE Plasma, Hyprland, Sway) to run the `asyar` command. Re-running `asyar` automatically toggles the visibility of the running instance. See [Troubleshooting](./troubleshooting.md#the-hotkey-doesnt-open-asyar) for step-by-step instructions.
+> **Linux (Wayland) Users:** Wayland compositors do not allow background apps to capture global hotkeys directly. Instead, bind a custom shortcut in your desktop settings (GNOME, KDE Plasma, Hyprland, Sway) to run the `conbind` command. Re-running `conbind` automatically toggles the visibility of the running instance. See [Troubleshooting](./troubleshooting.md#the-hotkey-doesnt-open-conbind) for step-by-step instructions.
 
 If the hotkey stops working, see [Troubleshooting](./troubleshooting.md) for common causes.
 
 ## Your first search
 
-Press the hotkey you chose during setup. The Asyar window appears in the centre of your screen with the search bar ready.
+Press the hotkey you chose during setup. The Conbind window appears in the centre of your screen with the search bar ready.
 
 Start typing anything — an app name, a command, a URL, or a calculation. Results appear instantly as you type. Use `↑` and `↓` to move between results, then press `Enter` to run the selected one.
 
@@ -66,7 +66,7 @@ A few things to try right away:
 - Type a URL (for example, "github.com") and press `Enter` to open it in your browser.
 - Type a simple calculation (for example, "12 * 7") and see the answer in the results list.
 - Press `⌘K` with any result selected to open the **action panel** and see what else you can do with that item.
-- Press `Esc` to step back: it clears your search, closes anything you've opened, and finally hides Asyar.
+- Press `Esc` to step back: it clears your search, closes anything you've opened, and finally hides Conbind.
 
 Once you are comfortable with the basics, explore [The Basics](./the-basics.md) to learn how results are ranked, how the action panel works, and how to use the AI chip.
 

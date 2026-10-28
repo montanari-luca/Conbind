@@ -5,16 +5,16 @@ Information-oriented lookup material. Each page describes one thing precisely �
 ## Pages in this section
 
 - **[Manifest](./manifest.md)** — Every field in `manifest.json`, required and optional.
-- **[CLI](./cli.md)** — The `asyar` command-line tool: `validate`, `build`, `dev`, `link`.
+- **[CLI](./cli.md)** — The `conbind` command-line tool: `validate`, `build`, `dev`, `link`.
 - **[Permissions](./permissions.md)** — Every permission string, what it unlocks, and what happens when one is missing.
 - **[Actions](./actions.md)** — The ⌘K Action Drawer: fields, context, categories, registration.
 - **[Command Arguments](./command-arguments.md)** — Inline chip-row inputs declared per command; collected before the command runs.
 - **[Dynamic Commands](./dynamic-commands.md)** — Runtime-registered commands for items whose set depends on the user's environment (Apple Shortcuts, SSH hosts, project paths, scripts in directories).
-- **[Script Headers](./script-headers.md)** — `# @asyar.*` directives for shell scripts discovered in user-configured directories: title, icon, arguments, mode (incl. live-ticking `inline`), refresh interval.
+- **[Script Headers](./script-headers.md)** — `# @conbind.*` directives for shell scripts discovered in user-configured directories: title, icon, arguments, mode (incl. live-ticking `inline`), refresh interval.
 - **[Search bar accessory](./searchbar-accessory.md)** — Per-command dropdown rendered in the top-right of the search bar while a view is active.
 - **[Troubleshooting](./troubleshooting.md)** — Symptoms, causes, and fixes.
 - **[Extension types](./extension-types/)** — View / result / logic / theme, plus in-view search.
 - **[Background scheduling](./background-scheduling.md)** — Declarative recurring task execution via `schedule` in `manifest.json`.
 - **[SDK](./sdk/)** — One page per service.
-- **[Design system](./design-system/)** — Asyar's design language (Measure), CSS tokens, components, and built-in icons.
+- **[Design system](./design-system/)** — Conbind's design language (Measure), CSS tokens, components, and built-in icons.
 - **[Host Settings](./host-settings.md)** — Custom application scan paths and system discovery.

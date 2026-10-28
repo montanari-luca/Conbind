@@ -4,7 +4,7 @@
 
 ## What it does
 
-Asyar includes built-in commands for core operating system power and session controls. Rather than navigating nested OS menus, you can lock your screen, trigger sleep, sign out, reboot, or shut down directly from the search bar or via global hotkeys.
+Conbind includes built-in commands for core operating system power and session controls. Rather than navigating nested OS menus, you can lock your screen, trigger sleep, sign out, reboot, or shut down directly from the search bar or via global hotkeys.
 
 Destructive commands (Restart, Shut Down, and Log Out / Sign Out) prompt for confirmation before proceeding, preventing accidental reboots or unsaved data loss.
 
@@ -23,7 +23,7 @@ Destructive commands (Restart, Shut Down, and Log Out / Sign Out) prompt for con
 
 ## How to use it
 
-1. Open Asyar with your global hotkey.
+1. Open Conbind with your global hotkey.
 2. Type the action you want — for example, `lock`, `sleep`, `restart`, `shut down`, or `log out`.
 3. Press `Enter` on the matching result.
 4. For actions that require confirmation (Restart, Shut Down, Log Out), a confirmation dialog appears. Press `Enter` to proceed, or `Esc` to cancel.

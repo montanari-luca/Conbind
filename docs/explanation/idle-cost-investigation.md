@@ -1,6 +1,6 @@
 # Idle-cost investigation
 
-Where Asyar's idle CPU and memory actually go, measured against the README
+Where Conbind's idle CPU and memory actually go, measured against the README
 benchmark claims (3.20% idle CPU vs Raycast 0.04%; 435.6 MB vs 272.6 MB), with
 per-process attribution, a realistic-vs-clean profile diff, an 8-hour soak, and
 a ranked cause list. Everything here is reproducible with the commands given.
@@ -8,7 +8,7 @@ a ranked cause list. Everything here is reproducible with the commands given.
 ## TL;DR
 
 1. **The published 3.20% came from a different machine and build entirely**
-   (committed table: Apple M4 Max, macOS 26.5.2, Asyar 0.1.1-38, 2026-07-17),
+   (committed table: Apple M4 Max, macOS 26.5.2, Conbind 0.1.1-38, 2026-07-17),
    and the protocol it used inflates idle numbers regardless of machine. The measurement window opens ~60-105s
    after cold launch — overlapping post-activity settling, the 60-second
    delayed update-check jobs, and (worst case) first-run file indexing, which
@@ -43,7 +43,7 @@ a ranked cause list. Everything here is reproducible with the commands given.
 - Machine: MacBook (Mac15,13, Apple M3), macOS 27.0 beta (26A5388g),
   Xcode-beta CLT (ld 27036.1). This is a beta OS; caveats it caused are
   listed at the end.
-- App under test: `/Applications/asyar.app` 0.1.1-40 — the upstream
+- App under test: `/Applications/conbind.app` 0.1.1-40 — the upstream
   Developer-ID build, whose version string matches `main` (e42167a5). A
   release build from this branch's worktree was used for the profile-isolation
   runs (details below).
@@ -51,12 +51,12 @@ a ranked cause list. Everything here is reproducible with the commands given.
   number quoted in this report was captured on AC power with
   `caffeinate -dims` holding the machine awake, display on.
 - Profiles. Three states, never touching the real user profile beyond reads:
-  - **realistic**: the real `org.asyar.app` profile in place (2,228 clipboard
+  - **realistic**: the real `org.conbind.app` profile in place (2,228 clipboard
     items, 86 MB `file_index_snapshot.bin`, 7 extensions incl. one with an
     `fs:watch` grant and one with a 10 s scheduled command, 0 MCP servers).
   - **enriched**: a copy seeded to 10,000 clipboard items (real rows
     duplicated with fresh ids/timestamps) plus one enabled stdio MCP server,
-    run by a `org.asyar.bench`-identifier build so it reads its own profile
+    run by a `org.conbind.bench`-identifier build so it reads its own profile
     dir and keychain item.
   - **clean**: the bench-identifier build with a fresh empty profile.
 - Core commands (exact invocations, all logged with raw output in the branch
@@ -79,7 +79,7 @@ Monitor figure):
 
 | process                             | MB (deep idle) | CPU ms/s | wakeups/s |
 | ----------------------------------- | -------------: | -------: | --------: |
-| asyar (main, Rust)                  |          193.1 |      3.2 |      17.9 |
+| conbind (main, Rust)                |          193.1 |      3.2 |      17.9 |
 | WebContent (launcher)               |            ~70 |      8.1 |       6.9 |
 | WebContent (settings, hidden)       |            ~52 |       ~0 |         — |
 | WebContent (hud, hidden)            |            ~17 |       ~0 |         — |
@@ -123,7 +123,7 @@ property of today's app at idle.
 
 ### Wakeups and energy (deep idle, realistic)
 
-`powermetrics --samplers tasks`, 60 samples: asyar 17.9 wakeups/s,
+`powermetrics --samplers tasks`, 60 samples: conbind 17.9 wakeups/s,
 WebContent 6.9, GPU 10.1 — ~35 wakeups/s for the group at true idle
 (52/s in the extended-benchmark run below, which settles only 120 s —
 the settling curve is long).
@@ -134,7 +134,7 @@ Raycast stable is no longer installed here (another reason the July table
 cannot be re-verified); Raycast Beta 0.71.3.0 stands in. Full table in
 `benchmarks/results/table.md`; highlights:
 
-| metric                                 |     Asyar 0.1.1-40 |                      Raycast Beta |
+| metric                                 |   Conbind 0.1.1-40 |                      Raycast Beta |
 | -------------------------------------- | -----------------: | --------------------------------: |
 | hotkey → visible p50 / p95             | **17.4 / 22.0 ms** |                    39.1 / 42.5 ms |
 | keystroke → results painted p50 / p95  |     62.0 / 76.8 ms |           n/a (fixed-size window) |
@@ -145,10 +145,10 @@ cannot be re-verified); Raycast Beta 0.71.3.0 stands in. Full table in
 | idle disk write ops / 60 s             |                487 |                                 2 |
 | idle network bytes                     |                  0 |                                 0 |
 
-At deep idle on identical protocol, Asyar and Raycast Beta are within noise
-of each other on CPU and wakeups, Asyar summons 2.2× faster and uses 35%
+At deep idle on identical protocol, Conbind and Raycast Beta are within noise
+of each other on CPU and wakeups, Conbind summons 2.2× faster and uses 35%
 less memory — and loses only on idle disk writes (the sdk-playground
-finding). The Asyar column is the _unfixed_ installed build; the two fixes
+finding). The Conbind column is the _unfixed_ installed build; the two fixes
 on this branch reduce its main-process wakeups by a further third. Whether
 Raycast _stable_ really idles at 0.04% on this hardware is untestable until
 it is reinstalled.
@@ -160,7 +160,7 @@ the same timer census would bite harder. Flagged per finding in the census.
 ### Idle disk I/O (the most surprising finding)
 
 At deep idle, fs_usage over 60 s recorded ~**250 write ops**: repeated
-open→pwrite→fsync cycles on `asyar_data.db-wal` and `search_index.db-wal`
+open→pwrite→fsync cycles on `conbind_data.db-wal` and `search_index.db-wal`
 (~23 WAL opens/min). Stack captured mid-write:
 
 ```
@@ -170,7 +170,7 @@ webview IPC → commands::extension_state::state_set
 ```
 
 Writer identified by diffing `extension_state.updated_at`: the
-**org.asyar.sdk-playground** extension rewrites a ~5 KB `logs.scheduling`
+**org.conbind.sdk-playground** extension rewrites a ~5 KB `logs.scheduling`
 blob **every 10 seconds** — a scheduled extension command running at the
 schedule floor (`intervalSeconds` minimum is 10). Because worker iframes
 never idle-unmount and the webview is unthrottled, this continues forever
@@ -352,10 +352,10 @@ path: no regression.
 - Fresh `tauri build` proc-macro dylibs get rejected by the beta dyld
   ("mis-aligned LINKEDIT string pool") when built with
   `MACOSX_DEPLOYMENT_TARGET=13.0`; workaround used: build host artifacts at
-  11.0. Not an Asyar bug.
+  11.0. Not an Conbind bug.
 - Webviews die in GUI-launched builds unless signed with a real identity plus
   the repo's entitlements.plist (`--deep` ad-hoc re-signing strips them).
-- `KEYCHAIN_SERVICE` is hardcoded to `org.asyar.app` (keystore.rs:25): any
+- `KEYCHAIN_SERVICE` is hardcoded to `org.conbind.app` (keystore.rs:25): any
   differently-signed build hangs **forever, pre-window, on the main thread**
   in `SecKeychainFindGenericPassword` waiting for an authorization dialog.
   The bench build was patched (uncommitted) to its own service name. A

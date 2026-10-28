@@ -7,7 +7,7 @@ _Figure: the agent chat view streaming a reply._
 
 ## What it does
 
-Asyar has a built-in AI assistant that works directly from the search bar. Press `Tab` to enter AI mode, type your question, and press `Enter`. The reply streams in line by line inside a chat view. Every conversation is saved in a thread so you can come back to it later.
+Conbind has a built-in AI assistant that works directly from the search bar. Press `Tab` to enter AI mode, type your question, and press `Enter`. The reply streams in line by line inside a chat view. Every conversation is saved in a thread so you can come back to it later.
 
 Beyond the quick-ask flow, you can create custom **agents** — each agent has its own name, system prompt, AI provider, model, and set of tools it is allowed to use. Agents can also run **silently**: no chat view opens, they just take input (from the launcher bar, selected text, or the clipboard), run in the background, and put the result back (replacing your selection, pasting at the cursor, copying to the clipboard, or showing a HUD message).
 
@@ -15,7 +15,7 @@ Beyond the quick-ask flow, you can create custom **agents** — each agent has i
 
 ### Ask AI quickly
 
-1. Open Asyar with your global hotkey.
+1. Open Conbind with your global hotkey.
 2. Type your question (or just start typing and notice the `⇥ Ask AI` hint in the bottom bar).
 3. Press `Tab` to enter AI mode — the search bar shows an AI indicator.
 4. Press `Enter` to send. The reply streams into the chat view.
@@ -35,16 +35,16 @@ Before you can use any agent, configure at least one AI provider in **Settings �
 
 1. **Cloud & Local API Providers**: Click **+ Add provider** and choose from: **Anthropic**, **OpenAI**, **Google**, **Ollama**, **OpenRouter**, or **Custom**.
 2. **Local CLI Providers (Zero-Key Setup)**:
-   - If you have Google's `agy` CLI or OpenAI's `codex` CLI installed and authenticated on your machine, Asyar can automatically detect your active accounts.
-   - These local CLI connections require no API key and can expose Asyar's `ToolRegistry` as a local MCP server for tool-calling agents.
+   - If you have Google's `agy` CLI or OpenAI's `codex` CLI installed and authenticated on your machine, Conbind can automatically detect your active accounts.
+   - These local CLI connections require no API key and can expose Conbind's `ToolRegistry` as a local MCP server for tool-calling agents.
 3. **API Formats**: Newly added OpenAI and Custom providers use the **Responses** API format by default. If an endpoint does not implement `/responses`, choose **Chat Completions (widely compatible)**.
-4. **Searchable Model Selector**: When you click **Test & Fetch Models**, Asyar populates the available models. If a provider offers dozens or hundreds of models (e.g. OpenRouter or Ollama), a searchable filter dropdown allows typing to quickly find your model.
+4. **Searchable Model Selector**: When you click **Test & Fetch Models**, Conbind populates the available models. If a provider offers dozens or hundreds of models (e.g. OpenRouter or Ollama), a searchable filter dropdown allows typing to quickly find your model.
 5. **Reasoning Controls**: Adjust reasoning effort for models supporting thought tokens (Anthropic Claude 3.7 Sonnet, OpenAI o1/o3-mini, Ollama reasoning models).
 6. **Default Provider**: The first provider you configure becomes default automatically. Click the star (★) on any other provider to make it the default for `Tab` in the launcher.
 
 ### Web search & grounding
 
-Asyar agents can search the web and ground their answers in real-time information:
+Conbind agents can search the web and ground their answers in real-time information:
 
 - **Built-in Web Search Tool (`builtin:web-search`)**:
   - Available to any agent with tool access.
@@ -79,7 +79,7 @@ _Figure: select text in any app, press the hotkey, and a silent agent replaces i
 
 ### The built-in Grammar Fix command
 
-During onboarding, Asyar offers to create a **Grammar Fix** silent agent for you (the "One-keystroke AI commands" step). It is set up with:
+During onboarding, Conbind offers to create a **Grammar Fix** silent agent for you (the "One-keystroke AI commands" step). It is set up with:
 
 - **Input:** the text you have selected in whatever app you are using.
 - **Output:** the corrected text replaces your selection instantly.
@@ -89,7 +89,7 @@ So the workflow is: select some text → press the hotkey → done. No windows, 
 
 ### Create your own silent agents
 
-1. Open Asyar and search for **Manage Agents**, then press `Enter`.
+1. Open Conbind and search for **Manage Agents**, then press `Enter`.
 2. Open the action panel with `⌘K` and choose **New Agent**.
 3. Fill in the name and the system prompt that tells the agent what to do.
 4. Turn on **"Run silently (no chat view)"**.

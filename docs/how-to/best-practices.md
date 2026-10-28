@@ -13,7 +13,7 @@ order: 4
 - **Bundle everything.** Svelte's runtime, component libraries, utility packages — all of it must be in `dist/`.
 - **Use `logger.debug()` aggressively during development.** Strip or convert to `logger.info()` before publishing.
 - **Use `var(--bg-primary)` and friends** for all background and text colors to support light/dark theming.
-- **Validate before publishing.** `asyar validate` catches manifest errors before they reach reviewers.
+- **Validate before publishing.** `conbind validate` catches manifest errors before they reach reviewers.
 
 ### Don't
 

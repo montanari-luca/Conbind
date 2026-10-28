@@ -7,7 +7,7 @@ _Figure: the Extension Store view._
 
 ## What it does
 
-Extensions add new commands and search results to Asyar. The built-in features you see out of the box — calculator, clipboard history, scripts, browser integration, and others — are all extensions under the hood. You can find more through the Extension Store.
+Extensions add new commands and search results to Conbind. The built-in features you see out of the box — calculator, clipboard history, scripts, browser integration, and others — are all extensions under the hood. You can find more through the Extension Store.
 
 The **Extensions** settings tab gives you a full list of everything installed: you can enable or disable each extension, view its commands, assign aliases and hotkeys to individual commands, and uninstall extensions you no longer need.
 
@@ -19,7 +19,7 @@ If Developer Mode is enabled, you can also sideload an extension directly from a
 
 ### Browse and install from the store
 
-1. Open Asyar and type **store** (or search for **Browse Extension Store**).
+1. Open Conbind and type **store** (or search for **Browse Extension Store**).
 2. Press `Enter` to open the store.
 3. Browse available extensions and follow the on-screen prompts to install one.
 
@@ -45,7 +45,7 @@ Use the filter chips at the top of the Extensions tab to show **All**, **Command
 1. Enable **Developer Mode** in **Settings → Advanced**.
 2. In Settings → Extensions, click the **+** button in the toolbar.
 3. Choose **Install from File…** and select the extension package.
-4. Restart Asyar to activate the new extension.
+4. Restart Conbind to activate the new extension.
 
 ### Uninstall an extension
 
@@ -65,13 +65,13 @@ Use the filter chips at the top of the Extensions tab to show **All**, **Command
 
 ## Tips
 
-- Asyar ships official first-party extensions in the Store alongside community-made ones. For example, the **Emoji** extension adds a full emoji & symbols picker and registers `:shortcode:` expansions — type `:party:` anywhere and it expands to the emoji. See [Snippets](./snippets.md) for details on how shortcode expansion works.
+- Conbind ships official first-party extensions in the Store alongside community-made ones. For example, the **Emoji** extension adds a full emoji & symbols picker and registers `:shortcode:` expansions — type `:party:` anywhere and it expands to the emoji. See [Snippets](./snippets.md) for details on how shortcode expansion works.
 - Disabling an extension removes all of its commands from the search results but keeps the extension installed. You can re-enable it at any time.
 - Aliases let you trigger any command with a short word you choose. For example, you could assign the alias `g` to a specific search command so typing `g` in the launcher goes straight to it.
-- Hotkeys are global keyboard shortcuts that run a command without opening the launcher first. They work even when Asyar's window is hidden.
-- **Build Extensions with AI** — You can build complete, working extensions simply by describing what you want in plain English. Search for **Build Extension with AI** in the launcher and enter your prompt. The agent scaffolds the code, tests feasibility, installs dependencies, and registers the extension into `~/AsyarExtensions/`. See [Use Create Extension Tool](../../how-to/use-create-extension-tool.md#build-an-extension-with-ai).
-- **My Extensions** — Type `my extensions` in the search bar to browse, search, and manage your local extensions. Press `Enter` to open an extension in your code editor, or open `⌘K` to publish it to the Asyar Store.
-- **Extension Preferences in ⌘K** — For commands or extensions that declare configurable preferences, Asyar auto-registers an **Extension Preferences** action in the `⌘K` drawer so you can jump straight to its settings.
+- Hotkeys are global keyboard shortcuts that run a command without opening the launcher first. They work even when Conbind's window is hidden.
+- **Build Extensions with AI** — You can build complete, working extensions simply by describing what you want in plain English. Search for **Build Extension with AI** in the launcher and enter your prompt. The agent scaffolds the code, tests feasibility, installs dependencies, and registers the extension into `~/ConbindExtensions/`. See [Use Create Extension Tool](../../how-to/use-create-extension-tool.md#build-an-extension-with-ai).
+- **My Extensions** — Type `my extensions` in the search bar to browse, search, and manage your local extensions. Press `Enter` to open an extension in your code editor, or open `⌘K` to publish it to the Conbind Store.
+- **Extension Preferences in ⌘K** — For commands or extensions that declare configurable preferences, Conbind auto-registers an **Extension Preferences** action in the `⌘K` drawer so you can jump straight to its settings.
 - **Developer Documentation** — If you want to develop or publish your own extensions, see [Quick Start Tutorial](../../tutorials/quick-start.md), [The Manifest Reference](../../reference/manifest.md), and the [Publishing Guide](../../how-to/publishing.md).
 
 ## Related

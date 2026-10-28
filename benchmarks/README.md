@@ -1,9 +1,9 @@
-# Benchmarks: Asyar vs Raycast
+# Benchmarks: Conbind vs Raycast
 
-Reproducible, black-box performance comparison between Asyar and Raycast —
+Reproducible, black-box performance comparison between Conbind and Raycast —
 both stable Raycast (v1) and Raycast Beta (the v2 rewrite) — on macOS.
 "Black-box" means every app is measured the same way from the outside — no
-instrumentation inside Asyar that Raycast wouldn't have.
+instrumentation inside Conbind that Raycast wouldn't have.
 
 ```
                  ┌─────────────────────────────────────────────┐
@@ -21,11 +21,11 @@ instrumentation inside Asyar that Raycast wouldn't have.
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Hotkey → window visible**   | A synthetic hotkey press (`CGEvent`) is posted, then the window list (`CGWindowListCopyWindowInfo`) is polled until a launcher-sized window owned by the app is on screen. Between runs the window is dismissed with Esc — re-pressing the hotkey is not reliable, because Raycast v1 types a focused synthetic ⌥Space into its search field as text instead of toggling. A run only starts once the window is verified hidden. Median, p95, and p99 of 15 runs are reported, together with the complete comma-separated sample list. Resolution is ≈1–3 ms (window-server poll cost). |
 | **Cold start → usable**       | App is fully quit, then launched with `open`. The hotkey is pressed repeatedly until the launcher window appears — so this measures "launch → you can actually use it", not "process exists".                                                                                                                                                                                                                                                                                                                                                                                          |
-| **Memory footprint**          | `phys_footprint` (the Activity Monitor "Memory" column) summed over the app's **whole process group**: the main process plus every WebKit/XPC helper the OS attributes to it via the responsible-process mechanism. This is fair to both sides — Raycast's node extension host and Asyar's WebKit processes are both counted. Memory is captured once after hotkey activity and again during deep idle.                                                                                                                                                                                |
+| **Memory footprint**          | `phys_footprint` (the Activity Monitor "Memory" column) summed over the app's **whole process group**: the main process plus every WebKit/XPC helper the OS attributes to it via the responsible-process mechanism. This is fair to both sides — Raycast's node extension host and Conbind's WebKit processes are both counted. Memory is captured once after hotkey activity and again during deep idle.                                                                                                                                                                              |
 | **CPU after activity**        | User+system CPU time of the process group sampled over 30 s with the launcher hidden, shortly after the hotkey runs. This preserves the legacy "CPU while idle" metric while distinguishing it from deep idle. CPU percentages are percentages of one core.                                                                                                                                                                                                                                                                                                                            |
 | **Deep-idle CPU and wakeups** | After a 120 s quiet settling period, CPU is sampled for 60 s. `benchtool cpu` reports process-group CPU percentage. When optional passwordless `sudo` is available, the `powermetrics` tasks sampler also reports process-group CPU ms/s and interrupt wakeups/s, averaged across its one-second samples.                                                                                                                                                                                                                                                                              |
 | **Deep-idle disk writes**     | During the same 60 s window, optional `fs_usage` collection counts `write`, `pwrite`, `WrData`, and `WrMeta` calls by the process group, plus the number of distinct absolute paths touched.                                                                                                                                                                                                                                                                                                                                                                                           |
-| **Keystroke → results**       | After summoning the launcher, one character is typed synthetically and the time until the launcher window's height changes is measured (300 µs polling of `CGWindowList` bounds). This works because Asyar presents results by growing its collapsed 96 px panel; launchers with a fixed-size window (Raycast) cannot be measured this way and report `n/a`. A proxy for "results painted", measurable black-box on the shipping app.                                                                                                                                                  |
+| **Keystroke → results**       | After summoning the launcher, one character is typed synthetically and the time until the launcher window's height changes is measured (300 µs polling of `CGWindowList` bounds). This works because Conbind presents results by growing its collapsed 96 px panel; launchers with a fixed-size window (Raycast) cannot be measured this way and report `n/a`. A proxy for "results painted", measurable black-box on the shipping app.                                                                                                                                                |
 | **Deep-idle network**         | Unprivileged `nettop -P -x -l 1` snapshots before and after the deep-idle CPU window provide per-process-group byte deltas in each direction.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **App size on disk**          | `du -sm` of the installed bundle.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
@@ -34,13 +34,13 @@ instrumentation inside Asyar that Raycast wouldn't have.
 ```bash
 ./benchmarks/bench.sh                  # interactive, ~4-6 minutes per app
 ./benchmarks/bench.sh --update-readme  # also refresh the table in the root README
-./benchmarks/bench.sh --asyar dev      # build and test this checkout's local release bundle
+./benchmarks/bench.sh --conbind dev      # build and test this checkout's local release bundle
 ```
 
-Defaults assume `/Applications/asyar.app` and `/Applications/Raycast.app`.
-Use `--asyar dev` to build the current checkout with `pnpm build -- --local`
+Defaults assume `/Applications/conbind.app` and `/Applications/Raycast.app`.
+Use `--conbind dev` to build the current checkout with `pnpm build -- --local`
 and test the resulting release bundle. It is a release build, but uses the
-isolated `Asyar Dev` bundle (`org.asyar.dev`): its app name, profile, and
+isolated `Conbind Dev` bundle (`org.conbind.dev`): its app name, profile, and
 keychain entry are separate from the installed app. The terminal and report
 label it as `local worktree <revision>` and note any compiled uncommitted
 changes. This is suitable for local comparisons against Raycast, but
@@ -48,7 +48,7 @@ deliberately cannot be combined with `--update-readme`.
 If `/Applications/Raycast Beta.app` (Raycast v2) is installed, it is
 benchmarked too, automatically. All hotkeys default to `⌥Space` (each app's
 factory default — the apps never run at the same time, so the shared hotkey
-is fine). Override with `--asyar-hotkey` / `--raycast-hotkey` /
+is fine). Override with `--conbind-hotkey` / `--raycast-hotkey` /
 `--raycast-beta-hotkey` (e.g. `cmd+space`) if your setup differs. **Each
 hotkey must match what that app is actually bound to**, or its runs will
 time out.
@@ -71,7 +71,7 @@ CPU window. `--deep-idle-seconds N` controls the later CPU, `powermetrics`,
 2. **A quiet machine**: plugged in, other heavy apps closed, no builds
    running. Don't touch the keyboard/mouse during the run.
 3. **Release builds only.** The script refuses to run while a
-   `target/debug` Asyar is alive — dev builds are unrepresentative and
+   `target/debug` Conbind is alive — dev builds are unrepresentative and
    their helper processes can't be attributed correctly.
 4. **A hotkey registered in every app.** Open each app's settings and
    confirm the hotkey is actually set — app updates can silently clear it.
@@ -90,12 +90,12 @@ reported as `n/a`. The hotkey, cold-start, memory, CPU percentage, network,
 and app-size metrics still run end to end.
 
 To enable the privileged metrics, edit a dedicated sudoers file with
-`sudo visudo -f /etc/sudoers.d/asyar-benchmarks` and add the following,
+`sudo visudo -f /etc/sudoers.d/conbind-benchmarks` and add the following,
 replacing `yourusername` with the account that runs the benchmark:
 
 ```sudoers
-Cmnd_Alias ASYAR_BENCH = /usr/bin/powermetrics *, /usr/bin/fs_usage *
-yourusername ALL = (root) NOPASSWD: ASYAR_BENCH
+Cmnd_Alias CONBIND_BENCH = /usr/bin/powermetrics *, /usr/bin/fs_usage *
+yourusername ALL = (root) NOPASSWD: CONBIND_BENCH
 ```
 
 Availability is probed with a 100 ms `powermetrics` run, so no extra
@@ -108,7 +108,7 @@ entries are needed beyond the two tools.
 - Whole process groups are counted, so neither side hides memory in
   helper processes.
 - Raycast is measured **as installed** — the extensions you have (and
-  Asyar's, too) affect memory and cold start. For publishable numbers,
+  Conbind's, too) affect memory and cold start. For publishable numbers,
   use fresh/default-ish configurations and say so.
 - Raycast is closed source, so external observation is the only option;
   everything here observes both apps externally.

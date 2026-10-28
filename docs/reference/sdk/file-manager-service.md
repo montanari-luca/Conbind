@@ -26,7 +26,7 @@ interface IFileManagerService {
 **Minimal usage:**
 
 ```typescript
-import type { IFileManagerService } from 'asyar-sdk';
+import type { IFileManagerService } from 'conbind-sdk';
 
 const fm = context.getService<IFileManagerService>('fs');
 
@@ -40,7 +40,7 @@ await fm.trash('/Users/me/Downloads/old-file.zip');
 **Typical pattern — file manager extension with feedback:**
 
 ```typescript
-import type { IFileManagerService, IFeedbackService } from 'asyar-sdk';
+import type { IFileManagerService, IFeedbackService } from 'conbind-sdk';
 
 const fm = context.getService<IFileManagerService>('fs');
 const feedback = context.getService<IFeedbackService>('feedback');

@@ -153,14 +153,14 @@ when no events arrive.
 
 ### Wire contract
 
-- Subscribe RPC: `asyar:api:systemEvents:subscribe` with payload
+- Subscribe RPC: `conbind:api:systemEvents:subscribe` with payload
   `{ eventTypes: string[] }` → returns an opaque UUID subscription id.
-- Unsubscribe RPC: `asyar:api:systemEvents:unsubscribe` with payload
+- Unsubscribe RPC: `conbind:api:systemEvents:unsubscribe` with payload
   `{ subscriptionId: string }`.
-- Push messages: `asyar:event:system-event:push` with payload matching the
+- Push messages: `conbind:event:system-event:push` with payload matching the
   `SystemEvent` union (`type` discriminator in kebab-case, camelCase
   fields). Dispatched from Rust's `SystemEventsHub` via
-  `app_handle.emit("asyar:system-event", {extensionId, event})` and
+  `app_handle.emit("conbind:system-event", {extensionId, event})` and
   forwarded to the target iframe by the host's `systemEventsBridge`.
 
 > **Pro Tip:** To react to "connected" / "disconnected" network state,

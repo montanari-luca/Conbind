@@ -78,7 +78,7 @@ export interface IRunService {
 **Usage:**
 
 ```typescript
-import type { IRunService } from 'asyar-sdk/contracts';
+import type { IRunService } from 'conbind-sdk/contracts';
 
 const runs = context.getService<IRunService>('runs');
 

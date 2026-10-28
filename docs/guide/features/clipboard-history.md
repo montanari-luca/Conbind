@@ -11,15 +11,15 @@ Clipboard History records everything you copy — text, rich text (HTML/RTF), im
 
 The list is grouped by time: Pinned, Today, Yesterday, This Week, This Month, Older. The detail pane on the right shows a full preview: plain text renders with Markdown highlighting, HTML can be viewed rendered or as raw source, images are shown as thumbnails, and copied URLs can be previewed inline.
 
-Asyar also records which app each item came from, so you can see the source application (and window title) at the bottom of the detail pane.
+Conbind also records which app each item came from, so you can see the source application (and window title) at the bottom of the detail pane.
 
 ## How to use it
 
-1. Open Asyar and type `clip` — or select **Clipboard History** from search results.
+1. Open Conbind and type `clip` — or select **Clipboard History** from search results.
 2. The clipboard view opens. Use `↑` / `↓` to move through the list.
 3. Type in the search bar to filter. Full-text search runs across all text entries.
 4. To narrow by content type, click the dropdown in the search bar (or press `⌘P`) and choose **All Types**, **Text**, **Images**, or **Files**.
-5. Press `Enter` to paste the selected item into the app that was in focus before you opened Asyar.
+5. Press `Enter` to paste the selected item into the app that was in focus before you opened Conbind.
 6. Press `⇧Enter` to paste as plain text, stripping any formatting.
 7. To paste several items at once, `⌘Click` (or `Ctrl+Click` on Windows/Linux) each item you want, or hold `⌘`/`Ctrl` and press `↑`/`↓` to sweep through a range — then press `Enter` to merge them into a single paste.
 
@@ -50,20 +50,20 @@ Asyar also records which app each item came from, so you can see the source appl
 
 - **Favourites survive clears** — star anything you want to keep forever before running "Clear Clipboard History".
 - **Double-click to paste** — clicking an item selects it; double-clicking pastes it immediately.
-- **RTF items** — Asyar stores the rich format but "Paste as Plain Text" strips it, which is handy for pasting into apps that don't accept rich text.
+- **RTF items** — Conbind stores the rich format but "Paste as Plain Text" strips it, which is handy for pasting into apps that don't accept rich text.
 - **Large text is truncated in the preview** — the full content is always pasted correctly; the preview just caps at 50,000 characters to keep the UI fast.
 - **Merged paste is plain text, in selection order** — `⌘Click`/`⌘↑`/`⌘↓` build an ordered multi-selection independent of the normal cursor, so browsing around with plain clicks or arrow keys never loses it. Pressing `Enter` joins every selected item's text with a newline and pastes it as one block, in the order you selected them. Images and files can't be merged as text and are skipped (you'll see a toast if any were).
 - **Disabling Clipboard History** — You can turn off Clipboard History in **Settings → Extensions**. When disabled, background clipboard monitoring and capture immediately stop, active views are closed, and search contributions are hidden. Existing history is safely preserved and will reappear if re-enabled. Shared clipboard read/write actions used by other features continue to function normally.
 
 ## Automatic history retention (TTL)
 
-To protect your privacy and keep your clipboard database lean, Asyar automatically purges older clipboard entries based on a configurable time-to-live (TTL).
+To protect your privacy and keep your clipboard database lean, Conbind automatically purges older clipboard entries based on a configurable time-to-live (TTL).
 
 - **Configurable retention periods** — In **Settings → Privacy → Clipboard Privacy**, you can choose how long items are kept before automatic eviction:
   - `1 minute`, `5 minutes`, `10 minutes` (for high-privacy or temporary scratchpad usage)
   - `1 hour`, `24 hours`, `7 days`, `30 days`
   - `90 days` (default)
-- **Automatic eviction on capture** — Each time a new item is copied and captured, Asyar deletes non-favourited items that have aged past your selected retention window.
+- **Automatic eviction on capture** — Each time a new item is copied and captured, Conbind deletes non-favourited items that have aged past your selected retention window.
 - **Favourites are protected** — Starred/favourited entries are strictly preserved and will never be automatically deleted by the retention timer.
 
 ## Related

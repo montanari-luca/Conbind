@@ -4,20 +4,20 @@
 
 ## What it does
 
-Asyar keeps a lightweight, private log of command and application launches directly on your machine. The **Usage Stats** view visualizes how much time Asyar is saving you, which commands and applications you use most often, and your launch activity over time.
+Conbind keeps a lightweight, private log of command and application launches directly on your machine. The **Usage Stats** view visualizes how much time Conbind is saving you, which commands and applications you use most often, and your launch activity over time.
 
 All metrics are stored locally in your SQLite database and are **never sent over the network or shared with external analytics services**.
 
 ## What is displayed
 
-- **Total Launches**: The cumulative number of commands, applications, scripts, and snippets launched through Asyar.
+- **Total Launches**: The cumulative number of commands, applications, scripts, and snippets launched through Conbind.
 - **Estimated Time Saved**: An estimate based on standard desktop interaction benchmarks (opening apps via finder/dock vs. instant hotkey activation).
 - **Most Used Items**: Ranked list of your top applications, extensions, and commands with usage counts and percentage bars (`RankedStatRow`).
 - **Recent Activity**: High-level trends showing your launcher engagement over daily and weekly windows.
 
 ## How to use it
 
-1. Open Asyar with your global hotkey.
+1. Open Conbind with your global hotkey.
 2. Type `usage stats` (or `stats`, `metrics`, or `time saved`) and press `Enter`.
 3. The Usage Stats view opens, showing your top-level metric tiles (`StatTile`) and breakdown rows.
 4. Use `↑` / `↓` to inspect ranked items.
@@ -31,8 +31,8 @@ All metrics are stored locally in your SQLite database and are **never sent over
 
 ## Privacy & local storage
 
-- **100% Local**: All launch counters and timestamps are recorded in the local SQLite database (`asyar_data.db`).
-- **Zero Telemetry**: Asyar does not phone home with your launch frequencies, command choices, or habit data.
+- **100% Local**: All launch counters and timestamps are recorded in the local SQLite database (`conbind_data.db`).
+- **Zero Telemetry**: Conbind does not phone home with your launch frequencies, command choices, or habit data.
 - **Data Reset**: If you ever want a fresh start, use **Clear Stats** from the action panel (`⌘K`).
 
 ## Tips

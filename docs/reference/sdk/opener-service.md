@@ -44,7 +44,7 @@ export interface IOpenerService {
 #### Minimal usage
 
 ```typescript
-import type { IOpenerService } from 'asyar-sdk/contracts';
+import type { IOpenerService } from 'conbind-sdk/contracts';
 
 const opener = context.getService<IOpenerService>('opener');
 

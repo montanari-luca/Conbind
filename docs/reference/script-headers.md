@@ -4,17 +4,17 @@ order: 11
 
 # Script Headers
 
-Asyar scans user-configured directories for executable script files and
+Conbind scans user-configured directories for executable script files and
 registers each one as a [dynamic command](./dynamic-commands.md). The script
 file's metadata — title, icon, argument schema, execution mode, refresh
-interval — is read from `# @asyar.*` comment directives at the top of the
+interval — is read from `# @conbind.*` comment directives at the top of the
 file. The syntax is intentionally close to Raycast's Script Commands so
 existing scripts port over with minor edits.
 
 ## Where scripts come from
 
 The user adds one or more directories in **Settings → Scripts**. The Rust
-scanner ([`src-tauri/src/scripts/scanner.rs`](../../asyar-launcher/src-tauri/src/scripts/scanner.rs))
+scanner ([`src-tauri/src/scripts/scanner.rs`](../../conbind-launcher/src-tauri/src/scripts/scanner.rs))
 walks each directory non-recursively, reads the first comment block of
 every executable file, and registers matching files as dynamic commands
 under the built-in `scripts` extension. A filesystem watcher rescans on
@@ -23,7 +23,7 @@ add / delete / modify (no debounce — per the user's preference).
 A file must satisfy three conditions to register:
 
 1. **Executable bit set** (`chmod +x`).
-2. **Parseable header** — at minimum, `# @asyar.title` must be present.
+2. **Parseable header** — at minimum, `# @conbind.title` must be present.
 3. **No header errors** — invalid argument JSON, out-of-range argument
    index, duplicate index, or unrecognised mode/refreshTime values cause
    the file to be skipped with a `script_header_invalid` diagnostic.
@@ -42,25 +42,25 @@ header is the script body.
 
 ```bash
 #!/bin/bash
-# @asyar.title Search Google
-# @asyar.icon 🔍
-# @asyar.argument:1 { "name": "query", "type": "text", "placeholder": "Search..." }
+# @conbind.title Search Google
+# @conbind.icon 🔍
+# @conbind.argument:1 { "name": "query", "type": "text", "placeholder": "Search..." }
 
 open "https://www.google.com/search?q=$1"
 ```
 
 ## Directives
 
-### `@asyar.title <text>` — required
+### `@conbind.title <text>` — required
 
 The name shown in the launcher list. Single line, plain text. Without
 this directive the script is not registered.
 
 ```bash
-# @asyar.title Daily Standup Notes
+# @conbind.title Daily Standup Notes
 ```
 
-### `@asyar.icon <emoji | icon-name | image-path>` — optional
+### `@conbind.icon <emoji | icon-name | image-path>` — optional
 
 The icon shown next to the title. Three forms are accepted:
 
@@ -72,16 +72,16 @@ The icon shown next to the title. Three forms are accepted:
 
 When absent the launcher falls back to `icon:terminal`.
 
-### `@asyar.argument:<N> <json>` — optional, max 3
+### `@conbind.argument:<N> <json>` — optional, max 3
 
 Declares a chip-row input that the launcher collects before running the
 script. The JSON value is the same `CommandArgument` shape used by
 [Command Arguments](./command-arguments.md):
 
 ```bash
-# @asyar.argument:1 { "name": "query", "type": "text",     "placeholder": "Search…", "required": true }
-# @asyar.argument:2 { "name": "engine", "type": "dropdown", "default": "google", "data": [ { "value": "google", "title": "Google" }, { "value": "ddg", "title": "DuckDuckGo" } ] }
-# @asyar.argument:3 { "name": "limit", "type": "number",   "default": 10 }
+# @conbind.argument:1 { "name": "query", "type": "text",     "placeholder": "Search…", "required": true }
+# @conbind.argument:2 { "name": "engine", "type": "dropdown", "default": "google", "data": [ { "value": "google", "title": "Google" }, { "value": "ddg", "title": "DuckDuckGo" } ] }
+# @conbind.argument:3 { "name": "limit", "type": "number",   "default": 10 }
 ```
 
 Rules:
@@ -99,7 +99,7 @@ Rules:
   types start empty every time.
   See [Command Arguments → Persistence](./command-arguments.md#persistence).
 
-### `@asyar.requireAnyOf <json array>` — optional
+### `@conbind.requireAnyOf <json array>` — optional
 
 Gates Enter on "at least one of these arguments carries a user value",
 exactly like the manifest field of the same name (see
@@ -107,7 +107,7 @@ exactly like the manifest field of the same name (see
 The value is a JSON array of declared argument names:
 
 ```bash
-# @asyar.requireAnyOf ["hours", "minutes"]
+# @conbind.requireAnyOf ["hours", "minutes"]
 ```
 
 The same validation applies as for manifests: at least two members, all
@@ -115,7 +115,7 @@ declared, listed once each, and none `required`. A failing group is a
 header error, so the script is skipped with a `script_header_invalid`
 diagnostic rather than registering without its gate.
 
-### `@asyar.mode <silent | compact | fullOutput | inline>` — optional
+### `@conbind.mode <silent | compact | fullOutput | inline>` — optional
 
 Declares how the script's output is surfaced. Defaults to `compact` when
 absent.
@@ -132,7 +132,7 @@ behaviour and accepted by the parser today so scripts written for them
 won't break when those modes ship. They currently behave identically to
 `compact`.
 
-### `@asyar.refreshTime <N(s|m|h|d)>` — required for `mode: inline`
+### `@conbind.refreshTime <N(s|m|h|d)>` — required for `mode: inline`
 
 Sets the tick interval for inline-mode scripts. The value is `N` followed
 by a unit suffix:
@@ -146,13 +146,13 @@ by a unit suffix:
 
 The **minimum** is **10 seconds**. Values below this are clamped on
 ingest and a one-time `inline_script_clamped` diagnostic toast is shown
-to the user. Asyar matches Raycast's parser shape and floor.
+to the user. Conbind matches Raycast's parser shape and floor.
 
 For non-inline modes the directive is parsed but ignored.
 
 ## Inline-mode scripts
 
-When `@asyar.mode inline` and a valid `@asyar.refreshTime` are both
+When `@conbind.mode inline` and a valid `@conbind.refreshTime` are both
 present, the script becomes a **live row** — its first line of stdout
 ticks in place as the row's subtitle. This is the dashboard pattern:
 clock, weather, latest commit hash, battery %, build status.
@@ -160,7 +160,7 @@ clock, weather, latest commit hash, battery %, build status.
 ### Tick lifecycle
 
 A per-script tokio task is spawned in
-[`src-tauri/src/scripts/inline_scheduler.rs`](../../asyar-launcher/src-tauri/src/scripts/inline_scheduler.rs).
+[`src-tauri/src/scripts/inline_scheduler.rs`](../../conbind-launcher/src-tauri/src/scripts/inline_scheduler.rs).
 On register (launcher start, file added, mode flipped to `inline`) it
 fires one immediate tick so the row's subtitle is populated, then runs
 the script every `refreshTime` seconds. Each tick:
@@ -194,14 +194,14 @@ subtitle on its next interval.
 
 ### Cap: 10 concurrent inline scripts
 
-Asyar matches Raycast's 10-script cap. When more than 10 inline scripts
+Conbind matches Raycast's 10-script cap. When more than 10 inline scripts
 are registered, the alphabetically-last entries by absolute path are
 **not auto-ticked** — they fall back to manual-Enter invocation. A
 single grouped `inline_script_capped` diagnostic lists the dropped
 scripts so the user knows which ones aren't refreshing.
 
 The cap is enforced by `partition_specs` in
-[`inline_scheduler.rs`](../../asyar-launcher/src-tauri/src/scripts/inline_scheduler.rs)
+[`inline_scheduler.rs`](../../conbind-launcher/src-tauri/src/scripts/inline_scheduler.rs)
 and is deterministic across rescans regardless of file-system
 enumeration order.
 
@@ -217,10 +217,10 @@ it.
 
 ```bash
 #!/bin/bash
-# @asyar.title Asyar Clock Inline
-# @asyar.icon ⏰
-# @asyar.mode inline
-# @asyar.refreshTime 10s
+# @conbind.title Conbind Clock Inline
+# @conbind.icon ⏰
+# @conbind.mode inline
+# @conbind.refreshTime 10s
 
 date '+%H:%M:%S'
 ```
@@ -229,10 +229,10 @@ date '+%H:%M:%S'
 
 ```bash
 #!/bin/bash
-# @asyar.title Asyar Battery Inline
-# @asyar.icon 🔋
-# @asyar.mode inline
-# @asyar.refreshTime 60s
+# @conbind.title Conbind Battery Inline
+# @conbind.icon 🔋
+# @conbind.mode inline
+# @conbind.refreshTime 60s
 
 pmset -g batt | grep -Eo '[0-9]+%'
 ```
@@ -241,9 +241,9 @@ pmset -g batt | grep -Eo '[0-9]+%'
 
 ```bash
 #!/bin/bash
-# @asyar.title Search Google
-# @asyar.icon 🔍
-# @asyar.argument:1 { "name": "query", "type": "text", "placeholder": "Query", "required": true }
+# @conbind.title Search Google
+# @conbind.icon 🔍
+# @conbind.argument:1 { "name": "query", "type": "text", "placeholder": "Query", "required": true }
 
 open "https://www.google.com/search?q=$(printf %s "$1" | python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.stdin.read()))')"
 ```
@@ -252,10 +252,10 @@ open "https://www.google.com/search?q=$(printf %s "$1" | python3 -c 'import sys,
 
 ```bash
 #!/bin/bash
-# @asyar.title Multi-Search
-# @asyar.icon 🌐
-# @asyar.argument:1 { "name": "query",  "type": "text",     "placeholder": "Query", "required": true }
-# @asyar.argument:2 { "name": "engine", "type": "dropdown", "default": "google", "data": [ { "value": "google", "title": "Google" }, { "value": "ddg", "title": "DuckDuckGo" }, { "value": "kagi", "title": "Kagi" } ] }
+# @conbind.title Multi-Search
+# @conbind.icon 🌐
+# @conbind.argument:1 { "name": "query",  "type": "text",     "placeholder": "Query", "required": true }
+# @conbind.argument:2 { "name": "engine", "type": "dropdown", "default": "google", "data": [ { "value": "google", "title": "Google" }, { "value": "ddg", "title": "DuckDuckGo" }, { "value": "kagi", "title": "Kagi" } ] }
 
 case "$2" in
   google) URL="https://www.google.com/search?q=$1" ;;
@@ -270,7 +270,7 @@ open "$URL"
 | Kind                    | When                                                                                                      | Severity                                                                    |
 | ----------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `script_header_invalid` | Header JSON malformed, duplicate argument index, out-of-range index, unknown mode, malformed refreshTime. | `warning` — file skipped, not registered.                                   |
-| `inline_script_clamped` | A script declared `@asyar.refreshTime` below 10s. Fired once per script.                                  | `warning` — value raised to 10s, ticking proceeds.                          |
+| `inline_script_clamped` | A script declared `@conbind.refreshTime` below 10s. Fired once per script.                                | `warning` — value raised to 10s, ticking proceeds.                          |
 | `inline_script_capped`  | More than 10 inline scripts present after a rescan. Fired once per newly-overflowed script.               | `warning` — capped scripts still run on manual Enter, just don't auto-tick. |
 
 All three flow through the unified `feedbackService` channel — they

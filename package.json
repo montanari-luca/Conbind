@@ -1,5 +1,5 @@
 {
-  "name": "asyar",
+  "name": "conbind",
   "private": true,
   "version": "0.0.0",
   "packageManager": "pnpm@10.26.0",
@@ -14,11 +14,11 @@
     "check:ci:rust": "node scripts/check-ci.mjs --rust",
     "check:ci:changed": "node scripts/check-ci.mjs --changed",
     "check:design": "node scripts/check-design.mjs",
-    "gen:all": "pnpm --filter asyar run gen:all && pnpm --filter asyar-sdk run gen:all",
+    "gen:all": "pnpm --filter conbind run gen:all && pnpm --filter conbind-sdk run gen:all",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:setup": "node --test scripts/setup-version.test.mjs",
-    "release:sdk": "pnpm --filter asyar-sdk run release",
+    "release:sdk": "pnpm --filter conbind-sdk run release",
     "prepare": "husky"
   },
   "engines": {

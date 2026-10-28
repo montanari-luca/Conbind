@@ -7,7 +7,7 @@ survive the panel closing belong in the worker.
 
 Lets extensions run arbitrary command-line tools and receive their `stdout`/`stderr` output as a real-time stream. Covers the full range of power-user extensions: video converters, package managers, git wrappers, Docker managers, download tools, and anything else that wraps a CLI binary.
 
-Before any binary can be executed, the user must explicitly grant trust for that specific binary. Asyar shows a one-time consent dialog showing the full resolved path of the executable. Once the user clicks **Allow Always**, the approval is stored in SQLite and never asked again. Users can review and revoke trust at any time from **Settings → Extensions → Terminal Trust Store**.
+Before any binary can be executed, the user must explicitly grant trust for that specific binary. Conbind shows a one-time consent dialog showing the full resolved path of the executable. Once the user clicks **Allow Always**, the approval is stored in SQLite and never asked again. Users can review and revoke trust at any time from **Settings → Extensions → Terminal Trust Store**.
 
 ```typescript
 interface SpawnParams {
@@ -89,7 +89,7 @@ interface IShellService {
 **Minimal usage:**
 
 ```typescript
-import type { IShellService } from 'asyar-sdk';
+import type { IShellService } from 'conbind-sdk';
 
 const shell = context.getService<IShellService>('shell');
 
@@ -103,7 +103,7 @@ handle.onError(({ message }) => console.warn('[Shell] spawn failed:', message));
 **Typical pattern — ffmpeg converter with live progress toast:**
 
 ```typescript
-import type { IShellService, IFeedbackService } from 'asyar-sdk';
+import type { IShellService, IFeedbackService } from 'conbind-sdk';
 
 const shell = context.getService<IShellService>('shell');
 const feedback = context.getService<IFeedbackService>('feedback');
@@ -210,11 +210,11 @@ await handle.closeStdin();
 Extension iframe                         Host (Svelte + Rust)
 ─────────────────────────────────────────────────────────────────────────
 1. SDK generates spawnId (crypto.randomUUID())
-2. SDK registers window message listener for asyar:stream events
+2. SDK registers window message listener for conbind:stream events
    keyed by spawnId  ← BEFORE broker.invoke(), no race condition
 3. ShellServiceProxy calls:
    broker.invoke('shell:spawn', { program, args, spawnId })
-   MessageBroker prepends 'asyar:api:' → wire type: 'asyar:api:shell:spawn'
+   MessageBroker prepends 'conbind:api:' → wire type: 'conbind:api:shell:spawn'
                                           ─────────────────────────────►
                                           4. ExtensionIpcRouter:
                                              permission check (shell:spawn)
@@ -228,9 +228,9 @@ Extension iframe                         Host (Svelte + Rust)
                                                 → if denied: throw PERMISSION_DENIED
                                                 → if allowed: shell_grant_trust (SQLite)
                                              c. StreamDispatcher.create(spawnId)
-                                             d. listen('asyar:shell:chunk', …)
-                                                listen('asyar:shell:done', …)
-                                                listen('asyar:shell:error', …)
+                                             d. listen('conbind:shell:chunk', …)
+                                                listen('conbind:shell:done', …)
+                                                listen('conbind:shell:error', …)
                                              e. invoke('shell_spawn', { … }) [fire & forget]
                                              return { streaming: true }
                                           ◄─────────────────────────────
@@ -243,26 +243,26 @@ Extension iframe                         Host (Svelte + Rust)
                                             tokio::process::Command::spawn()
                                             store PID in ShellProcessRegistry
                                             tokio task: tokio::join!(
-                                              stdout reader → emit asyar:shell:chunk,
-                                              stderr reader → emit asyar:shell:chunk,
+                                              stdout reader → emit conbind:shell:chunk,
+                                              stderr reader → emit conbind:shell:chunk,
                                               child.wait()
                                             )
-                                            emit asyar:shell:done / asyar:shell:error
+                                            emit conbind:shell:done / conbind:shell:error
 
                                           TS ShellService (event listeners):
                                             → StreamDispatcher.sendChunk()
                                             → StreamDispatcher.sendDone()
 
 StreamDispatcher → Extension iframe:
-  { type: 'asyar:stream', streamId: spawnId, phase: 'chunk',
+  { type: 'conbind:stream', streamId: spawnId, phase: 'chunk',
     data: { stream: 'stdout'|'stderr', data: '...' } }  × N
 
-  { type: 'asyar:stream', streamId: spawnId, phase: 'done', data: { exitCode } }
+  { type: 'conbind:stream', streamId: spawnId, phase: 'done', data: { exitCode } }
 
 5. onChunk / onDone / onError callbacks fire in extension
 ```
 
-The host never awaits the process — `spawn()` returns `{ streaming: true }` immediately and output flows through the generic `asyar:stream:*` unidirectional message protocol.
+The host never awaits the process — `spawn()` returns `{ streaming: true }` immediately and output flows through the generic `conbind:stream:*` unidirectional message protocol.
 
 #### Aborting a process
 
@@ -284,7 +284,7 @@ Extension iframes are reloaded on hot-reload in development and can be torn down
 On extension boot, call `list()` to discover every spawn the launcher still remembers for this extension, then call `attach(spawnId)` on each descriptor to rebuild a live `ShellHandle`.
 
 ```typescript
-import type { IShellService } from 'asyar-sdk';
+import type { IShellService } from 'conbind-sdk';
 
 const shell = context.getService<IShellService>('shell');
 
@@ -332,7 +332,7 @@ reattachPomodoroTimer();
 | Process crashes / OS-level error           | `onError`                         | `'SHELL_ERROR'`       |
 | Extension calls `abort()`                  | `onError`                         | `'ABORTED'`           |
 
-A non-zero exit code is delivered via `onDone`, not `onError` — the process completed from Asyar's perspective. Treat exit codes the same way a shell script would.
+A non-zero exit code is delivered via `onDone`, not `onError` — the process completed from Conbind's perspective. Treat exit codes the same way a shell script would.
 
 #### Trust and consent
 
@@ -351,7 +351,7 @@ YouTube Downloader wants to run a program:
   [ Allow Always ]   [ Deny ]
 ```
 
-Clicking **Allow Always** stores the trust permanently in `~/.local/share/asyar/asyar_data.db` (or the platform equivalent). The next call to `spawn()` with the same binary skips the dialog entirely.
+Clicking **Allow Always** stores the trust permanently in `~/.local/share/conbind/conbind_data.db` (or the platform equivalent). The next call to `spawn()` with the same binary skips the dialog entirely.
 
 Trust is scoped per extension: granting trust for `ffmpeg` to the YouTube Downloader extension does not grant `ffmpeg` access to any other extension.
 
@@ -385,7 +385,7 @@ Extensions that wrap macOS-only tools (like `osascript` or `brew`) should declar
 
 #### Privacy & security note for reviewers
 
-`shell:spawn` grants an extension the ability to run arbitrary executables on the user's machine with the same permissions as the Asyar process. Reviewers will verify:
+`shell:spawn` grants an extension the ability to run arbitrary executables on the user's machine with the same permissions as the Conbind process. Reviewers will verify:
 
 - Every binary the extension may spawn is documented in the extension description.
 - `spawn()` is called only in response to an explicit user action, not silently on load.

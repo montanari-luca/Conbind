@@ -4,15 +4,15 @@ order: 3
 
 ## 16. Debugging Workflows
 
-### Step 1 — Check the Asyar developer log
+### Step 1 — Check the Conbind developer log
 
-Open Asyar → tray menu → **Developer Log**. All `LogService` calls from your extension appear here with timestamps, categories, and colors. This is the primary debugging interface.
+Open Conbind → tray menu → **Developer Log**. All `LogService` calls from your extension appear here with timestamps, categories, and colors. This is the primary debugging interface.
 
 ### Step 2 — Open browser DevTools for the iframe
 
-Asyar is built on Tauri/WebKit. You can open WebKit Inspector for the extension iframe:
+Conbind is built on Tauri/WebKit. You can open WebKit Inspector for the extension iframe:
 
-1. Enable developer mode in Asyar settings.
+1. Enable developer mode in Conbind settings.
 2. Right-click inside your extension's view → **Inspect Element**.
 3. The full WebKit DevTools open for your iframe's context.
 
@@ -42,7 +42,7 @@ window.parent.postMessage = (msg, target) => {
 ### Step 4 — Validate your manifest
 
 ```bash
-asyar validate
+conbind validate
 ```
 
 Many extension loading failures are manifest validation errors (wrong `id` format, missing per-command `mode`, missing `component` for `mode: "view"`, missing `background.main` for `mode: "background"` commands, etc.).
@@ -52,23 +52,23 @@ Many extension loading failures are manifest validation errors (wrong `id` forma
 If your extension does not appear in the launcher or is blocked with a `403 Access Denied` error on production builds, check that the dev registry contains your project's absolute path:
 
 ```
-$APPDATA/dev_extensions.json (e.g. ~/Library/Application Support/org.asyar.app/dev_extensions.json on macOS)
+$APPDATA/dev_extensions.json (e.g. ~/Library/Application Support/org.conbind.app/dev_extensions.json on macOS)
 ```
 
-It should contain an entry mapping your extension ID to the absolute source path. Running `asyar link` automatically registers this entry, and `asyar unlink` removes it. If it is missing, run `asyar link` or use the Create Extension tool.
+It should contain an entry mapping your extension ID to the absolute source path. Running `conbind link` automatically registers this entry, and `conbind unlink` removes it. If it is missing, run `conbind link` or use the Create Extension tool.
 
 ### Step 6 — Review permission consent
 
-If your extension declares permissions or updates its declared permission set (e.g. freshly linked via `asyar link`), launching its command from the launcher will automatically prompt a permission review consent dialog. Accepting grants the declared permissions immediately. If consent was declined or cancelled, gated IPC calls will fail closed until consent is granted.
+If your extension declares permissions or updates its declared permission set (e.g. freshly linked via `conbind link`), launching its command from the launcher will automatically prompt a permission review consent dialog. Accepting grants the declared permissions immediately. If consent was declined or cancelled, gated IPC calls will fail closed until consent is granted.
 
 ### Common issues and solutions
 
 | Symptom                                 | Cause                                                   | Fix                                                                                               |
 | --------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | Extension not appearing in search       | Manifest `id` doesn't match directory name              | Rename directory to exactly match `id`                                                            |
-| Extension not appearing in search       | Not registered in dev registry                          | Run `asyar link`                                                                                  |
+| Extension not appearing in search       | Not registered in dev registry                          | Run `conbind link`                                                                                |
 | Blank white iframe panel                | `main.ts` throws before mounting                        | Open DevTools, check Console for errors                                                           |
-| `asyar:extension:loaded` never fired    | `window.parent.postMessage` call missing from `main.ts` | Add the loaded signal (see template)                                                              |
+| `conbind:extension:loaded` never fired  | `window.parent.postMessage` call missing from `main.ts` | Add the loaded signal (see template)                                                              |
 | Permission review dialog on launch      | Freshly linked or updated permissions require review    | Accept the consent dialog to grant permissions and proceed                                        |
 | Service call hangs for 10s then rejects | Missing permission or consent declined                  | Declare permission in `manifest.json` and approve consent upon launch or in Settings > Extensions |
 | External URL fetch blocked              | Using `window.fetch()` directly                         | Use `NetworkService` instead                                                                      |

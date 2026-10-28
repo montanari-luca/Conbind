@@ -21,6 +21,6 @@ test('local and platform CI include extracted Rust crates', () => {
 test('local and platform CI enforce launcher Svelte types', () => {
   const local = readFileSync('scripts/check-ci.mjs', 'utf8');
   const platform = readFileSync('.github/workflows/test-and-lint.yml', 'utf8');
-  assert.match(local, /runStep\('Launcher Type Check', 'pnpm --dir asyar-launcher check'\)/);
-  assert.match(platform, /run: pnpm --dir asyar-launcher check/);
+  assert.match(local, /runStep\('Launcher Type Check', 'pnpm --dir conbind-launcher check'\)/);
+  assert.match(platform, /run: pnpm --dir conbind-launcher check/);
 });

@@ -39,7 +39,7 @@ order: 6
           │     INITIALIZE      │
           │                     │
           │  Iframe created.    │
-          │  asyar-extension:// │
+          │  conbind-extension:// │
           │  URL loaded.        │
           │                     │
           │  main.ts runs:      │
@@ -53,7 +53,7 @@ order: 6
           │    'loaded' signal  │
           └──────────┬──────────┘
                      │ host receives 'loaded' signal
-                     │ replies with asyar:event:preferences:set-all
+                     │ replies with conbind:event:preferences:set-all
                      │ (bundle: extension + commands prefs)
           ┌──────────▼──────────┐
           │      ACTIVATE       │
@@ -92,12 +92,12 @@ order: 6
 
 ### Compatibility checks at discovery
 
-When Asyar discovers an extension, it validates the following constraints from the manifest:
+When Conbind discovers an extension, it validates the following constraints from the manifest:
 
 | Field           | Check                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `platforms`     | Checked **first**. If present, the current OS must appear in the list. If not, the extension is marked `PlatformNotSupported` and will not load or appear in the store on that OS.                                                                                                                                                                                                                                                                                                      |
-| `asyarSdk`      | Compared (semver) against the app's bundled SDK version (`SUPPORTED_SDK_VERSION` in `discovery.rs`, currently `1.10.2`). If `required` > `supported`, the extension is marked `SdkMismatch` and will not load.                                                                                                                                                                                                                                                                          |
+| `conbindSdk`    | Compared (semver) against the app's bundled SDK version (`SUPPORTED_SDK_VERSION` in `discovery.rs`, currently `1.10.2`). If `required` > `supported`, the extension is marked `SdkMismatch` and will not load.                                                                                                                                                                                                                                                                          |
 | `minAppVersion` | Compared against the app's version. If the app is too old, the extension is marked `AppVersionTooOld`.                                                                                                                                                                                                                                                                                                                                                                                  |
 | `preferences`   | Extension-level and command-level declarations are validated by `validate_preferences` in `discovery.rs`. Any invalid declaration (bad `name`, unknown `type`, dropdown without `data`, dropdown `default` not in `data[]`, non-boolean checkbox default, non-numeric number default, duplicate names within a scope) **skips the entire extension** with a warning. This is intentionally fail-loud — invalid manifests are a developer error, not a runtime condition to work around. |
 
@@ -107,7 +107,7 @@ If none of these fields are present, the extension is marked `Unknown` (compatib
 
 ### Feature lifecycle & disableability policy
 
-Asyar enforces an explicit lifecycle policy distinguishing required core infrastructure from optional bundled features and installed extensions:
+Conbind enforces an explicit lifecycle policy distinguishing required core infrastructure from optional bundled features and installed extensions:
 
 1. **Required Core Infrastructure (Built-ins)**
    - Only recovery/platform infrastructure (`settings` and `system`) is non-disableable (`lifecycle.disableable: false`).
@@ -117,7 +117,7 @@ Asyar enforces an explicit lifecycle policy distinguishing required core infrast
 2. **Optional Bundled Features (Tier 1 Built-ins)**
    - Every user-facing bundled feature explicitly declares `"lifecycle": { "disableable": true }` in its `manifest.json`.
    - Disabling removes that bundled feature's commands, search contributions, actions, accessories, views, and deeplink entry points without deleting its stored data.
-   - Platform services remain available to permission-authorized Tier 2 replacements; disabling an Asyar-provided interface does not disable the underlying extension API.
+   - Platform services remain available to permission-authorized Tier 2 replacements; disabling an Conbind-provided interface does not disable the underlying extension API.
    - **Clipboard History** is the reference service/feature split:
      - Disabling it releases the bundled feature's scoped capture subscription immediately.
      - Native clipboard listeners are torn down only when no other authorized capture consumer remains.
@@ -130,28 +130,28 @@ Asyar enforces an explicit lifecycle policy distinguishing required core infrast
    - **File Search** service/UI boundary:
      - Disabling the bundled `file-search` feature removes its commands (`cmd_file-search_show-files`), views (`file-search/DefaultView`), view actions, root-search fallback item, and deeplink entry points.
      - Disabling does not stop or disable the underlying platform service (`FileIndexState`, file watcher, indexing, and SQLite persistence).
-     - Permission-authorized Tier 2 extensions retain full access to Asyar's file APIs (`files:search`, `files:status`, `files:read`, `files:glob`, `files:thumbnail`) via `IFilesService` / `ExtensionIpcRouter` while the bundled UI is disabled.
+     - Permission-authorized Tier 2 extensions retain full access to Conbind's file APIs (`files:search`, `files:status`, `files:read`, `files:glob`, `files:thumbnail`) via `IFilesService` / `ExtensionIpcRouter` while the bundled UI is disabled.
      - Existing indexed data, pinned files (`file_search_pinned`), selection learning (`file_search_selections`), and user configuration are preserved across disable/re-enable.
      - Re-enabling the bundled feature restores its contributions idempotently without duplicate registrations, watchers, or results.
      - Any active File Search view closes cleanly upon disabling.
    - **Notes** service/UI boundary:
      - Disabling the bundled `notes` feature removes its commands (`cmd_notes_open-notes`, `cmd_notes_quick-note`, `cmd_notes_new-sticky`, `cmd_notes_append-today`), views (`notes/DefaultView`), view actions (`notes:add`, `notes:toggle-pin`, `notes:duplicate`, `notes:copy-markdown`, `notes:stick-to-desktop`, `notes:export-markdown`, `notes:delete`), and deeplink entry points.
      - Disabling does not stop or disable the underlying notes platform service (`notesService` / Rust SQLite persistence layer).
-     - Permission-authorized Tier 2 extensions retain full access to Asyar's notes APIs (`notes:read`, `notes:write`) via `INotesService` (`notes.search`, `notes.get`, `notes.create`, `notes.append`, `notes.list`) while the bundled UI is disabled.
+     - Permission-authorized Tier 2 extensions retain full access to Conbind's notes APIs (`notes:read`, `notes:write`) via `INotesService` (`notes.search`, `notes.get`, `notes.create`, `notes.append`, `notes.list`) while the bundled UI is disabled.
      - Existing stored notes and pinned note states in SQLite are preserved across disable/re-enable.
      - Re-enabling the bundled feature restores its contributions and reloads the note store idempotently without duplicate listeners or state leaks.
      - Any active Notes view closes cleanly upon disabling.
    - **Runs** service/UI boundary:
      - Disabling the bundled `runs` feature removes its commands (`cmd_runs_open-runs`), views (`runs/RunView`), view actions (`runs:clear-recent`, `agents:open-run-in-chat`), and deeplink entry points.
      - Disabling does not stop or disable the underlying run tracking and background task engine (`RunService` / Rust process management).
-     - Permission-authorized Tier 2 extensions retain full access to Asyar's run management APIs (`runs:track`) via `IRunService` (`runs.start`, `runs.write`, `runs.done`, `runs.fail`, `runs.cancel`, `runs.loadHistory`) while the bundled UI is disabled.
+     - Permission-authorized Tier 2 extensions retain full access to Conbind's run management APIs (`runs:track`) via `IRunService` (`runs.start`, `runs.write`, `runs.done`, `runs.fail`, `runs.cancel`, `runs.loadHistory`) while the bundled UI is disabled.
      - Existing execution history and run logs in SQLite are preserved across disable/re-enable.
      - Re-enabling the bundled feature restores its view contributions and reloads history idempotently.
      - Any active Runs view closes cleanly upon disabling.
    - **Snippets** service/UI boundary:
      - Disabling the bundled `snippets` feature removes its commands (`cmd_snippets_open-snippets`), views (`snippets/DefaultView`), view actions (`snippets:add`, `snippets:paste`, `snippets:edit`, `snippets:delete`, `snippets:copy-expansion`, `snippets:duplicate`, `snippets:toggle-pin`, `snippets:clear-all`), and deeplink entry points.
      - Disabling does not stop or disable the native shortcode text expansion engine in Rust or purge snippet records from SQLite.
-     - Permission-authorized Tier 2 extensions retain full access to contribute or revoke shortcodes dynamically (`asyar:api:snippets:registerShortcodes`, `asyar:api:snippets:unregisterShortcodes` via `snippets:contribute`) while the bundled UI is disabled.
+     - Permission-authorized Tier 2 extensions retain full access to contribute or revoke shortcodes dynamically (`conbind:api:snippets:registerShortcodes`, `conbind:api:snippets:unregisterShortcodes` via `snippets:contribute`) while the bundled UI is disabled.
      - Existing user snippets, keyword triggers, and encrypted expansions in SQLite are preserved across disable/re-enable.
      - Re-enabling the bundled feature restores its contributions and reloads snippets idempotently.
      - Any active Snippets view closes cleanly upon disabling.

@@ -2,19 +2,19 @@
 order: 2
 ---
 
-## 13. Publishing — GitHub & the Asyar Store
+## 13. Publishing — GitHub & the Conbind Store
 
 ### The full publish pipeline
 
 ```bash
-asyar publish
+conbind publish
 ```
 
 The publish command is a **resumable multi-step pipeline**. Each step is idempotent — if a step already completed in a previous run, the command detects this and skips forward.
 
 #### Step 1 — Validate
 
-Runs `asyar validate`. Exits immediately on failure before touching GitHub or the Store.
+Runs `conbind validate`. Exits immediately on failure before touching GitHub or the Store.
 
 Validation errors identify the field to fix in `manifest.json`. Array indexes start at zero: `commands[0].trigger` refers to the first command's `trigger`.
 
@@ -23,13 +23,13 @@ Common corrections:
 - **Text preferences:** use `"type": "textfield"` in `preferences`. Command arguments use `"type": "text"` instead.
 - **Command triggers:** use one non-empty keyword such as `"trigger": "search-cep"`. Only ASCII letters, digits, underscores, and hyphens are accepted; a space-separated keyword list such as `"cep endereco"` is invalid.
 
-Run `asyar validate` to check the corrected manifest locally, then retry `asyar publish`.
+Run `conbind validate` to check the corrected manifest locally, then retry `conbind publish`.
 
 #### Step 2 — Build
 
 Runs `vite build` automatically. Verifies `dist/index.html` was produced.
 
-#### Step 3 — Authenticate with the Asyar Store
+#### Step 3 — Authenticate with the Conbind Store
 
 Sign in via **GitHub OAuth device flow**. Your browser opens to `github.com/login/device` with a code shown in the terminal. After authorization, a store token is stored locally and reused in future runs.
 
@@ -39,8 +39,8 @@ The command finds your repository in this priority order:
 
 1. `--repo <url>` flag (explicit override).
 2. `git remote get-url origin` (if git remote exists in working directory).
-3. `~/.asyar/config.json` (stored from a previous publish run).
-4. **Auto-creates a new public GitHub repository** named `asyar-<last-segment-of-id>-extension`.
+3. `~/.conbind/config.json` (stored from a previous publish run).
+4. **Auto-creates a new public GitHub repository** named `conbind-<last-segment-of-id>-extension`.
 
 #### Step 5 — Check for existing release
 
@@ -54,13 +54,13 @@ Creates a zip from `dist/` and `manifest.json`. Computes a **SHA-256 checksum** 
 
 Creates a GitHub Release tagged `v<version>` and uploads the zip as a release asset.
 
-#### Step 8 — Submit to the Asyar Store
+#### Step 8 — Submit to the Conbind Store
 
 Sends to the Store API: repo URL, extension ID, version, release tag, download URL, and checksum.
 
 #### Step 9 — Review
 
-Your extension enters a review queue. When approved, it appears in the Asyar Store for users to discover and install.
+Your extension enters a review queue. When approved, it appears in the Conbind Store for users to discover and install.
 
 ---
 
@@ -72,14 +72,14 @@ Your extension enters a review queue. When approved, it appears in the Asyar Sto
 { "version": "1.2.0" }
 ```
 
-2. Run `asyar publish`. The command creates a new GitHub Release with tag `v1.2.0` and submits a new store entry.
+2. Run `conbind publish`. The command creates a new GitHub Release with tag `v1.2.0` and submits a new store entry.
 
 ---
 
 ### Using a specific GitHub repository
 
 ```bash
-asyar publish --repo https://github.com/yourusername/your-extension-repo
+conbind publish --repo https://github.com/yourusername/your-extension-repo
 ```
 
 ---
@@ -103,17 +103,17 @@ You can distribute extensions directly via GitHub without going through the Stor
 https://github.com/<user>/<repo>/releases/download/v1.0.0/<extension-id>.zip
 ```
 
-### Installing a local `.asyar` file
+### Installing a local `.conbind` file
 
 Users can also install extensions directly from a local file — no internet connection or store submission required. This is the primary distribution method for theme extensions and useful for beta testing any extension type.
 
 **To install:**
 
-1. Package your extension as a `.asyar` file (a renamed ZIP archive — see [Type 3: Theme Extension](#type-3-theme-extension-theme) for the packaging command; view/result extensions use the same format with `index.html` instead of `theme.json`).
-2. Open Asyar → Settings → Extensions.
-3. Click **Install from File...** and select the `.asyar` file.
+1. Package your extension as a `.conbind` file (a renamed ZIP archive — see [Type 3: Theme Extension](#type-3-theme-extension-theme) for the packaging command; view/result extensions use the same format with `index.html` instead of `theme.json`).
+2. Open Conbind → Settings → Extensions.
+3. Click **Install from File...** and select the `.conbind` file.
 
-**Supported in `.asyar` packages:** all extension types (`view`, `result`, `theme`).
+**Supported in `.conbind` packages:** all extension types (`view`, `result`, `theme`).
 
 **Version conflict behaviour:** Installing a higher version upgrades the existing installation. Installing the same or lower version is rejected with an error.
 

@@ -1,0 +1,151 @@
+import { type UnlistenFn } from '@tauri-apps/api/event';
+import { agentsBackfillThreadTitles, replaceDynamicCommandsBuiltin } from '../../lib/ipc/commands';
+import { logService } from '../../services/log/logService';
+import type { DynamicCommandRegistration } from 'conbind-sdk/contracts';
+import type { AgentService } from './agentService.svelte';
+import type { ThreadDef } from './types';
+import { agentService as defaultAgentService } from './agentService.svelte';
+import type { ChatStreamStatus } from '../../services/ai/IProviderPlugin';
+import { appListen } from '../../lib/ipc/bridgeEvents';
+import { healDuplicateChords } from '../shortcuts/shortcutHeal';
+
+const AGENTS_EXTENSION_ID = 'agents';
+
+export class AgentsManager {
+  currentAgentId = $state<string | null>(null);
+  /**
+   * Active thread id for the chat view, set by AgentChatView on mount and
+   * read by the agents extension's `onViewSubmit` so launcher-bar Enter
+   * routes the query into the right thread.
+   */
+  currentThreadId = $state<string | null>(null);
+  /**
+   * Bumped when thread metadata changes outside the chat view (e.g. pin / unpin
+   * from the ⌘K action panel) so the view reloads its thread list.
+   */
+  threadsVersion = $state(0);
+  /**
+   * In-flight assistant response. While a turn is streaming, tokens land
+   * here and the chat view renders them as a temporary bubble. Cleared
+   * when the turn is persisted (real message takes over).
+   */
+  streamingText = $state<string>('');
+  streamingStatus = $state<ChatStreamStatus | null>(null);
+  /** True while a `runAgent` invocation is in-flight for the active thread. */
+  sending = $state<boolean>(false);
+  /** Latest assistant message's text in the active thread, or null. Set by
+   * AgentChatView on message load; read by the copy-last-response action. */
+  lastAssistantMessageText = $state<string | null>(null);
+  /**
+   * AbortController for the active send. The chat view's Cancel button (and
+   * the launcher Esc handler) call `.abort()` on this; agentLoop watches it
+   * via the abortSignal arg.
+   */
+  activeAbortController = $state<AbortController | null>(null);
+  /**
+   * The thread list each agent last loaded. The chat view mounts fresh on
+   * every open, so it renders this until its own load lands rather than an
+   * empty sidebar that claims there are no threads.
+   */
+  private knownThreads = new Map<string, ThreadDef[]>();
+  private service: AgentService;
+  private started = false;
+  private agentsChangedUnlisten: UnlistenFn | null = null;
+
+  constructor(service?: AgentService) {
+    this.service = service ?? defaultAgentService;
+  }
+
+  async start(): Promise<void> {
+    if (this.started) return;
+    this.started = true;
+
+    // Load persisted agents from SQLite into the service cache before we
+    // sync dynamic commands — otherwise refresh() registers zero entries
+    // and the user appears to lose their agents on every restart.
+    try {
+      await this.service.init();
+    } catch (err) {
+      logService.warn(`[agents] service init failed: ${err}`);
+    }
+
+    // One-time-per-session backfill: derive titles for any threads created
+    // before auto-titling landed (their first user message becomes the title).
+    // Runs async; failure is non-fatal — the sidebar falls back to dates.
+    void agentsBackfillThreadTitles().catch((err) => {
+      logService.warn(`[agents] thread-title backfill failed: ${err}`);
+    });
+
+    try {
+      await this.refresh();
+    } catch (err) {
+      logService.warn(`[agents] initial refresh failed: ${err}`);
+    }
+
+    // Keep the dynamic command registry in sync with agents created or
+    // deleted from ANY webview — onboarding's AI setup, the Hidden AI
+    // commands step, an external Tauri call. Without this
+    // listener, agents created outside the edit/delete flow that
+    // explicitly call `manager.refresh()` would land in SQLite (and in
+    // `service.agents`) but never reach root-search.
+    //
+    // Order matters: we must await `service.refresh()` before our own
+    // `refresh()` so the registration uses the freshly-fetched agent
+    // list. The service's own `agents:changed` listener runs in parallel
+    // — we awaited the same operation explicitly so we don't race against
+    // it.
+    try {
+      this.agentsChangedUnlisten = await appListen('agents:changed', () => {
+        void (async () => {
+          try {
+            await this.service.refresh();
+            await this.refresh();
+          } catch (err) {
+            logService.warn(`[agents] manager refresh on event failed: ${err}`);
+          }
+        })();
+      });
+    } catch (err) {
+      logService.warn(`[agents] failed to subscribe to agents:changed: ${err}`);
+    }
+  }
+
+  async stop(): Promise<void> {
+    if (!this.started) return;
+    this.started = false;
+    if (this.agentsChangedUnlisten) {
+      this.agentsChangedUnlisten();
+      this.agentsChangedUnlisten = null;
+    }
+    await replaceDynamicCommandsBuiltin(AGENTS_EXTENSION_ID, []);
+  }
+
+  threadsFor(agentId: string): ThreadDef[] | undefined {
+    return this.knownThreads.get(agentId);
+  }
+
+  rememberThreads(agentId: string, threads: ThreadDef[]): void {
+    this.knownThreads.set(agentId, threads);
+  }
+
+  async refresh(): Promise<void> {
+    const regs: DynamicCommandRegistration[] = this.service.agents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      icon: 'icon:sparkles',
+    }));
+    await replaceDynamicCommandsBuiltin(AGENTS_EXTENSION_ID, regs);
+
+    // Cloud restores bring back shortcuts bound to agent ids that no longer
+    // exist (agents aren't synced), colliding on one chord. Now that the live
+    // agent list is known, drop the losers. Never blocks or fails the refresh.
+    try {
+      const healed = healDuplicateChords(new Set(this.service.agents.map((a) => a.id)));
+      if (healed > 0) logService.info(`[agents] removed ${healed} duplicate-chord shortcut(s)`);
+    } catch (err) {
+      logService.warn(`[agents] shortcut heal failed: ${err}`);
+    }
+  }
+}
+
+export const agentsManager = new AgentsManager();

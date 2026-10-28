@@ -1,8 +1,8 @@
 # Fully-fixed, normally-guarded build
 
-HEAD: `1e807ce8303e1883adb77fc640510ec5f4e376f7`, plus the unstaged source patch in `compiled-changes.patch` (includes the inherited uncommitted changes present at session start plus three runtime-lifecycle fixes made this session). The signed app was copied to `/private/tmp/asyar-benchmark-apps/fixed-guarded/Asyar Dev.app`.
+HEAD: `1e807ce8303e1883adb77fc640510ec5f4e376f7`, plus the unstaged source patch in `compiled-changes.patch` (includes the inherited uncommitted changes present at session start plus three runtime-lifecycle fixes made this session). The signed app was copied to `/private/tmp/conbind-benchmark-apps/fixed-guarded/Conbind Dev.app`.
 
-Unlike `../fixed/`, this build went through the **normal, unbypassed** `pnpm tauri build` path (`--config src-tauri/tauri.dev.conf.json` for the local dev bundle ID only — no `--ignore-version-mismatches`). The version guard passed cleanly; see the top-level session report for root cause. Build uses pinned Rust 1.97.0, `CARGO_PROFILE_RELEASE_STRIP=none` (macOS 27 proc-macro dylib workaround, unrelated to the guard), `org.asyar.dev` identity/profile/keychain, release optimization, and the existing Developer ID signing identity. Unstripped disk sizes are not normal release sizes.
+Unlike `../fixed/`, this build went through the **normal, unbypassed** `pnpm tauri build` path (`--config src-tauri/tauri.dev.conf.json` for the local dev bundle ID only — no `--ignore-version-mismatches`). The version guard passed cleanly; see the top-level session report for root cause. Build uses pinned Rust 1.97.0, `CARGO_PROFILE_RELEASE_STRIP=none` (macOS 27 proc-macro dylib workaround, unrelated to the guard), `org.conbind.dev` identity/profile/keychain, release optimization, and the existing Developer ID signing identity. Unstripped disk sizes are not normal release sizes.
 
 ## What changed since `fixed/`
 
@@ -26,7 +26,7 @@ All three were confirmed fixed via live manual testing against the packaged app 
 Not run from the agent process — `AXIsProcessTrusted()` returns `false` here, same limitation as `../fixed/`. Run from a trusted Terminal with Accessibility permission:
 
 ```bash
-bash /Users/khoshbin/develop/Asyar-Project/benchmarks/results/2026-10-03-architecture-review/run-fixed-guarded-comparison.sh
+bash /Users/khoshbin/develop/Conbind-Project/benchmarks/results/2026-10-03-architecture-review/run-fixed-guarded-comparison.sh
 ```
 
-This targets `/private/tmp/asyar-benchmark-apps/fixed-guarded/Asyar Dev.app` against the preserved `main` bundle — do not use the original `run-fixed-comparison.sh`, which still targets the diagnostic guard-bypass build in `../fixed/`.
+This targets `/private/tmp/conbind-benchmark-apps/fixed-guarded/Conbind Dev.app` against the preserved `main` bundle — do not use the original `run-fixed-comparison.sh`, which still targets the diagnostic guard-bypass build in `../fixed/`.

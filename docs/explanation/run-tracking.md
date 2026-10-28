@@ -8,7 +8,7 @@ The run-tracking system gives the launcher a durable record of long-running work
 
 ## Why runs exist
 
-Asyar treats some work as fundamentally asynchronous: a shell script might run for minutes; an agent thread makes a sequence of LLM calls across multiple turns. The user can close the panel, switch apps, and return later. If the record of that work lived only inside a view iframe, it would be silently lost the moment the view was evicted — typically 120 seconds after the panel closes. Runs are the answer to that fragility: they live in an in-memory registry backed by SQLite, broadcast state changes to the frontend via Tauri events, and survive view eviction entirely because the `RunService` singleton on the launcher side (not inside any extension iframe) owns the slices that drive the list.
+Conbind treats some work as fundamentally asynchronous: a shell script might run for minutes; an agent thread makes a sequence of LLM calls across multiple turns. The user can close the panel, switch apps, and return later. If the record of that work lived only inside a view iframe, it would be silently lost the moment the view was evicted — typically 120 seconds after the panel closes. Runs are the answer to that fragility: they live in an in-memory registry backed by SQLite, broadcast state changes to the frontend via Tauri events, and survive view eviction entirely because the `RunService` singleton on the launcher side (not inside any extension iframe) owns the slices that drive the list.
 
 ## The lifecycle
 
@@ -49,7 +49,7 @@ Two built-in dispatch sites set it:
 
 Ad-hoc runs started via `RunService.start()` from a Tier 2 extension leave `subjectId` undefined — the public `RunStartInput` type has no such field, so third-party extensions cannot set it. Only built-in dispatch sites produce the join.
 
-The `subjectId` travels the full stack: `Run.subject_id` as `Option<String>` in Rust, persisted in the `runs_history.subject_id` TEXT column in SQLite, serialised as camelCase `subjectId` on the wire, and typed as `subjectId?: string` on the `Run` interface in `asyar-sdk/contracts/runs.ts`.
+The `subjectId` travels the full stack: `Run.subject_id` as `Option<String>` in Rust, persisted in the `runs_history.subject_id` TEXT column in SQLite, serialised as camelCase `subjectId` on the wire, and typed as `subjectId?: string` on the `Run` interface in `conbind-sdk/contracts/runs.ts`.
 
 ## Section routing — Scripts, Agents, Commands
 
@@ -97,7 +97,7 @@ The three kept slices (`unacknowledgedFailures`, `keptAgents`, `unacknowledgedSc
 ## Cross-references
 
 - [RunService — SDK reference](../reference/sdk/run-service.md) — the public API that Tier 2 extensions call to start, write, and finish runs.
-- [Script Headers](../reference/script-headers.md) — `# @asyar.*` directives for user scripts, including `mode: inline` (which deliberately _bypasses_ the Run Tracker so live-ticking subtitles don't pollute the kept-Done slice).
+- [Script Headers](../reference/script-headers.md) — `# @conbind.*` directives for user scripts, including `mode: inline` (which deliberately _bypasses_ the Run Tracker so live-ticking subtitles don't pollute the kept-Done slice).
 - [Silent AI Commands](../reference/silent-agents.md) — silent agents bypass the Run Tracker for the same reason: a hotkey-driven grammar fix shouldn't pin a kept-Done row every keystroke.
 - [Extension Runtime](./extension-runtime.md) — worker-survives-Dormant context; why long-running work must be anchored to the worker, not the view.
 - [Two-Tier Model](./two-tier-model.md) — Tier 1 (built-in features, direct host access) vs Tier 2 (sandbox iframe); why `subjectId` is only settable from built-in dispatch sites.

@@ -1,8 +1,8 @@
 packages:
-  - 'asyar-launcher'
-  - 'asyar-sdk'
+  - 'conbind-launcher'
+  - 'conbind-sdk'
   - 'extensions/*'
-  - 'asyar-launcher/src/extensions/*'
+  - 'conbind-launcher/src/extensions/*'
 
 allowBuilds:
   esbuild: true
@@ -19,7 +19,7 @@ supportedArchitectures:
 
 overrides:
   vite: '6.4.3'
-  asyar-sdk: 'workspace:*'
+  conbind-sdk: 'workspace:*'
   vitest: '^4.1.10'
   '@vitest/coverage-v8': '^4.1.10'
   rollup: '>=4.40.0'

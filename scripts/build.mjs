@@ -2,7 +2,7 @@
 /**
  * Full clean production build.
  * 1. Clean previous Tauri build output
- * 2. Build asyar-sdk (types + CLI)
+ * 2. Build conbind-sdk (types + CLI)
  * 3. Run pnpm tauri build (Rust + frontend → native binary)
  *
  * Cross-platform (Node.js, no bash dependencies).
@@ -14,8 +14,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const launcherDir = resolve(root, 'asyar-launcher');
-const extBuilderDir = resolve(root, 'asyar-ext-builder');
+const launcherDir = resolve(root, 'conbind-launcher');
+const extBuilderDir = resolve(root, 'conbind-ext-builder');
 const requestedBuildArgs = process.argv.slice(2);
 const buildArgs = requestedBuildArgs[0] === '--' ? requestedBuildArgs.slice(1) : requestedBuildArgs;
 const isLocalBuild = buildArgs.length === 1 && buildArgs[0] === '--local';
@@ -70,9 +70,9 @@ for (const dir of toClean) {
 }
 
 // 2. Build SDK
-step('Building asyar-sdk');
+step('Building conbind-sdk');
 try {
-  run('pnpm run build:all', resolve(root, 'asyar-sdk'));
+  run('pnpm run build:all', resolve(root, 'conbind-sdk'));
   console.log('✓ SDK built');
 } catch {
   console.error('✗ SDK build failed');
@@ -101,12 +101,12 @@ try {
 }
 
 // 4. Tauri build (Rust + frontend)
-step('Building asyar-launcher (pnpm tauri build)');
+step('Building conbind-launcher (pnpm tauri build)');
 try {
   // Local benchmark builds use the isolated dev bundle ID and keychain entry,
   // but retain release optimizations and skip updater artifacts/signing.
   const buildCommand = isLocalBuild
-    ? 'ASYAR_KEYCHAIN_SERVICE=org.asyar.dev pnpm tauri build --config src-tauri/tauri.dev.conf.json --config \'{"bundle":{"createUpdaterArtifacts":false}}\''
+    ? 'CONBIND_KEYCHAIN_SERVICE=org.conbind.dev pnpm tauri build --config src-tauri/tauri.dev.conf.json --config \'{"bundle":{"createUpdaterArtifacts":false}}\''
     : 'pnpm tauri build';
   run(buildCommand, launcherDir);
   console.log('\n✓ Build complete');

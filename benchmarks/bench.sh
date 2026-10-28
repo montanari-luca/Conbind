@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Asyar vs Raycast (stable + beta/v2) black-box performance benchmark (macOS).
+# Conbind vs Raycast (stable + beta/v2) black-box performance benchmark (macOS).
 #
 # Measures every app the same way, one at a time, from the outside:
 #   cold start → usable, hotkey → window visible, memory footprint,
@@ -7,9 +7,9 @@
 #
 # Usage:
 #   ./benchmarks/bench.sh [--yes] [--update-readme]
-#       [--asyar production|dev] [--asyar-app PATH]
+#       [--conbind production|dev] [--conbind-app PATH]
 #       [--raycast-app PATH] [--raycast-beta-app PATH]
-#       [--asyar-hotkey SPEC] [--raycast-hotkey SPEC] [--raycast-beta-hotkey SPEC]
+#       [--conbind-hotkey SPEC] [--raycast-hotkey SPEC] [--raycast-beta-hotkey SPEC]
 #       [--runs N] [--cpu-seconds N] [--settle-seconds N]
 #       [--deep-settle N] [--deep-idle-seconds N]
 #
@@ -26,13 +26,13 @@ BUILD_DIR="$SCRIPT_DIR/.build"
 TOOL="$BUILD_DIR/benchtool"
 RESULTS_DIR="$SCRIPT_DIR/results"
 
-ASYAR_APP="/Applications/asyar.app"
-ASYAR_MODE="production"
-ASYAR_APP_EXPLICIT=0
-ASYAR_LABEL=""
+CONBIND_APP="/Applications/conbind.app"
+CONBIND_MODE="production"
+CONBIND_APP_EXPLICIT=0
+CONBIND_LABEL=""
 RAYCAST_APP="/Applications/Raycast.app"
 RAYCAST_BETA_APP="/Applications/Raycast Beta.app"
-ASYAR_HOTKEY="opt+space"        # Asyar default (Alt+Space)
+CONBIND_HOTKEY="opt+space"        # Conbind default (Alt+Space)
 RAYCAST_HOTKEY="opt+space"      # Raycast factory default (⌥Space)
 RAYCAST_BETA_HOTKEY="opt+space"
 RUNS=15
@@ -45,11 +45,11 @@ UPDATE_README=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --asyar) ASYAR_MODE="$2"; shift 2 ;;
-    --asyar-app) ASYAR_APP="$2"; ASYAR_APP_EXPLICIT=1; shift 2 ;;
+    --conbind) CONBIND_MODE="$2"; shift 2 ;;
+    --conbind-app) CONBIND_APP="$2"; CONBIND_APP_EXPLICIT=1; shift 2 ;;
     --raycast-app) RAYCAST_APP="$2"; shift 2 ;;
     --raycast-beta-app) RAYCAST_BETA_APP="$2"; shift 2 ;;
-    --asyar-hotkey) ASYAR_HOTKEY="$2"; shift 2 ;;
+    --conbind-hotkey) CONBIND_HOTKEY="$2"; shift 2 ;;
     --raycast-hotkey) RAYCAST_HOTKEY="$2"; shift 2 ;;
     --raycast-beta-hotkey) RAYCAST_BETA_HOTKEY="$2"; shift 2 ;;
     --runs) RUNS="$2"; shift 2 ;;
@@ -68,12 +68,12 @@ die() { echo "error: $*" >&2; exit 1; }
 
 [[ "$(uname)" == "Darwin" ]] || die "macOS only"
 
-case "$ASYAR_MODE" in
+case "$CONBIND_MODE" in
   production)
     ;;
   dev)
-    [[ "$ASYAR_APP_EXPLICIT" -eq 0 ]] \
-      || die "--asyar dev cannot be combined with --asyar-app"
+    [[ "$CONBIND_APP_EXPLICIT" -eq 0 ]] \
+      || die "--conbind dev cannot be combined with --conbind-app"
     [[ "$UPDATE_README" -eq 0 ]] \
       || die "--update-readme is only for installed production builds"
     LOCAL_REVISION="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
@@ -81,25 +81,25 @@ case "$ASYAR_MODE" in
     if [[ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]]; then
       LOCAL_STATE=" + worktree changes"
     fi
-    echo "Building the local Asyar release bundle from this checkout ($LOCAL_REVISION$LOCAL_STATE)..."
+    echo "Building the local Conbind release bundle from this checkout ($LOCAL_REVISION$LOCAL_STATE)..."
     (cd "$REPO_ROOT" && pnpm build -- --local)
-    ASYAR_APP="$REPO_ROOT/asyar-launcher/src-tauri/target/release/bundle/macos/Asyar Dev.app"
-    ASYAR_LABEL="Asyar (local worktree $LOCAL_REVISION$LOCAL_STATE)"
+    CONBIND_APP="$REPO_ROOT/conbind-launcher/src-tauri/target/release/bundle/macos/Conbind Dev.app"
+    CONBIND_LABEL="Conbind (local worktree $LOCAL_REVISION$LOCAL_STATE)"
     ;;
   *)
-    die "--asyar must be production or dev"
+    die "--conbind must be production or dev"
     ;;
 esac
 
-[[ -d "$ASYAR_APP" ]] || die "Asyar app not found at $ASYAR_APP (pass --asyar-app)"
+[[ -d "$CONBIND_APP" ]] || die "Conbind app not found at $CONBIND_APP (pass --conbind-app)"
 [[ -d "$RAYCAST_APP" ]] || die "Raycast app not found at $RAYCAST_APP (pass --raycast-app)"
 command -v swiftc >/dev/null || die "swiftc not found — install Xcode command-line tools"
 command -v python3 >/dev/null || die "python3 not found — install Python 3"
 
-# A dev build of Asyar would attribute its WebKit helpers to the terminal
+# A dev build of Conbind would attribute its WebKit helpers to the terminal
 # and produce garbage numbers; refuse to run alongside one.
-if pgrep -f 'target/(debug|release)/asyar$' >/dev/null; then
-  die "a dev build of Asyar is running (target/debug or target/release) — quit it first"
+if pgrep -f 'target/(debug|release)/conbind$' >/dev/null; then
+  die "a dev build of Conbind is running (target/debug or target/release) — quit it first"
 fi
 
 app_name() { basename "$1" .app; }
@@ -122,7 +122,7 @@ add_app() { # path hotkey [display-name]
   APP_LOGS+=("$RESULTS_DIR/raw-$slug.txt")
 }
 
-add_app "$ASYAR_APP" "$ASYAR_HOTKEY" "$ASYAR_LABEL"
+add_app "$CONBIND_APP" "$CONBIND_HOTKEY" "$CONBIND_LABEL"
 add_app "$RAYCAST_APP" "$RAYCAST_HOTKEY"
 if [[ -d "$RAYCAST_BETA_APP" ]]; then
   add_app "$RAYCAST_BETA_APP" "$RAYCAST_BETA_HOTKEY"
@@ -163,7 +163,7 @@ really registered in that app. An app with NO hotkey registered — or a
 different one — will fail its runs. (Hotkeys can silently disappear after
 app updates or when another launcher takes the key. Launchers cannot share
 one hotkey: give each app its own, then pass the matching
---asyar-hotkey / --raycast-hotkey / --raycast-beta-hotkey.)
+--conbind-hotkey / --raycast-hotkey / --raycast-beta-hotkey.)
 
 This benchmark will QUIT and RELAUNCH: ${APP_LABELS[*]}.
 It presses each app's global hotkey (~$((RUNS + 3)) times) using synthetic
@@ -349,7 +349,7 @@ measure_app() { # index into the APP_* arrays
     [[ "$ASSUME_YES" -eq 0 ]] || die "'$hotkey' does not summon ${APP_LABELS[$i]} — open that app's settings and check:
 the hotkey may not be registered at all (updates can clear it), set to a
 different key, or owned by another launcher. Register one, then pass the
-matching --asyar-hotkey / --raycast-hotkey / --raycast-beta-hotkey flag."
+matching --conbind-hotkey / --raycast-hotkey / --raycast-beta-hotkey flag."
 
     echo
     # Let the synthetic failed hotkey finish propagating before Terminal reads.
@@ -372,7 +372,7 @@ matching --asyar-hotkey / --raycast-hotkey / --raycast-beta-hotkey flag."
   echo "  hotkey → window visible, $RUNS runs..."
   "$TOOL" hotkey "$app" "$hotkey" "$RUNS" | tee -a "$log" \
     || die "hotkey runs failed for ${APP_LABELS[$i]} — see the message above; pass the
-matching --asyar-hotkey / --raycast-hotkey / --raycast-beta-hotkey flag."
+matching --conbind-hotkey / --raycast-hotkey / --raycast-beta-hotkey flag."
   sleep 5
 
   echo "  memory footprint..."

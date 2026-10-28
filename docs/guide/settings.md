@@ -11,9 +11,9 @@ Open Settings with `⌘,` from anywhere inside the launcher, or search for "Sett
 
 The General tab covers core appearance, window placement, and system integration:
 
-- **Startup** — Toggle "Launch Asyar at login" to have Asyar start automatically when you log in to your computer.
-- **Menu Bar Icon** — Toggle "Show icon in menu bar" to control whether Asyar appears in the system menu bar / system tray.
-- **Dock Icon** (macOS) — Toggle "Show icon in Dock" to control whether Asyar appears in the macOS Dock and ⌘Tab application switcher.
+- **Startup** — Toggle "Launch Conbind at login" to have Conbind start automatically when you log in to your computer.
+- **Menu Bar Icon** — Toggle "Show icon in menu bar" to control whether Conbind appears in the system menu bar / system tray.
+- **Dock Icon** (macOS) — Toggle "Show icon in Dock" to control whether Conbind appears in the macOS Dock and ⌘Tab application switcher.
 - **Placement & Drag to Snap** — Toggle "Drag to Snap" to control whether alignment snap guide lines and haptic feedback appear when you reposition the launcher window. Note: launcher window placement is stored locally per machine and is deliberately excluded from cloud sync so multi-monitor differences don't clash across machines.
 - **Hotkey** — Change the global show/hide shortcut. Click inside the recorder, press your new combination (including standalone `F1`–`F24` keys or Hyper key combinations), and click Save.
 - **Appearance** — Switch between Light, Dark, or System (follows your operating system) colour scheme.
@@ -34,7 +34,7 @@ The Appearance tab gives you a larger visual picker for the same settings:
 
 The Shortcuts tab has one purpose: changing the global activation shortcut.
 
-- **Asyar activation shortcut** — Click inside the recorder and press the shortcut you want. Asyar supports standard modifier combinations (e.g. `⌥Space`), Hyper key combinations (all four modifiers, rendered as `✦`), and standalone function keys (`F1`–`F24`, including extended keys `F13`–`F24` and the Windows Copilot key `F23`) without modifiers for dedicated macro keys or remapped `Caps Lock`. Asyar checks for conflicts with other registered shortcuts and warns you if the combination is already in use. Click Save to apply it.
+- **Conbind activation shortcut** — Click inside the recorder and press the shortcut you want. Conbind supports standard modifier combinations (e.g. `⌥Space`), Hyper key combinations (all four modifiers, rendered as `✦`), and standalone function keys (`F1`–`F24`, including extended keys `F13`–`F24` and the Windows Copilot key `F23`) without modifiers for dedicated macro keys or remapped `Caps Lock`. Conbind checks for conflicts with other registered shortcuts and warns you if the combination is already in use. Click Save to apply it.
 
 All other per-item shortcuts (for commands, snippets, scripts, and agents) are managed from the **Applications & Extensions** tab and from each item's row in the launcher.
 
@@ -42,9 +42,9 @@ All other per-item shortcuts (for commands, snippets, scripts, and agents) are m
 
 This tab has two sub-sections that share a tab.
 
-**Applications** lets you control which apps Asyar indexes:
+**Applications** lets you control which apps Conbind indexes:
 
-- **Scan directories** — Asyar scans your Applications folder by default. Click "Add Directory" to add more folders (for example, a custom tools folder). Default folders are shown as read-only; custom folders can be removed.
+- **Scan directories** — Conbind scans your Applications folder by default. Click "Add Directory" to add more folders (for example, a custom tools folder). Default folders are shown as read-only; custom folders can be removed.
 - **Per-app toggles** — A list of every discovered app. You can hide individual apps from search results by turning off their toggle. You can also assign a keyboard shortcut or a search alias to any app from its row.
 
 **Extensions** (the Extensions tab) manages both built-in features and installed extensions:
@@ -91,7 +91,7 @@ This section is split across two related tabs.
 
 **Browsers** tab:
 
-- **Connected browsers** — Shows which browsers have the Asyar companion extension installed and paired. A paired browser shares its open tabs, bookmarks, and history with Asyar's search.
+- **Connected browsers** — Shows which browsers have the Conbind companion extension installed and paired. A paired browser shares its open tabs, bookmarks, and history with Conbind's search.
 - **Pending pairings** — When a browser requests pairing, a prompt appears here. Allow or deny each request.
 - **Paired browser list** — Revoke a pairing at any time by clicking Remove next to the browser name.
 
@@ -99,13 +99,13 @@ This section is split across two related tabs.
 
 **Privacy** tab:
 
-- **Encryption status** — Shows whether Asyar's local data store is encrypted on disk.
+- **Encryption status** — Shows whether Conbind's local data store is encrypted on disk.
 - **Clipboard privacy** — Configure the history retention period (TTL from 1 minute up to 90 days), inspect session capture stats, and manage application denylist rules to prevent sensitive apps (like password managers) from being captured into Clipboard History.
 - **Secret redaction** — Automatically strip API keys and tokens from clipboard entries before they are stored.
 
 **Scripts** tab:
 
-- **Script directories** — Add folder paths that Asyar should watch for executable scripts. Any script placed in a watched folder is discoverable from the launcher immediately — no restart required. Remove a folder to stop watching it.
+- **Script directories** — Add folder paths that Conbind should watch for executable scripts. Any script placed in a watched folder is discoverable from the launcher immediately — no restart required. Remove a folder to stop watching it.
 
 **Advanced** tab:
 
@@ -115,15 +115,7 @@ This section is split across two related tabs.
 - **Text Expansion** — Enable or disable snippet text expansion. Requires Accessibility permission on macOS (macOS only).
 - **Developer Mode** — Unlocks the extension inspector, verbose logging, and extension sideloading. Intended for extension developers.
 
-## Account, Backup & About
-
-**Account** tab:
-
-- **Sign in** — Sign in with GitHub or Google to get access to cloud sync, AI conversation history sync, and premium features. See [Sync & Backup](./sync-and-backup.md) for full details.
-- **Features** — Shows which subscription features are active on your account.
-- **Subscription** — Opens your subscription management page on asyar.org.
-- **Cloud Sync** — Shows the last sync time and lets you trigger a manual sync. Requires an active subscription.
-- **Encrypted Sync** — Toggle end-to-end encryption for synced data. See [Sync & Backup](./sync-and-backup.md) for details.
+## Backup & About
 
 **Backup** tab:
 
@@ -133,13 +125,13 @@ This section is split across two related tabs.
 
 **About** tab:
 
-- **Version** — Shows the current Asyar version.
+- **Version** — Shows the current Conbind version.
 - **Update channel** — Switch between Stable and Beta update channels.
 - **Check for updates** — Manually trigger an update check. If an update is available, you can download and install it from here without leaving the app.
 
 ## Related
 
-- [Sync & Backup](./sync-and-backup.md)
+- [Backup](./backup.md)
 - [Import from Raycast](./features/raycast-import.md)
 - [Getting Started](./getting-started.md)
 - [Keyboard Shortcuts](./keyboard-shortcuts.md)

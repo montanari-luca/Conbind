@@ -7,7 +7,7 @@
 `BrowserService` brings the user's browser into your extension. Two data paths back it:
 
 - **On-disk reads** — bookmarks and history are read directly from the browser's own files (JSON / SQLite). These work as long as the browser is installed; no companion is needed.
-- **The companion bridge** — tabs and live page content flow over a local WebSocket to the Asyar browser companion extension. The user must install that companion and approve pairing in **Settings → Browsers** first. `isCompanionInstalled(family)` tells you whether a family is currently paired; guard tab/page calls with it. See the [Browser Bridge protocol](../../explanation/browser-bridge-protocol.md) for the wire contract and the [Browser Integration guide](../../guide/features/browser-integration.md) for the user-facing setup.
+- **The companion bridge** — tabs and live page content flow over a local WebSocket to the Conbind browser companion extension. The user must install that companion and approve pairing in **Settings → Browsers** first. `isCompanionInstalled(family)` tells you whether a family is currently paired; guard tab/page calls with it. See the [Browser Bridge protocol](../../explanation/browser-bridge-protocol.md) for the wire contract and the [Browser Integration guide](../../guide/features/browser-integration.md) for the user-facing setup.
 
 Chromium-based browsers (Chrome, Brave, Arc, Edge, Vivaldi) are supported today; Firefox and Safari companions are planned.
 
@@ -94,7 +94,7 @@ onPageChanged(handler: (e: PageChangedEvent) => void): () => void;  // browser:p
 Both return a **synchronous disposer** — call it to unsubscribe. Listeners are ref-counted: the first listener opens one subscription over the bridge and later listeners reuse it; the last disposer tears it down. Disposers are idempotent. Because these fire while the panel is closed, register them from the **worker**.
 
 ```typescript
-import type { IBrowserService } from 'asyar-sdk/contracts';
+import type { IBrowserService } from 'conbind-sdk/contracts';
 
 const browser = context.getService<IBrowserService>('browser');
 

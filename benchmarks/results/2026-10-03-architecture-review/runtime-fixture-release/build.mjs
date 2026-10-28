@@ -1,7 +1,9 @@
 import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-const require = createRequire(new URL('../../../../asyar-launcher/package.json', import.meta.url));
+const require = createRequire(
+  new URL('../../../../conbind-launcher/package.json', import.meta.url),
+);
 // Vite exposes esbuild transforms; its installed dependency resolves the bundler.
 const viteRequire = createRequire(require.resolve('vite'));
 const esbuild = viteRequire('esbuild');

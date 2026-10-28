@@ -4,7 +4,7 @@
 
 **Permission required:** `ai`.
 
-`AiService` provides Tier 2 extensions with programmatic access to prompt the user's currently configured AI model without requiring direct provider credentials, API keys, or custom provider configuration. The host routes requests through Asyar's default agent runtime.
+`AiService` provides Tier 2 extensions with programmatic access to prompt the user's currently configured AI model without requiring direct provider credentials, API keys, or custom provider configuration. The host routes requests through Conbind's default agent runtime.
 
 ```typescript
 export interface AiCompletionOptions {
@@ -60,7 +60,7 @@ export interface IAiService {
 **Usage (One-shot completion):**
 
 ```typescript
-import type { IAiService } from 'asyar-sdk/contracts';
+import type { IAiService } from 'conbind-sdk/contracts';
 
 const ai = context.getService<IAiService>('ai');
 
@@ -74,7 +74,7 @@ console.log(response);
 **Usage (Streaming with cancellation):**
 
 ```typescript
-import type { IAiService } from 'asyar-sdk/contracts';
+import type { IAiService } from 'conbind-sdk/contracts';
 
 const ai = context.getService<IAiService>('ai');
 const controller = new AbortController();
@@ -101,7 +101,7 @@ try {
 
 **Security & Permission Gating:**
 
-- **Manifest Permission:** The extension must declare `"ai"` in its manifest permissions (`manifest.json["permissions"]`). Calling `complete()` or `stream()` without declaring `"ai"` is blocked by Asyar's fail-closed permission gate and returns an `AppError::Permission` error.
-- **Privacy & Redaction:** Prompts dispatched through `AiService` automatically flow through Asyar's host secret-redaction pipeline, preventing accidental leakage of credentials (AWS keys, tokens, private keys) to upstream AI providers.
+- **Manifest Permission:** The extension must declare `"ai"` in its manifest permissions (`manifest.json["permissions"]`). Calling `complete()` or `stream()` without declaring `"ai"` is blocked by Conbind's fail-closed permission gate and returns an `AppError::Permission` error.
+- **Privacy & Redaction:** Prompts dispatched through `AiService` automatically flow through Conbind's host secret-redaction pipeline, preventing accidental leakage of credentials (AWS keys, tokens, private keys) to upstream AI providers.
 
 ---

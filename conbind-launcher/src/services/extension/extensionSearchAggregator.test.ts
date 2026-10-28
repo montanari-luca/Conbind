@@ -1,0 +1,117 @@
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../log/logService', () => ({
+  logService: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('./extensionIframeManager.svelte', () => ({
+  extensionIframeManager: {
+    sendSearchRequestToExtension: vi.fn(),
+  },
+}));
+
+vi.mock('../settings/settingsService.svelte', () => ({
+  settingsService: {
+    getSettings: vi.fn().mockReturnValue({
+      search: { enableExtensionSearch: false },
+    }),
+  },
+}));
+
+import { settingsService } from '../settings/settingsService.svelte';
+import { extensionIframeManager } from './extensionIframeManager.svelte';
+import { ExtensionSearchAggregator } from './extensionSearchAggregator';
+import type { Extension, ExtensionResult } from 'conbind-sdk/contracts';
+
+function makeExtension(result: ExtensionResult): Extension {
+  return {
+    search: vi.fn().mockResolvedValue([result]),
+  } as unknown as Extension;
+}
+
+function makeResult(title: string, score: number): ExtensionResult {
+  return {
+    title,
+    score,
+    type: 'result',
+    action: () => {},
+  } as ExtensionResult;
+}
+
+describe('ExtensionSearchAggregator.searchAll', () => {
+  it('does not re-sort results by score — final ordering belongs to Rust merged_search', async () => {
+    const aggregator = new ExtensionSearchAggregator();
+    const modulesById = new Map<string, Extension>([
+      ['low-score-ext', makeExtension(makeResult('Low', 0.1))],
+      ['high-score-ext', makeExtension(makeResult('High', 0.9))],
+    ]);
+
+    aggregator.init(
+      modulesById,
+      new Map(),
+      () => true,
+      () => {},
+      new Map(),
+    );
+
+    vi.mocked(settingsService.getSettings).mockReturnValue({
+      search: { enableExtensionSearch: true },
+    } as any);
+    const manifests = new Map(
+      [...modulesById.keys()].map((id) => [id, { id, searchable: true } as any]),
+    );
+    aggregator.init(
+      new Map(),
+      manifests,
+      (id) => id !== 'clipboard-history',
+      () => {},
+      new Map(),
+    );
+    vi.mocked(extensionIframeManager.sendSearchRequestToExtension).mockImplementation(
+      async (id) => await modulesById.get(id)!.search!('test'),
+    );
+    const results = await aggregator.searchAll('test');
+
+    expect(results.map((r) => r.title)).toEqual(['Low', 'High']);
+  });
+
+  it('omits results from extensions when isExtensionEnabled returns false', async () => {
+    const aggregator = new ExtensionSearchAggregator();
+    const modulesById = new Map<string, Extension>([
+      ['calculator', makeExtension(makeResult('Calc Result', 0.5))],
+      ['clipboard-history', makeExtension(makeResult('Clipboard Result', 0.8))],
+    ]);
+
+    aggregator.init(
+      modulesById,
+      new Map(),
+      (id) => id !== 'clipboard-history',
+      () => {},
+      new Map(),
+    );
+
+    vi.mocked(settingsService.getSettings).mockReturnValue({
+      search: { enableExtensionSearch: true },
+    } as any);
+    const manifests = new Map(
+      [...modulesById.keys()].map((id) => [id, { id, searchable: true } as any]),
+    );
+    aggregator.init(
+      new Map(),
+      manifests,
+      (id) => id !== 'clipboard-history',
+      () => {},
+      new Map(),
+    );
+    vi.mocked(extensionIframeManager.sendSearchRequestToExtension).mockImplementation(
+      async (id) => await modulesById.get(id)!.search!('test'),
+    );
+    const results = await aggregator.searchAll('test');
+    expect(results.map((r) => r.title)).toEqual(['Calc Result']);
+  });
+});

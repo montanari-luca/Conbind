@@ -66,7 +66,7 @@ test('releaseViaPr runs branch→add→commit→tag→push in order', () => {
     cwd: '/repo',
     tag: 'sdk-v3.1.1',
     branch: 'release/sdk-v3.1.1',
-    files: ['asyar-sdk/package.json', 'pnpm-lock.yaml'],
+    files: ['conbind-sdk/package.json', 'pnpm-lock.yaml'],
     commitMessage: 'chore(sdk): release 3.1.1',
     prTitle: 'release 3.1.1',
     prBody: 'release',

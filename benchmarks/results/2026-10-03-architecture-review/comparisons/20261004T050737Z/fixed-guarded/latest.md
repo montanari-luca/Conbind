@@ -1,37 +1,37 @@
 # Benchmark run 2026-10-04
 
 - Machine: Apple M4 Max, 36 GB RAM, macOS 27.0.1
-- Asyar 0.1.1-49 (`/Applications/asyar.app`), hotkey `cmd+space`
+- Conbind 0.1.1-49 (`/Applications/conbind.app`), hotkey `cmd+space`
 - Raycast 1.104.31 (`/Applications/Raycast.app`), hotkey `cmd+space`
 - Raycast Beta 0.71.7.0 (`/Applications/Raycast Beta.app`), hotkey `cmd+space`
 - 15 hotkey runs, 30s post-activity CPU window, 20s initial settle
 - 60s deep-idle window after 120s quiet
 
-| Metric                                 | Asyar 0.1.1-49 | Raycast 1.104.31 | Raycast Beta 0.71.7.0 |
-| -------------------------------------- | -------------: | ---------------: | --------------------: |
-| Hotkey → window visible (median of 15) |        12.0 ms |          30.6 ms |               22.9 ms |
-| Hotkey → window visible (p95)          |        16.6 ms |          42.3 ms |               33.7 ms |
-| Hotkey → window visible (p99)          |        21.1 ms |          43.0 ms |               35.1 ms |
-| Keystroke → results painted (p50)      |            n/a |              n/a |                   n/a |
-| Keystroke → results painted (p95)      |            n/a |              n/a |                   n/a |
-| Cold start → usable                    |         750 ms |          1289 ms |               1195 ms |
-| Memory footprint, idle (all processes) |       499.0 MB |         142.4 MB |              464.5 MB |
-| CPU while idle (30s average)           |         1.06 % |           0.05 % |                1.34 % |
-| CPU deep idle (60s, after 120s quiet)  |         0.65 % |           0.05 % |                1.05 % |
-| Memory deep idle                       |       632.0 MB |         148.6 MB |              784.5 MB |
-| CPU ms/s (powermetrics, deep idle)     |            n/a |              n/a |                   n/a |
-| Idle wakeups/s (deep idle)             |            n/a |              n/a |                   n/a |
-| Idle disk write ops (60s)              |            n/a |              n/a |                   n/a |
-| Idle network bytes in (60s)            |           4017 |                0 |                     0 |
-| Idle network bytes out (60s)           |           1151 |                0 |                     0 |
-| App size on disk                       |          68 MB |           133 MB |                184 MB |
+| Metric                                 | Conbind 0.1.1-49 | Raycast 1.104.31 | Raycast Beta 0.71.7.0 |
+| -------------------------------------- | ---------------: | ---------------: | --------------------: |
+| Hotkey → window visible (median of 15) |          12.0 ms |          30.6 ms |               22.9 ms |
+| Hotkey → window visible (p95)          |          16.6 ms |          42.3 ms |               33.7 ms |
+| Hotkey → window visible (p99)          |          21.1 ms |          43.0 ms |               35.1 ms |
+| Keystroke → results painted (p50)      |              n/a |              n/a |                   n/a |
+| Keystroke → results painted (p95)      |              n/a |              n/a |                   n/a |
+| Cold start → usable                    |           750 ms |          1289 ms |               1195 ms |
+| Memory footprint, idle (all processes) |         499.0 MB |         142.4 MB |              464.5 MB |
+| CPU while idle (30s average)           |           1.06 % |           0.05 % |                1.34 % |
+| CPU deep idle (60s, after 120s quiet)  |           0.65 % |           0.05 % |                1.05 % |
+| Memory deep idle                       |         632.0 MB |         148.6 MB |              784.5 MB |
+| CPU ms/s (powermetrics, deep idle)     |              n/a |              n/a |                   n/a |
+| Idle wakeups/s (deep idle)             |              n/a |              n/a |                   n/a |
+| Idle disk write ops (60s)              |              n/a |              n/a |                   n/a |
+| Idle network bytes in (60s)            |             4017 |                0 |                     0 |
+| Idle network bytes out (60s)           |             1151 |                0 |                     0 |
+| App size on disk                       |            68 MB |           133 MB |                184 MB |
 
 <sub>Measured 2026-10-04 on a Apple M4 Max (36 GB RAM), macOS 27.0.1, each app
 as installed, summoned by its own registered global hotkey, one at a time on a
 quiet machine. Black-box measurement: synthetic hotkey press → launcher window
 on screen. Reproduce with [`benchmarks/bench.sh`](benchmarks/README.md).</sub>
 
-## Raw output — Asyar 0.1.1-49
+## Raw output — Conbind 0.1.1-49
 
 ```
 coldstart_ms=750
@@ -55,7 +55,7 @@ p95_ms=16.6
 min_ms=7.5
 p99_ms=21.1
 samples_ms=16.6,15.3,7.5,10.0,14.0,21.1,10.4,14.2,11.8,11.7,12.7,12.9,10.6,11.3,12.0
-process pid=51361 mb=227.3 name=asyar
+process pid=51361 mb=227.3 name=conbind
 process pid=51362 mb=2.6 name=SetStoreUpdateService
 process pid=51363 mb=19.8 name=com.apple.WebKit.GPU
 process pid=51364 mb=126.1 name=com.apple.WebKit.WebContent
@@ -88,7 +88,7 @@ run=10 ms=timeout
 type_p50_ms=n/a
 type_p95_ms=n/a
 type_p99_ms=n/a
-process pid=51361 mb=153.0 name=asyar
+process pid=51361 mb=153.0 name=conbind
 process pid=51362 mb=2.5 name=SetStoreUpdateService
 process pid=51363 mb=224.2 name=com.apple.WebKit.GPU
 process pid=51364 mb=129.3 name=com.apple.WebKit.WebContent
@@ -240,6 +240,6 @@ size_mb=184
 ```
 
 Source: `1e807ce8303e1883adb77fc640510ec5f4e376f7 plus compiled-changes.patch`
-Bundle: `/Applications/asyar.app` (version 0.1.1-49)
-Identity/profile/keychain: `org.asyar.app`; app-data `~/Library/Application Support/org.asyar.app` held 201 search_items before this run.
+Bundle: `/Applications/conbind.app` (version 0.1.1-49)
+Identity/profile/keychain: `org.conbind.app`; app-data `~/Library/Application Support/org.conbind.app` held 201 search_items before this run.
 Compiler: Rust 1.97.0. Built through the normal guarded `pnpm tauri build` path — no --ignore-version-mismatches, no bypass.

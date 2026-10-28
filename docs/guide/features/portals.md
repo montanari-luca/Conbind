@@ -7,7 +7,7 @@ _Figure: a portal result appearing in search._
 
 ## What it does
 
-Portals are named URL shortcuts you can find and open from the Asyar search bar just by typing their name. Think of them as bookmarks that live inside the launcher.
+Portals are named URL shortcuts you can find and open from the Conbind search bar just by typing their name. Think of them as bookmarks that live inside the launcher.
 
 A portal is made of three things: a **name** (what you search for), a **URL** (where it goes), and an **icon** (an emoji shown in the result list). The URL can be static (`https://github.com`) or dynamic — you can embed placeholders like `{query}` so that typing after the portal name fills in a search query before opening the page.
 
@@ -17,7 +17,7 @@ Portals appear as regular search results the moment you type their name, so find
 
 **To create a portal:**
 
-1. Open Asyar and search for **New Portal**, or type `portals` and press `Enter` to open the Portals view, then press `⌘N`.
+1. Open Conbind and search for **New Portal**, or type `portals` and press `Enter` to open the Portals view, then press `⌘N`.
 2. Fill in the **Name** — this is what you will search for later.
 3. Enter the **URL**. To make it dynamic, include `{query}` in the URL (for example `https://google.com/search?q={query}`). Type `{` to open the placeholder picker, or click the `{ }` button.
 4. Optionally change the **Icon** emoji.
@@ -25,7 +25,7 @@ Portals appear as regular search results the moment you type their name, so find
 
 **To open a portal:**
 
-1. Open Asyar and start typing the portal's name.
+1. Open Conbind and start typing the portal's name.
 2. The portal appears in the search results. Press `Enter` to open it in your default browser.
 3. If the URL has a `{query}` placeholder, press `Tab` when you see the portal chip — then type your search query and press `Enter`.
 
@@ -66,7 +66,7 @@ When building a dynamic portal URL, press `{` or click the `{ }` button to inser
 
 ## Tips
 
-- **Quick search portals** — set up portals for search engines you use often. For example, a GitHub issues portal with URL `https://github.com/search?q={query}&type=issues` means you can search GitHub Issues directly from Asyar.
+- **Quick search portals** — set up portals for search engines you use often. For example, a GitHub issues portal with URL `https://github.com/search?q={query}&type=issues` means you can search GitHub Issues directly from Conbind.
 - **Static portals** — a URL without any placeholder opens immediately on `Enter`, no Tab step needed. Great for dashboards or frequently visited pages.
 - **Tab to activate** — for portals with `{query}`, the launcher shows a chip. Press `Tab` to set the chip, type your query, then `Enter` to open.
 - **Icons are emoji** — use any emoji as the icon. It shows up in search results to help you spot the portal at a glance.

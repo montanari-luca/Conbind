@@ -149,7 +149,7 @@ func launcherWindowVisible(pids: Set<pid_t>) -> Bool {
 
 /// Height of the visible launcher window, or nil when none is on screen.
 /// Used by `typelatency`: launchers that present results by growing the
-/// panel (Asyar's collapsed 96 px → expanded) reveal "results painted"
+/// panel (Conbind's collapsed 96 px → expanded) reveal "results painted"
 /// as a height change observable without any in-app instrumentation.
 func launcherWindowHeight(pids: Set<pid_t>) -> Double? {
     let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]

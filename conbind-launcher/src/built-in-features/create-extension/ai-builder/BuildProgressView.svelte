@@ -1,0 +1,620 @@
+<script lang="ts">
+  import { Textarea } from '../../../components';
+  import { buildJobStore } from './buildJobStore.svelte';
+  import { startBuild } from './orchestrator';
+  import { submitAnswer } from './questionBridge';
+  import { aiBuildUiState } from './aiBuildUiState.svelte';
+  import { settingsService } from '../../../services/settings/settingsService.svelte';
+  import { Button, FormField, Input, KeyboardHint, WarningBanner } from '../../../components';
+  import { actionService } from '../../../services/action/actionService.svelte';
+  import { ActionContext } from 'conbind-sdk/contracts';
+  import { sidecarClient } from './sidecarClient';
+  import { openInEditor } from './openInEditor';
+  import { publishExtension } from './publishExtension';
+  import { runtimeService } from '../../../services/runtime/runtimeService.svelte';
+  import { formatRuntimeDownloadStatus } from '../../../services/runtime/runtimeDownloadStatus';
+  import { t } from '../../../services/i18n';
+
+  // ── local reactive state ──────────────────────────────────────────────────
+  let prompt = $state('');
+  let answer = $state('');
+  let startError = $state<string | null>(null);
+  let isStarting = $state(false);
+
+  // ── store binding ─────────────────────────────────────────────────────────
+  const job = $derived(buildJobStore.job);
+
+  // Live bun/claude download status shown while `isStarting` — covers the
+  // window before `job` exists yet (runtime download happens ahead of the
+  // actual build spawn in `orchestrator.ts`'s `ensureRuntimesReady`).
+  const startingLabel = $derived(
+    formatRuntimeDownloadStatus(runtimeService.downloadProgress, 'Starting…'),
+  );
+
+  // ── deep-link handshake ───────────────────────────────────────────────────
+  $effect(() => {
+    if (aiBuildUiState.openTrigger !== null) {
+      aiBuildUiState.openTrigger = null;
+    }
+  });
+
+  // ── state-appropriate action-panel actions ────────────────────────────────
+  $effect(() => {
+    const status = job?.status ?? null;
+
+    if (status === null) {
+      actionService.registerAction({
+        id: 'ai-builder:start-build',
+        label: t('features.create_extension.view.build'),
+        icon: 'icon:sparkles',
+        description: t('features.create_extension.view.subtitle'),
+        category: t('categories.ai_builder'),
+        extensionId: 'create-extension',
+        context: ActionContext.EXTENSION_VIEW,
+        disabled: !prompt.trim() || isStarting,
+        shortcut: 'Mod+Enter',
+        execute: async () => {
+          await onStart();
+        },
+      });
+      return () => {
+        actionService.unregisterAction('ai-builder:start-build');
+      };
+    }
+
+    if (status === 'working') {
+      actionService.registerAction({
+        id: 'ai-builder:cancel',
+        label: t('features.create_extension.action_cancel_build'),
+        icon: 'icon:scissors',
+        description: t('features.create_extension.action_cancel_build_desc'),
+        category: t('categories.ai_builder'),
+        extensionId: 'create-extension',
+        context: ActionContext.EXTENSION_VIEW,
+        execute: async () => {
+          await sidecarClient.cancel();
+        },
+      });
+      return () => {
+        actionService.unregisterAction('ai-builder:cancel');
+      };
+    }
+
+    if (status === 'waiting' && job?.pendingQuestion) {
+      if (job.pendingQuestion.inputKind === 'confirm') {
+        actionService.registerAction({
+          id: 'ai-builder:confirm-yes',
+          label: t('features.create_extension.view.yes'),
+          icon: 'icon:check',
+          category: t('categories.ai_builder'),
+          extensionId: 'create-extension',
+          context: ActionContext.EXTENSION_VIEW,
+          execute: async () => {
+            await onConfirm('yes');
+          },
+        });
+        actionService.registerAction({
+          id: 'ai-builder:confirm-no',
+          label: t('features.create_extension.view.no'),
+          icon: 'icon:cross',
+          category: t('categories.ai_builder'),
+          extensionId: 'create-extension',
+          context: ActionContext.EXTENSION_VIEW,
+          execute: async () => {
+            await onConfirm('no');
+          },
+        });
+        return () => {
+          actionService.unregisterAction('ai-builder:confirm-yes');
+          actionService.unregisterAction('ai-builder:confirm-no');
+        };
+      } else {
+        if (answer.trim()) {
+          actionService.registerAction({
+            id: 'ai-builder:send-answer',
+            label: t('features.create_extension.view.send_answer'),
+            icon: 'icon:arrow-right',
+            category: t('categories.ai_builder'),
+            extensionId: 'create-extension',
+            context: ActionContext.EXTENSION_VIEW,
+            execute: async () => {
+              await onAnswer();
+            },
+          });
+          return () => {
+            actionService.unregisterAction('ai-builder:send-answer');
+          };
+        }
+      }
+      return () => {};
+    }
+
+    if (status === 'done' && job?.result) {
+      const resultPath = job.result.path;
+      actionService.registerAction({
+        id: 'ai-builder:open-editor',
+        label: t('features.create_extension.action_open_in_editor'),
+        icon: 'icon:terminal',
+        description: t('features.create_extension.action_open_in_editor_desc'),
+        category: t('categories.ai_builder'),
+        extensionId: 'create-extension',
+        context: ActionContext.EXTENSION_VIEW,
+        execute: async () => {
+          await openInEditor(resultPath);
+        },
+      });
+      actionService.registerAction({
+        id: 'ai-builder:build-another',
+        label: t('features.create_extension.action_build_another'),
+        icon: 'icon:sparkles',
+        description: t('features.create_extension.action_build_another_desc'),
+        category: t('categories.ai_builder'),
+        extensionId: 'create-extension',
+        context: ActionContext.EXTENSION_VIEW,
+        execute: async () => {
+          buildJobStore.reset();
+        },
+      });
+      actionService.registerAction({
+        id: 'ai-builder:publish',
+        label: t('features.create_extension.action_publish_store'),
+        icon: 'icon:cloud-upload',
+        description: t('features.create_extension.action_publish_store_desc'),
+        category: t('categories.ai_builder'),
+        extensionId: 'create-extension',
+        context: ActionContext.EXTENSION_VIEW,
+        execute: async () => {
+          await publishExtension(resultPath);
+        },
+      });
+      return () => {
+        actionService.unregisterAction('ai-builder:open-editor');
+        actionService.unregisterAction('ai-builder:build-another');
+        actionService.unregisterAction('ai-builder:publish');
+      };
+    }
+
+    if (status === 'failed' && job?.failure) {
+      const failedPrompt = job.prompt;
+      actionService.registerAction({
+        id: 'ai-builder:retry',
+        label: t('features.create_extension.action_retry_build'),
+        icon: 'icon:refresh',
+        description: t('features.create_extension.action_retry_build_desc'),
+        category: t('categories.ai_builder'),
+        extensionId: 'create-extension',
+        context: ActionContext.EXTENSION_VIEW,
+        execute: async () => {
+          const anthropicKey =
+            settingsService.currentSettings.ai.providers['anthropic']?.apiKey ?? '';
+          buildJobStore.reset();
+          await startBuild(failedPrompt, { anthropicKey });
+        },
+      });
+      actionService.registerAction({
+        id: 'ai-builder:start-over',
+        label: t('features.create_extension.action_start_over'),
+        icon: 'icon:trash',
+        description: t('features.create_extension.action_start_over_desc'),
+        category: t('categories.ai_builder'),
+        extensionId: 'create-extension',
+        context: ActionContext.EXTENSION_VIEW,
+        execute: async () => {
+          buildJobStore.reset();
+        },
+      });
+      return () => {
+        actionService.unregisterAction('ai-builder:retry');
+        actionService.unregisterAction('ai-builder:start-over');
+      };
+    }
+
+    return () => {};
+  });
+
+  // ── focus/blur signals for the launcher input gate ────────────────────────
+  function handleFocus() {
+    window.parent?.postMessage(
+      { type: 'conbind:extension:input-focus', focused: true },
+      window.location.origin,
+    );
+  }
+
+  function handleBlur() {
+    window.parent?.postMessage(
+      { type: 'conbind:extension:input-focus', focused: false },
+      window.location.origin,
+    );
+  }
+
+  // ── idle state: start a build ─────────────────────────────────────────────
+  async function onStart() {
+    const trimmed = prompt.trim();
+    if (!trimmed || isStarting) return;
+    startError = null;
+    isStarting = true;
+    try {
+      const anthropicKey = settingsService.currentSettings.ai.providers['anthropic']?.apiKey ?? '';
+      const result = await startBuild(trimmed, { anthropicKey });
+      if (!result.ok) {
+        startError = result.reason ?? 'Build could not start.';
+      }
+    } finally {
+      isStarting = false;
+    }
+  }
+
+  function handlePromptKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      void onStart();
+    }
+  }
+
+  // ── waiting state: send an answer ─────────────────────────────────────────
+  async function onAnswer() {
+    const trimmed = answer.trim();
+    if (!trimmed) return;
+    await submitAnswer(trimmed);
+    answer = '';
+  }
+
+  function handleAnswerKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void onAnswer();
+    }
+  }
+
+  // ── waiting state: answer a confirm question ──────────────────────────────
+  async function onConfirm(value: 'yes' | 'no') {
+    await submitAnswer(value);
+    answer = '';
+  }
+</script>
+
+<div class="view-container">
+  <div class="form-body custom-scrollbar">
+    <!-- ── IDLE (no job) ──────────────────────────────────────────────── -->
+    {#if !job}
+      <div class="header">
+        <h1 class="text-page-title">{t('features.create_extension.view.title')}</h1>
+        <p class="text-subtitle">
+          {t('features.create_extension.view.subtitle')}
+        </p>
+      </div>
+
+      <WarningBanner>
+        {t('features.create_extension.view.warning')}
+      </WarningBanner>
+
+      <p class="text-caption">
+        {t('features.create_extension.view.tip')}
+      </p>
+
+      <div class="fields">
+        <FormField
+          label={t('features.create_extension.view.prompt_label')}
+          hint={t('features.create_extension.view.prompt_hint')}
+        >
+          <Textarea
+            unstyled
+            textIntent="natural"
+            bind:value={prompt}
+            placeholder={t('features.create_extension.view.prompt_placeholder')}
+            rows={4}
+            autocomplete="off"
+            onfocus={handleFocus}
+            onblur={handleBlur}
+            onkeydown={handlePromptKeydown}
+            class="field-textarea prompt-textarea"
+          ></Textarea>
+        </FormField>
+
+        {#if isStarting}
+          <div class="starting-status">
+            <span class="text-caption animate-pulse">{startingLabel}</span>
+          </div>
+        {/if}
+
+        {#if startError}
+          <div class="inline-error">{startError}</div>
+        {/if}
+      </div>
+
+      <!-- ── WORKING ────────────────────────────────────────────────────── -->
+    {:else if job.status === 'working'}
+      <div class="header">
+        <h1 class="text-page-title">{t('features.create_extension.view.building')}</h1>
+        <p class="text-subtitle">
+          {t('features.create_extension.view.building_hint')}
+        </p>
+      </div>
+
+      {#if job.steps.length > 0}
+        <ol class="step-list" aria-label={t('features.create_extension.view.progress_aria')}>
+          {#each job.steps as step, i}
+            <li class="step-item" class:step-latest={i === job.steps.length - 1}>
+              <span class="step-label">{step.label}</span>
+              {#if step.detail}
+                <span class="step-detail">{step.detail}</span>
+              {/if}
+            </li>
+          {/each}
+        </ol>
+        <p class="text-caption">
+          {job.steps.length}
+          {job.steps.length === 1 ? 'step' : 'steps'} completed
+        </p>
+      {:else}
+        <p class="text-caption">{t('features.create_extension.view.starting')}</p>
+      {/if}
+
+      <!-- ── WAITING (question) ─────────────────────────────────────────── -->
+    {:else if job.status === 'waiting' && job.pendingQuestion}
+      <div class="header">
+        <h1 class="text-page-title">{t('features.create_extension.view.input_needed')}</h1>
+      </div>
+
+      {#if job.pendingQuestion.inputKind === 'confirm'}
+        <p class="confirm-prompt">{job.pendingQuestion.prompt}</p>
+        <div class="confirm-actions">
+          <Button onclick={() => void onConfirm('no')}>
+            {t('features.create_extension.view.no')}
+          </Button>
+          <Button class="btn-primary" onclick={() => void onConfirm('yes')}>
+            {t('features.create_extension.view.yes')}
+          </Button>
+        </div>
+      {:else}
+        <div class="fields">
+          <FormField label={job.pendingQuestion.prompt}>
+            {#if job.pendingQuestion.inputKind === 'secret'}
+              <Input
+                textIntent="exact"
+                type="password"
+                bind:value={answer}
+                placeholder={job.pendingQuestion.placeholder ?? ''}
+                autocomplete="off"
+                onfocus={handleFocus}
+                onblur={handleBlur}
+                onkeydown={handleAnswerKeydown}
+              />
+            {:else}
+              <Input
+                textIntent="exact"
+                bind:value={answer}
+                placeholder={job.pendingQuestion.placeholder ?? ''}
+                autocomplete="off"
+                onfocus={handleFocus}
+                onblur={handleBlur}
+                onkeydown={handleAnswerKeydown}
+              />
+            {/if}
+          </FormField>
+
+          <div class="answer-actions">
+            <span class="text-caption">{t('features.create_extension.view.press_enter')}</span>
+            <Button class="btn-primary" disabled={!answer.trim()} onclick={() => void onAnswer()}>
+              {t('features.create_extension.view.send_answer')}
+            </Button>
+          </div>
+        </div>
+      {/if}
+
+      <!-- ── DONE ───────────────────────────────────────────────────────── -->
+    {:else if job.status === 'done' && job.result}
+      <div class="header">
+        <h1 class="text-page-title">{t('features.create_extension.view.ready')}</h1>
+        <p class="text-subtitle">{t('features.create_extension.view.ready_desc')}</p>
+      </div>
+
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">{t('features.create_extension.view.extension_id')}</span>
+          <code class="result-value text-mono">{job.result.extensionId}</code>
+        </div>
+        <div class="result-divider"></div>
+        <div class="result-row">
+          <span class="result-label">{t('features.create_extension.view.smoke_test')}</span>
+          <span class="result-value">{job.result.smokeSummary}</span>
+        </div>
+      </div>
+
+      <p class="text-caption">
+        {t('features.create_extension.view.ready_pre')}
+        <KeyboardHint keys="⌘K" />
+        {t('features.create_extension.view.ready_post')}
+      </p>
+
+      <!-- ── FAILED ─────────────────────────────────────────────────────── -->
+    {:else if job.status === 'failed' && job.failure}
+      <div class="header">
+        <h1 class="text-page-title">{t('features.create_extension.view.failed')}</h1>
+        <p class="text-subtitle">
+          <span class="text-mono">{job.failure.step}</span>: {job.failure.error}
+        </p>
+      </div>
+
+      {#if job.failure.log}
+        <div class="log-section">
+          <span class="section-header">{t('features.create_extension.view.build_log')}</span>
+          <pre class="build-log custom-scrollbar">{job.failure.log}</pre>
+        </div>
+      {/if}
+
+      <p class="text-caption">
+        {t('features.create_extension.view.failed_pre')}<KeyboardHint keys="⌘K" />{t(
+          'features.create_extension.view.failed_post',
+        )}
+      </p>
+    {/if}
+  </div>
+</div>
+
+<style>
+  /* ── scrollable body ───────────────────────────────────────────────────── */
+  .form-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-7) var(--space-7) var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  /* ── header block ──────────────────────────────────────────────────────── */
+  .header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  /* ── form fields container ─────────────────────────────────────────────── */
+  .fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  /* ── prompt textarea ───────────────────────────────────────────────────── */
+  :global(.prompt-textarea) {
+    resize: vertical;
+    min-height: 96px;
+  }
+
+  /* ── confirm question prompt ───────────────────────────────────────────── */
+  .confirm-prompt {
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* ── confirm Yes / No actions ─────────────────────────────────────────── */
+  .confirm-actions {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  /* ── answer inline actions ─────────────────────────────────────────────── */
+  .answer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  /* ── starting status ───────────────────────────────────────────────────── */
+  .starting-status {
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+  }
+
+  /* ── inline error (idle state) ─────────────────────────────────────────── */
+  .inline-error {
+    font-size: var(--font-size-sm);
+    color: var(--accent-danger);
+    background: color-mix(in srgb, var(--accent-danger) 10%, transparent);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* ── working state: step list ──────────────────────────────────────────── */
+  .step-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    border-left: 2px solid var(--separator);
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+  }
+
+  .step-item.step-latest {
+    opacity: 1;
+    border-left-color: var(--accent-primary);
+    background: var(--bg-selected);
+  }
+
+  .step-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .step-detail {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+  }
+
+  /* ── done state: result card ───────────────────────────────────────────── */
+  .result-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+  }
+
+  .result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .result-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .result-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .result-divider {
+    height: 1px;
+    background: var(--separator);
+  }
+
+  /* ── failed state: build log ───────────────────────────────────────────── */
+  .log-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .build-log {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4) var(--space-5);
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+</style>

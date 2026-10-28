@@ -1,0 +1,1711 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+pub mod consent;
+pub mod discovery;
+pub mod extension_runtime;
+pub mod extension_state;
+pub mod headless;
+pub mod installer;
+pub mod lifecycle;
+pub mod onboarding_intercept;
+pub mod onboarding_state;
+pub mod scheduler;
+pub mod update_scheduler;
+pub mod updater;
+
+use crate::error::AppError;
+use std::fs;
+use std::path::{Path, PathBuf};
+use tauri::{AppHandle, Manager};
+
+/// Returns the app's data directory.
+pub(crate) fn get_app_data_dir(app_handle: &AppHandle) -> Result<PathBuf, AppError> {
+    app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Other(e.to_string()))
+}
+
+/// Returns the path to the user extensions directory, creating it if needed.
+pub(crate) fn get_extensions_dir(app_handle: &AppHandle) -> Result<String, AppError> {
+    let app_data_dir = get_app_data_dir(app_handle)?;
+    let extensions_dir = app_data_dir.join("extensions");
+
+    // Create the directory if it doesn't exist
+    if !extensions_dir.exists() {
+        fs::create_dir_all(&extensions_dir)?;
+    }
+
+    extensions_dir
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| AppError::Other("Invalid UTF-8 in extensions directory path".to_string()))
+}
+
+/// Returns the path to the built-in features directory.
+pub(crate) fn get_builtin_features_path(app_handle: &AppHandle) -> Result<String, AppError> {
+    #[cfg(debug_assertions)]
+    {
+        let current_dir = std::env::current_dir().unwrap_or_default();
+        let dev_dir = current_dir.join("src").join("built-in-features");
+
+        log::info!("[Rust] Current working directory: {:?}", current_dir);
+        log::info!("[Rust] Constructing dev features path: {:?}", dev_dir);
+
+        if dev_dir.exists() {
+            log::info!("[Rust] Dev features path EXISTS.");
+            return Ok(dev_dir
+                .to_str()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "Invalid UTF-8 in dev features path".to_string()));
+        } else {
+            log::warn!("[Rust] Dev features path DOES NOT EXIST at {:?}", dev_dir);
+        }
+    }
+
+    let resource_dir = app_handle.path().resource_dir().map_err(|e| {
+        AppError::Other(format!(
+            "Failed to access resource directory path resolver: {}",
+            e
+        ))
+    })?;
+
+    if !resource_dir.exists() {
+        return Err(AppError::NotFound(
+            "Resource directory does not exist".to_string(),
+        ));
+    }
+
+    let builtin_dir = resource_dir.join("built-in-features");
+
+    builtin_dir.to_str().map(|s| s.to_string()).ok_or_else(|| {
+        AppError::Other("Invalid UTF-8 in built-in features directory path".to_string())
+    })
+}
+
+/// Returns dev extension paths from dev_extensions.json.
+pub(crate) fn get_dev_extension_paths(
+    app_handle: &AppHandle,
+) -> Result<HashMap<String, String>, AppError> {
+    let dev_extensions_file = get_app_data_dir(app_handle)?.join("dev_extensions.json");
+    if !dev_extensions_file.exists() {
+        return Ok(HashMap::new());
+    }
+
+    let content = fs::read_to_string(&dev_extensions_file)?;
+
+    let dev_extensions: HashMap<String, String> =
+        serde_json::from_str(&content).unwrap_or_default();
+    Ok(dev_extensions)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleDeclaration {
+    pub interval_seconds: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum PreferenceType {
+    Textfield,
+    Password,
+    Number,
+    Checkbox,
+    Dropdown,
+    AppPicker,
+    File,
+    Directory,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DropdownOption {
+    pub value: String,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreferenceDeclaration {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub preference_type: PreferenceType,
+    pub title: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub required: Option<bool>,
+    #[serde(default)]
+    pub default: Option<serde_json::Value>,
+    #[serde(default)]
+    pub placeholder: Option<String>,
+    #[serde(default)]
+    pub data: Option<Vec<DropdownOption>>,
+}
+
+pub mod argument_model;
+pub mod dynamic_commands;
+
+#[cfg(test)]
+mod lifecycle_tools_test;
+#[cfg(test)]
+mod manifest_tools_test;
+
+/// Mirrors the CommandArgumentType enum from conbind-sdk. Lower-case variants
+/// match the wire format ("text", "password", "dropdown", "number").
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum CommandArgumentType {
+    Text,
+    Password,
+    Dropdown,
+    Number,
+}
+
+/// Where an argument's chip value starts from, mirrors `ArgumentSeed` in
+/// conbind-sdk. Independent of whether the command is gated: `required` decides
+/// if Enter may run, `seed` decides what is already in the box.
+///
+/// Omitting it means `LastUsed`, which falls back to the declared default and
+/// then to empty — the only value that behaves sensibly for the manifests
+/// written before this existed.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ArgumentSeed {
+    None,
+    Default,
+    LastUsed,
+}
+
+/// Mirrors CommandArgument from conbind-sdk — a single declarative input
+/// field collected inline in the search bar before a command runs.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandArgument {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub argument_type: CommandArgumentType,
+    #[serde(default)]
+    pub placeholder: Option<String>,
+    #[serde(default)]
+    pub required: Option<bool>,
+    #[serde(default)]
+    pub default: Option<serde_json::Value>,
+    #[serde(default)]
+    pub data: Option<Vec<DropdownOption>>,
+    /// Starting value for the chip. Absent means `LastUsed`, except on a
+    /// password, which is always `ArgumentSeed::None`.
+    #[serde(default)]
+    pub seed: Option<ArgumentSeed>,
+}
+
+/// One option in a `searchBarAccessory` dropdown — mirrors the
+/// `SearchBarAccessoryDropdownOption` shape declared by view-mode commands
+/// in their manifest. `value` is the stable identifier the view receives
+/// when this option is selected; `title` is the human-readable label.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchBarAccessoryDropdownOption {
+    pub value: String,
+    pub title: String,
+}
+
+/// Mirrors the `SearchBarAccessory` declaration from conbind-sdk — an inline
+/// secondary control that view-mode commands can declare to filter or
+/// scope the in-view search. Currently only the `dropdown` variant is
+/// supported; the tag is `type` to match the SDK wire format.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum SearchBarAccessory {
+    Dropdown {
+        #[serde(default)]
+        default: Option<String>,
+        options: Vec<SearchBarAccessoryDropdownOption>,
+    },
+}
+
+/// An action declared in manifest.json that surfaces in the launcher action drawer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestAction {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub shortcut: Option<String>,
+    #[serde(default)]
+    pub category: Option<String>,
+}
+
+/// Mirrors the ExtensionCommand from conbind-sdk
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExtensionCommand {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub trigger: Option<String>,
+    /// Execution mode. `"view"` commands open the on-demand view iframe and
+    /// render the component named by `component`. `"background"` commands
+    /// execute in the always-on worker context.
+    #[serde(default)]
+    pub mode: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    /// Name of the Svelte component exported by the extension's `view.ts`
+    /// entry. Required iff `mode === "view"`; forbidden otherwise.
+    #[serde(default)]
+    pub component: Option<String>,
+    #[serde(default)]
+    pub schedule: Option<ScheduleDeclaration>,
+    /// If false, this command is excluded from root search indexing.
+    #[serde(default)]
+    pub searchable: Option<bool>,
+    #[serde(default)]
+    pub preferences: Option<Vec<PreferenceDeclaration>>,
+    #[serde(default)]
+    pub actions: Option<Vec<ManifestAction>>,
+    /// Declarative argument list — when present, Tab on the selected command
+    /// in the launcher promotes it into argument-entry mode.
+    #[serde(default)]
+    pub arguments: Option<Vec<CommandArgument>>,
+    /// Names of arguments of which at least one must carry a user value before
+    /// the command may run. Expresses "needs SOME input" for commands where no
+    /// single argument can be marked `required` — `caffeinate-for` wants an
+    /// hours, minutes or seconds, and does not care which. Cross-validated by
+    /// [`validate_extension_command`].
+    #[serde(default)]
+    pub require_any_of: Option<Vec<String>>,
+    /// Declarative search-bar accessory — an inline secondary control
+    /// rendered alongside the in-view search input. Only legal on
+    /// `mode: "view"` commands; cross-validated by
+    /// [`validate_extension_command`].
+    #[serde(default)]
+    pub search_bar_accessory: Option<SearchBarAccessory>,
+}
+
+/// Declares the onboarding entry-point for an extension. When present, the
+/// launcher will launch this command on first use instead of the default
+/// command, allowing the extension to walk the user through initial setup.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OnboardingDecl {
+    /// The `id` of the command to invoke on first use. Must refer to an
+    /// existing `mode: "view"` command on the same extension.
+    pub command: String,
+}
+
+/// Declares the always-on worker bundle for extensions that host background
+/// work (subscriptions, schedules, timers, tray updates). Required when any
+/// command declares `mode: "background"`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BackgroundSpec {
+    /// Path (relative to the extension root) of the compiled worker bundle.
+    pub main: String,
+}
+
+/// Declares the lifecycle policy for the extension.
+/// For built-in features, `disableable: true` allows the feature to be disabled.
+/// When omitted or false for built-in features, the feature is required core infrastructure
+/// and cannot be disabled. Installed extensions are always disableable.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LifecycleSpec {
+    #[serde(default)]
+    pub disableable: Option<bool>,
+    #[serde(default)]
+    pub background: Option<bool>,
+}
+
+/// Mirrors the ExtensionManifest from conbind-sdk
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExtensionManifest {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub lifecycle: Option<LifecycleSpec>,
+    /// Top-level extension kind. Legal values are `"extension"` (default
+    /// when absent) and `"theme"`. The legacy values `"view"` and `"result"`
+    /// are strictly rejected at parse time; per-command `mode` now carries
+    /// the view/background distinction.
+    #[serde(rename = "type", default)]
+    pub extension_type: Option<String>,
+    /// Worker bundle declaration. Present iff the extension declares at
+    /// least one `mode: "background"` command (or reserves a push-event
+    /// subscription for a future phase).
+    #[serde(default)]
+    pub background: Option<BackgroundSpec>,
+    #[serde(default)]
+    pub searchable: Option<bool>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub commands: Vec<ExtensionCommand>,
+    #[serde(default)]
+    pub permissions: Option<Vec<String>>,
+    /// Sidecar for parameterized permissions. Each key must also appear
+    /// in `permissions`. Value shape is permission-specific; currently only
+    /// `fs:watch` uses it (value must be `string[]` of glob patterns).
+    #[serde(default, rename = "permissionArgs")]
+    pub permission_args: Option<serde_json::Map<String, serde_json::Value>>,
+    #[serde(default)]
+    pub min_app_version: Option<String>,
+    #[serde(default)]
+    pub conbind_sdk: Option<String>,
+    #[serde(default)]
+    pub platforms: Option<Vec<String>>,
+    #[serde(default)]
+    pub preferences: Option<Vec<PreferenceDeclaration>>,
+    #[serde(default)]
+    pub actions: Option<Vec<ManifestAction>>,
+    /// When present, the launcher opens this command on first use instead of
+    /// the default command. The referenced command must exist and have
+    /// `mode: "view"`. Validated at parse time by `validate_manifest`.
+    #[serde(default)]
+    pub onboarding: Option<OnboardingDecl>,
+    /// Tools that this extension exposes to the agent runtime. Each tool is
+    /// dispatched to the extension's worker iframe via the
+    /// `conbind:tools:invoke` postMessage envelope.
+    #[serde(default)]
+    pub tools: Option<Vec<crate::agents::tools::ManifestTool>>,
+    /// On-demand sidecar runtimes (e.g. a future `yt-dlp`/`ffmpeg`) this
+    /// extension needs. Rejected at discovery if any name isn't in
+    /// `runtimes::catalog::known_names()`; declared-but-not-yet-installed
+    /// runtimes show their download size in the install consent dialog.
+    #[serde(default)]
+    pub runtimes: Option<Vec<String>>,
+    /// Walkthrough tasks this extension teaches. Each is qualified to
+    /// `wt_<extensionId>_<taskId>` and evaluated against real usage by the
+    /// `walkthrough` module — the extension writes no completion code.
+    #[serde(default)]
+    pub walkthrough: Option<Vec<crate::walkthrough::WalkthroughTaskDecl>>,
+}
+
+impl ExtensionManifest {
+    /// Returns the `component` of the first command with `mode == "view"` (or
+    /// mode absent, which defaults to `"view"`), or `None` if the extension
+    /// has no view commands. Used by the frontend to determine which Svelte
+    /// component to render when an extension is opened without a specific
+    /// command selection.
+    pub fn first_view_component(&self) -> Option<&str> {
+        self.commands.iter().find_map(|cmd| {
+            let is_view = cmd.mode.as_deref().unwrap_or("view") == "view";
+            if is_view {
+                cmd.component.as_deref().filter(|s| !s.is_empty())
+            } else {
+                None
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase", tag = "status")]
+pub enum CompatibilityStatus {
+    Compatible,
+    #[serde(rename_all = "camelCase")]
+    SdkMismatch {
+        required: String,
+        supported: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    AppVersionTooOld {
+        required: String,
+        current: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    PlatformNotSupported {
+        platform: String,
+        supported: Vec<String>,
+    },
+    #[default]
+    Unknown,
+}
+
+/// A fully resolved extension record returned to the frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtensionRecord {
+    pub manifest: ExtensionManifest,
+    pub enabled: bool,
+    pub is_built_in: bool,
+    /// Whether this extension/feature can be disabled.
+    /// Installed extensions are always disableable.
+    /// Built-in features require `lifecycle.disableable == true` in their manifest.
+    #[serde(default)]
+    pub disableable: bool,
+    /// Filesystem path to the extension directory
+    pub path: String,
+    #[serde(default)]
+    pub compatibility: CompatibilityStatus,
+    /// Component of the first `mode: "view"` command; `None` if the
+    /// extension has no view commands. Computed from `manifest` at discovery
+    /// time so the frontend does not need to re-derive it.
+    pub first_view_component: Option<String>,
+}
+
+/// Central registry holding all discovered extensions
+pub struct ExtensionRegistryState {
+    pub extensions: Mutex<HashMap<String, ExtensionRecord>>,
+}
+
+impl ExtensionRegistryState {
+    pub fn new() -> Self {
+        Self {
+            extensions: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+impl Default for ExtensionRegistryState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// The parsed content of a theme extension's theme.json file.
+/// Note: no `rename_all = "camelCase"` — theme.json keys are CSS variable names
+/// (with hyphens) and simple lowercase field names, not camelCase.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemeDefinition {
+    pub variables: HashMap<String, String>,
+    #[serde(default)]
+    pub fonts: Vec<ThemeFontEntry>,
+}
+
+/// A single @font-face entry declared by a theme.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemeFontEntry {
+    pub family: String,
+    #[serde(default)]
+    pub weight: Option<String>,
+    #[serde(default)]
+    pub style: Option<String>,
+    pub src: String,
+}
+
+/// Cross-validate `permissions` and `permission_args` on a loaded
+/// manifest. Enforces, for each parameterized permission (`fs:watch`,
+/// `files:read`): declared iff its `permission_args` entry is present;
+/// value is `Array<String>`; every string passes the permission's own
+/// pattern validator. `fs:watch` patterns must anchor under `$HOME` or
+/// `/tmp` (`fs_watcher::matcher::validate_manifest_pattern`); `files:read`
+/// patterns may anchor anywhere (`files_scope::validate_files_read_pattern`)
+/// — a one-shot bounded read is a different risk profile than a standing
+/// watch, and the read scope is user-consented and deny-listed instead.
+/// Also validates the optional `shell:open-url` scheme list (see
+/// `validate_shell_open_url_args`).
+pub fn validate_permission_args(m: &ExtensionManifest) -> Result<(), AppError> {
+    validate_string_array_permission(m, "fs:watch", |s| {
+        let home =
+            dirs::home_dir().ok_or_else(|| AppError::Other("could not determine $HOME".into()))?;
+        crate::fs_watcher::matcher::validate_manifest_pattern(s, &home)
+    })?;
+    validate_string_array_permission(m, "files:read", |s| {
+        crate::files_scope::validate_files_read_pattern(s)
+    })?;
+    validate_shell_open_url_args(m)?;
+    let has = |permission: &str| {
+        m.permissions
+            .as_ref()
+            .is_some_and(|p| p.iter().any(|p| p == permission))
+    };
+    let args = m
+        .permission_args
+        .as_ref()
+        .and_then(|a| a.get("network:secrets"));
+    match (has("network:secrets"),args) {
+        (false,None)=>{},
+        (true,Some(args)) if has("network")=> { crate::network::secret_refs::validate_network_secrets_args(args)?; },
+        _=>return Err(AppError::Validation("network:secrets requires network and matching permissionArgs.network:secrets declarations".into())),
+    }
+    let lan_args = m
+        .permission_args
+        .as_ref()
+        .and_then(|a| a.get("network:lan"));
+    match (has("network:lan"), lan_args) {
+        (false, None) => {}
+        (true, Some(args)) if has("network") => {
+            crate::network::lan_policy::LanPolicy::from_manifest(Some(args))?;
+        }
+        (true, None) if has("network") => {
+            // Bare network:lan — user manages the allowlist in Settings; no manifest args required
+        }
+        _ => {
+            return Err(AppError::Validation(
+                "network:lan requires the network permission to be declared".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Shared "declared iff args present, args are a validated string array"
+/// rule for parameterized permissions.
+fn validate_string_array_permission(
+    m: &ExtensionManifest,
+    permission: &str,
+    validate_entry: impl Fn(&str) -> Result<(), AppError>,
+) -> Result<(), AppError> {
+    let declared = m
+        .permissions
+        .as_ref()
+        .map(|list| list.iter().any(|p| p == permission))
+        .unwrap_or(false);
+    let args = m
+        .permission_args
+        .as_ref()
+        .and_then(|map| map.get(permission));
+
+    match (declared, args) {
+        (false, None) => Ok(()),
+        (true, None) => Err(AppError::Validation(format!(
+            "manifest declares permission '{permission}' but no permissionArgs.{permission} entry"
+        ))),
+        (false, Some(_)) => Err(AppError::Validation(format!(
+            "manifest declares permissionArgs.{permission} but does not declare '{permission}' in permissions"
+        ))),
+        (true, Some(value)) => {
+            let arr = value.as_array().ok_or_else(|| {
+                AppError::Validation(format!(
+                    "permissionArgs.{permission} must be an array of glob strings"
+                ))
+            })?;
+            for item in arr {
+                let s = item.as_str().ok_or_else(|| {
+                    AppError::Validation(format!(
+                        "permissionArgs.{permission} entries must be strings"
+                    ))
+                })?;
+                validate_entry(s)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+/// Validate the optional `shell:open-url` scheme list. Unlike `fs:watch`
+/// (declared iff args present), the args here are OPTIONAL: bare
+/// `shell:open-url` keeps meaning the web-default schemes, and
+/// `permissionArgs["shell:open-url"]` EXTENDS that set. Args without the
+/// permission are rejected; when present, the value must be an array of
+/// valid lowercase scheme names (see
+/// `opener_scope::validate_declared_scheme`).
+fn validate_shell_open_url_args(m: &ExtensionManifest) -> Result<(), AppError> {
+    let declared = m
+        .permissions
+        .as_ref()
+        .map(|list| list.iter().any(|p| p == "shell:open-url"))
+        .unwrap_or(false);
+    let args = m
+        .permission_args
+        .as_ref()
+        .and_then(|map| map.get("shell:open-url"));
+
+    match (declared, args) {
+        (_, None) => Ok(()),
+        (false, Some(_)) => Err(AppError::Validation(
+            "manifest declares permissionArgs.shell:open-url but does not declare 'shell:open-url' in permissions"
+                .into(),
+        )),
+        (true, Some(value)) => {
+            let arr = value.as_array().ok_or_else(|| {
+                AppError::Validation(
+                    "permissionArgs.shell:open-url must be an array of scheme strings".into(),
+                )
+            })?;
+            for item in arr {
+                let s = item.as_str().ok_or_else(|| {
+                    AppError::Validation(
+                        "permissionArgs.shell:open-url entries must be strings".into(),
+                    )
+                })?;
+                crate::opener_scope::validate_declared_scheme(s)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+/// Validate a `searchBarAccessory` declaration in isolation. Enforces:
+/// - `options` is non-empty.
+/// - When `default` is set, its value matches one of the declared options.
+///
+/// Mode-level rules (only legal on `mode: "view"`) live in
+/// [`validate_extension_command`].
+pub fn validate_search_bar_accessory(acc: &SearchBarAccessory) -> Result<(), String> {
+    match acc {
+        SearchBarAccessory::Dropdown { default, options } => {
+            if options.is_empty() {
+                return Err("searchBarAccessory.options must be a non-empty array".to_string());
+            }
+            if let Some(d) = default {
+                if !options.iter().any(|o| &o.value == d) {
+                    return Err(format!(
+                        "searchBarAccessory.default '{}' is not present in options",
+                        d
+                    ));
+                }
+            }
+            Ok(())
+        }
+    }
+}
+
+/// Validate a single [`ExtensionCommand`] in isolation. Checks:
+/// - `searchBarAccessory` declarations: structural validity via
+///   [`validate_search_bar_accessory`], and the mode-level rule that only
+///   `mode: "view"` commands may declare an accessory.
+/// - `arguments` declarations: max count, name format, required-before-optional,
+///   dropdown shape and default-value type via
+///   [`dynamic_commands::validate_arguments`]. Same validator the runtime
+///   dynamic command path uses, so untrusted manifest installs and trusted
+///   extension code never diverge.
+pub fn validate_extension_command(cmd: &ExtensionCommand) -> Result<(), String> {
+    if let Some(acc) = &cmd.search_bar_accessory {
+        validate_search_bar_accessory(acc)?;
+        if cmd.mode.as_deref() != Some("view") {
+            return Err(format!(
+                "command '{}': searchBarAccessory is only valid on mode='view' commands",
+                cmd.id
+            ));
+        }
+    }
+    if let Some(args) = &cmd.arguments {
+        dynamic_commands::validate_arguments(args)
+            .map_err(|e| format!("command '{}': {e}", cmd.id))?;
+    }
+    if let Some(group) = &cmd.require_any_of {
+        validate_require_any_of(group, cmd.arguments.as_deref().unwrap_or(&[]))
+            .map_err(|e| format!("command '{}': {e}", cmd.id))?;
+    }
+    Ok(())
+}
+
+/// Cross-validate a `requireAnyOf` group against the command's declared
+/// arguments. The group means "at least one of these carries a user value", so
+/// it only makes sense over two or more real, non-`required` arguments.
+pub fn validate_require_any_of(group: &[String], args: &[CommandArgument]) -> Result<(), String> {
+    let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for name in group {
+        let arg = args.iter().find(|a| &a.name == name).ok_or_else(|| {
+            format!("requireAnyOf names '{name}', which is not a declared argument")
+        })?;
+        if !seen.insert(name.as_str()) {
+            return Err(format!("requireAnyOf lists '{name}' more than once"));
+        }
+        if arg.required.unwrap_or(false) {
+            return Err(format!(
+                "requireAnyOf lists '{name}', which is already required — a required argument must always be filled, so it cannot be one of several alternatives"
+            ));
+        }
+    }
+    if seen.len() < 2 {
+        return Err(
+            "requireAnyOf needs at least two arguments; with one, mark it required instead"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+/// Reads and parses theme.json from an extension directory.
+pub(crate) fn read_theme_definition(extension_dir: &Path) -> Result<ThemeDefinition, AppError> {
+    let theme_path = extension_dir.join("theme.json");
+    let content = fs::read_to_string(&theme_path).map_err(AppError::Io)?;
+    let definition: ThemeDefinition = serde_json::from_str(&content).map_err(AppError::Json)?;
+    Ok(definition)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn secret_manifest(perms: serde_json::Value, args: serde_json::Value) -> ExtensionManifest {
+        serde_json::from_value(serde_json::json!({"id":"test","name":"Test","version":"1.0.0","description":"Test","commands":[],"permissions":perms,"permissionArgs":args})).unwrap()
+    }
+    #[test]
+    fn network_without_args_still_valid() {
+        assert!(validate_permission_args(&secret_manifest(
+            serde_json::json!(["network"]),
+            serde_json::json!({})
+        ))
+        .is_ok());
+    }
+    #[test]
+    fn network_secrets_without_network_rejected() {
+        assert!(validate_permission_args(&secret_manifest(
+            serde_json::json!(["network:secrets"]),
+            serde_json::json!({"network:secrets":[]})
+        ))
+        .is_err());
+    }
+    #[test]
+    fn network_secrets_args_without_permission_rejected() {
+        assert!(validate_permission_args(&secret_manifest(
+            serde_json::json!(["network"]),
+            serde_json::json!({"network:secrets":[]})
+        ))
+        .is_err());
+    }
+    #[test]
+    fn network_lan_requires_network_and_scoped_endpoints() {
+        // network:lan without the network base permission is always rejected.
+        assert!(validate_permission_args(&secret_manifest(
+            serde_json::json!(["network:lan"]),
+            serde_json::json!({"network:lan":["192.168.0.0/16:1400"]})
+        ))
+        .is_err());
+        // Bare network:lan (no permissionArgs) is now valid: user manages hosts in Settings.
+        assert!(validate_permission_args(&secret_manifest(
+            serde_json::json!(["network", "network:lan"]),
+            serde_json::json!({})
+        ))
+        .is_ok());
+        // network:lan with explicit CIDR args is still valid.
+        assert!(validate_permission_args(&secret_manifest(
+            serde_json::json!(["network", "network:lan"]),
+            serde_json::json!({"network:lan":["192.168.0.0/16:1400", "speaker.local:1400"]})
+        ))
+        .is_ok());
+    }
+    use std::fs;
+    use std::path::Path;
+    use tempfile::TempDir;
+
+    fn create_test_manifest(dir: &Path, id: &str, name: &str) {
+        let ext_dir = dir.join(id);
+        fs::create_dir_all(&ext_dir).unwrap();
+        let manifest = serde_json::json!({
+            "id": id,
+            "name": name,
+            "version": "1.0.0",
+            "description": "Test extension",
+            "type": "extension",
+            "commands": [{
+                "id": "test-cmd",
+                "name": "Test Command",
+                "description": "A test command",
+                "mode": "view",
+                "component": "MainView"
+            }]
+        });
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+    }
+
+    #[test]
+    fn test_read_manifest_valid() {
+        let tmp = TempDir::new().unwrap();
+        create_test_manifest(tmp.path(), "test-ext", "Test Extension");
+        let manifest =
+            discovery::read_manifest(&tmp.path().join("test-ext/manifest.json")).unwrap();
+        assert_eq!(manifest.id, "test-ext");
+        assert_eq!(manifest.name, "Test Extension");
+        assert_eq!(manifest.commands.len(), 1);
+        assert_eq!(manifest.commands[0].id, "test-cmd");
+    }
+
+    #[test]
+    fn test_read_manifest_with_optional_fields() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path().join("full-ext");
+        fs::create_dir_all(&ext_dir).unwrap();
+        let manifest = serde_json::json!({
+            "id": "full-ext",
+            "name": "Full Extension",
+            "version": "2.0.0",
+            "description": "Full test",
+            "type": "extension",
+            "background": { "main": "dist/worker.js" },
+            "searchable": true,
+            "icon": "🔍",
+            "permissions": ["clipboard:read", "network"],
+            "commands": [
+                { "id": "tick", "name": "Tick", "mode": "background" }
+            ]
+        });
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+
+        let m = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap();
+        assert_eq!(m.extension_type.as_deref(), Some("extension"));
+        assert_eq!(m.background.as_ref().unwrap().main, "dist/worker.js");
+        assert_eq!(m.searchable, Some(true));
+        assert_eq!(m.icon, Some("🔍".into()));
+        assert_eq!(
+            m.permissions,
+            Some(vec!["clipboard:read".into(), "network".into()])
+        );
+    }
+
+    #[test]
+    fn test_read_manifest_with_command_searchable() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path().join("cmd-searchable-ext");
+        fs::create_dir_all(&ext_dir).unwrap();
+        let manifest = serde_json::json!({
+            "id": "cmd-searchable-ext",
+            "name": "Command Searchable Ext",
+            "version": "1.0.0",
+            "description": "Test command searchable field",
+            "type": "extension",
+            "background": { "main": "dist/worker.js" },
+            "commands": [
+                { "id": "search-cmd", "name": "Search Cmd", "mode": "view", "component": "SearchView", "searchable": true },
+                { "id": "bg-tick", "name": "Background Tick", "mode": "background", "searchable": false },
+                { "id": "default-cmd", "name": "Default Cmd", "mode": "view", "component": "DefaultView" }
+            ]
+        });
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+
+        let m = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap();
+        assert_eq!(m.commands.len(), 3);
+        assert_eq!(m.commands[0].searchable, Some(true));
+        assert_eq!(m.commands[1].searchable, Some(false));
+        assert_eq!(m.commands[2].searchable, None);
+    }
+
+    /// A single-command manifest body that passes the new schema validator.
+    /// Tests that exercise orthogonal concerns (permission_args, etc.) should
+    /// merge this with their specific fields.
+    fn valid_manifest_fields() -> serde_json::Value {
+        serde_json::json!({
+            "type": "extension",
+            "commands": [
+                { "id": "run", "name": "Run", "mode": "view", "component": "MainView" }
+            ]
+        })
+    }
+
+    /// Merge two JSON objects shallowly (b overrides a).
+    fn merge_json(mut a: serde_json::Value, b: serde_json::Value) -> serde_json::Value {
+        if let (Some(map_a), Some(map_b)) = (a.as_object_mut(), b.as_object()) {
+            for (k, v) in map_b {
+                map_a.insert(k.clone(), v.clone());
+            }
+        }
+        a
+    }
+
+    #[test]
+    fn reads_manifest_with_permission_args() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        // Use /tmp as the prefix so validation accepts it regardless of $HOME.
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "test.fs-watch-ext",
+                "name": "FS Watch Test",
+                "version": "0.1.0",
+                "permissions": ["fs:watch"],
+                "permissionArgs": {
+                    "fs:watch": ["/tmp/conbind-fs-watch/**", "/tmp/conbind-ssh-config"]
+                }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+
+        let m = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap();
+        assert_eq!(m.permissions, Some(vec!["fs:watch".into()]));
+        let args = m.permission_args.as_ref().expect("permission_args parsed");
+        let fs_watch = args.get("fs:watch").expect("fs:watch key present");
+        let arr = fs_watch.as_array().expect("fs:watch value is array");
+        assert_eq!(arr.len(), 2);
+    }
+
+    #[test]
+    fn rejects_manifest_declaring_fs_watch_without_args() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissions": ["fs:watch"]
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains("fs:watch"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_manifest_declaring_fs_watch_args_without_permission() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissionArgs": {
+                    "fs:watch": ["/tmp/foo"]
+                }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains("fs:watch"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_manifest_with_fs_watch_non_array_value() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissions": ["fs:watch"],
+                "permissionArgs": { "fs:watch": "/tmp/foo" }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains("fs:watch"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_manifest_with_fs_watch_pattern_outside_home() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissions": ["fs:watch"],
+                "permissionArgs": { "fs:watch": ["/etc/passwd"] }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains("must resolve"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_manifest_declaring_files_read_without_args() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissions": ["files:read"]
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains("files:read"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_manifest_declaring_files_read_args_without_permission() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissionArgs": {
+                    "files:read": ["/tmp/foo"]
+                }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains("files:read"), "got: {err}");
+    }
+
+    #[test]
+    fn accepts_manifest_with_files_read_pattern_outside_home() {
+        // The deliberate policy divergence from fs:watch: files:read
+        // patterns may anchor anywhere, including other drives or nowhere
+        // at all.
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "test.files-read-ext",
+                "name": "Files Read Test",
+                "version": "0.1.0",
+                "permissions": ["files:read"],
+                "permissionArgs": {
+                    "files:read": [
+                        "C:/Program Files (x86)/Steam/**",
+                        "**/steamapps/appmanifest_*.acf"
+                    ]
+                }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let m = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap();
+        assert_eq!(m.permissions, Some(vec!["files:read".into()]));
+    }
+
+    #[test]
+    fn rejects_manifest_with_files_read_traversal_pattern() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissions": ["files:read"],
+                "permissionArgs": { "files:read": ["~/foo/../../etc/**"] }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains(".."), "got: {err}");
+    }
+
+    #[test]
+    fn accepts_manifest_with_bare_shell_open_url() {
+        // Unlike fs:watch, shell:open-url args are optional — bare means
+        // the web-default schemes.
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "test.opener-ext",
+                "name": "Opener Test",
+                "version": "0.1.0",
+                "permissions": ["shell:open-url"]
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        assert!(discovery::read_manifest(&ext_dir.join("manifest.json")).is_ok());
+    }
+
+    #[test]
+    fn accepts_manifest_with_shell_open_url_schemes() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "test.opener-ext",
+                "name": "Opener Test",
+                "version": "0.1.0",
+                "permissions": ["shell:open-url"],
+                "permissionArgs": { "shell:open-url": ["steam", "vscode"] }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let m = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap();
+        let schemes = m
+            .permission_args
+            .as_ref()
+            .and_then(|a| a.get("shell:open-url"))
+            .and_then(|v| v.as_array())
+            .expect("schemes parsed");
+        assert_eq!(schemes.len(), 2);
+    }
+
+    #[test]
+    fn rejects_manifest_with_shell_open_url_args_without_permission() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path();
+        let manifest = merge_json(
+            valid_manifest_fields(),
+            serde_json::json!({
+                "id": "bad.ext",
+                "name": "Bad",
+                "version": "0.1.0",
+                "permissionArgs": { "shell:open-url": ["steam"] }
+            }),
+        );
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+        let err = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap_err();
+        assert!(format!("{err}").contains("shell:open-url"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_manifest_with_invalid_or_denied_scheme() {
+        for bad in ["file", "Steam", "c"] {
+            let tmp = TempDir::new().unwrap();
+            let ext_dir = tmp.path();
+            let manifest = merge_json(
+                valid_manifest_fields(),
+                serde_json::json!({
+                    "id": "bad.ext",
+                    "name": "Bad",
+                    "version": "0.1.0",
+                    "permissions": ["shell:open-url"],
+                    "permissionArgs": { "shell:open-url": [bad] }
+                }),
+            );
+            fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+            assert!(
+                discovery::read_manifest(&ext_dir.join("manifest.json")).is_err(),
+                "expected rejection for scheme '{bad}'"
+            );
+        }
+    }
+
+    #[test]
+    fn test_read_manifest_minimal() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path().join("min-ext");
+        fs::create_dir_all(&ext_dir).unwrap();
+        // Minimum valid manifest under the new schema: one background command
+        // plus a background.main bundle path.
+        let manifest = serde_json::json!({
+            "id": "min-ext",
+            "name": "Minimal",
+            "version": "0.1.0",
+            "background": { "main": "dist/worker.js" },
+            "commands": [
+                { "id": "tick", "name": "Tick", "mode": "background" }
+            ]
+        });
+        fs::write(ext_dir.join("manifest.json"), manifest.to_string()).unwrap();
+
+        let m = discovery::read_manifest(&ext_dir.join("manifest.json")).unwrap();
+        assert_eq!(m.id, "min-ext");
+        assert_eq!(m.commands.len(), 1);
+        assert!(m.permissions.is_none());
+    }
+
+    #[test]
+    fn test_scan_extensions_dir() {
+        let tmp = TempDir::new().unwrap();
+        create_test_manifest(tmp.path(), "ext-a", "Extension A");
+        create_test_manifest(tmp.path(), "ext-b", "Extension B");
+        // Add a non-extension directory (no manifest)
+        fs::create_dir_all(tmp.path().join("not-an-ext")).unwrap();
+        // Add a file (should be skipped)
+        fs::write(tmp.path().join("random.txt"), "hello").unwrap();
+
+        let records = discovery::scan_extensions_dir(tmp.path(), false);
+        assert_eq!(records.len(), 2);
+        assert!(records.iter().all(|r| !r.is_built_in));
+    }
+
+    #[test]
+    fn test_scan_extensions_dir_built_in() {
+        let tmp = TempDir::new().unwrap();
+        create_test_manifest(tmp.path(), "calculator", "Calculator");
+
+        let records = discovery::scan_extensions_dir(tmp.path(), true);
+        assert_eq!(records.len(), 1);
+        assert!(records[0].is_built_in);
+        assert!(records[0].enabled); // Default enabled
+    }
+
+    #[test]
+    fn test_scan_nonexistent_dir() {
+        let records = discovery::scan_extensions_dir(Path::new("/nonexistent/path"), false);
+        assert!(records.is_empty()); // Should not panic, just return empty
+    }
+
+    #[test]
+    fn test_scan_skips_invalid_manifest() {
+        let tmp = TempDir::new().unwrap();
+        let ext_dir = tmp.path().join("bad-ext");
+        fs::create_dir_all(&ext_dir).unwrap();
+        fs::write(ext_dir.join("manifest.json"), "not valid json").unwrap();
+        create_test_manifest(tmp.path(), "good-ext", "Good");
+
+        let records = discovery::scan_extensions_dir(tmp.path(), false);
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].manifest.id, "good-ext");
+    }
+
+    #[test]
+    fn test_theme_definition_deserializes_from_json() {
+        let json = r#"{
+            "variables": {
+                "--bg-primary": "rgba(25, 25, 35, 0.85)",
+                "--accent-primary": "rgb(138, 43, 226)"
+            },
+            "fonts": [
+                {
+                    "family": "Inter",
+                    "weight": "400",
+                    "style": "normal",
+                    "src": "fonts/Inter-Regular.woff2"
+                }
+            ]
+        }"#;
+        let def: ThemeDefinition = serde_json::from_str(json).unwrap();
+        assert_eq!(def.variables.len(), 2);
+        assert_eq!(
+            def.variables.get("--bg-primary").unwrap(),
+            "rgba(25, 25, 35, 0.85)"
+        );
+        assert_eq!(def.fonts.len(), 1);
+        assert_eq!(def.fonts[0].family, "Inter");
+        assert_eq!(def.fonts[0].src, "fonts/Inter-Regular.woff2");
+    }
+
+    #[test]
+    fn test_theme_definition_empty_fonts_optional() {
+        let json = r#"{"variables": {"--bg-primary": "red"}}"#;
+        let def: ThemeDefinition = serde_json::from_str(json).unwrap();
+        assert!(def.fonts.is_empty());
+    }
+
+    #[test]
+    fn test_read_theme_definition_from_dir() {
+        let tmp = TempDir::new().unwrap();
+        let theme_json = r#"{
+            "variables": {"--bg-primary": "blue"},
+            "fonts": []
+        }"#;
+        fs::write(tmp.path().join("theme.json"), theme_json).unwrap();
+        let def = read_theme_definition(tmp.path()).unwrap();
+        assert_eq!(def.variables.get("--bg-primary").unwrap(), "blue");
+    }
+
+    #[test]
+    fn test_read_theme_definition_missing_file_errors() {
+        let tmp = TempDir::new().unwrap();
+        let result = read_theme_definition(tmp.path());
+        assert!(matches!(result, Err(AppError::Io(_))));
+    }
+
+    #[test]
+    fn test_extension_registry_state() {
+        let registry = ExtensionRegistryState::new();
+        let mut reg = registry.extensions.lock().unwrap();
+        assert!(reg.is_empty());
+
+        reg.insert(
+            "test".into(),
+            ExtensionRecord {
+                manifest: ExtensionManifest {
+                    id: "test".into(),
+                    name: "Test".into(),
+                    version: "1.0.0".into(),
+                    description: String::new(),
+                    author: None,
+                    extension_type: None,
+                    lifecycle: None,
+                    background: None,
+                    searchable: None,
+                    icon: None,
+                    commands: vec![],
+                    permissions: None,
+                    permission_args: None,
+                    min_app_version: None,
+                    conbind_sdk: None,
+                    platforms: None,
+                    preferences: None,
+                    actions: None,
+                    onboarding: None,
+                    tools: None,
+                    runtimes: None,
+                    walkthrough: None,
+                },
+                enabled: true,
+                is_built_in: false,
+                disableable: true,
+                path: "/tmp/test".into(),
+                compatibility: CompatibilityStatus::Unknown,
+                first_view_component: None,
+            },
+        );
+        assert_eq!(reg.len(), 1);
+    }
+
+    #[test]
+    fn test_deserialize_command_with_schedule() {
+        let json = r#"{
+            "id": "check-deploys",
+            "name": "Check Deployments",
+            "description": "Checks deploy status",
+            "mode": "background",
+            "schedule": { "intervalSeconds": 300 }
+        }"#;
+        let cmd: ExtensionCommand = serde_json::from_str(json).unwrap();
+        assert!(cmd.schedule.is_some());
+        assert_eq!(cmd.schedule.unwrap().interval_seconds, 300);
+    }
+
+    #[test]
+    fn test_deserialize_command_without_schedule() {
+        let json = r#"{
+            "id": "open-settings",
+            "name": "Open Settings",
+            "description": ""
+        }"#;
+        let cmd: ExtensionCommand = serde_json::from_str(json).unwrap();
+        assert!(cmd.schedule.is_none());
+    }
+
+    #[test]
+    fn test_schedule_roundtrip_serialization() {
+        let decl = ScheduleDeclaration {
+            interval_seconds: 600,
+        };
+        let json = serde_json::to_string(&decl).unwrap();
+        let parsed: ScheduleDeclaration = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.interval_seconds, 600);
+    }
+
+    #[test]
+    fn preference_declaration_deserializes_textfield() {
+        let json = r#"{
+            "name": "apiKey",
+            "type": "password",
+            "title": "API Key",
+            "required": true
+        }"#;
+        let pref: PreferenceDeclaration = serde_json::from_str(json).unwrap();
+        assert_eq!(pref.name, "apiKey");
+        assert!(matches!(pref.preference_type, PreferenceType::Password));
+        assert_eq!(pref.required, Some(true));
+        assert_eq!(pref.default, None);
+    }
+
+    #[test]
+    fn preference_declaration_dropdown_with_data() {
+        let json = r#"{
+            "name": "units",
+            "type": "dropdown",
+            "title": "Units",
+            "default": "metric",
+            "data": [
+                { "value": "metric", "title": "Celsius" },
+                { "value": "imperial", "title": "Fahrenheit" }
+            ]
+        }"#;
+        let pref: PreferenceDeclaration = serde_json::from_str(json).unwrap();
+        assert!(matches!(pref.preference_type, PreferenceType::Dropdown));
+        let data = pref.data.as_ref().expect("data should be present");
+        assert_eq!(data.len(), 2);
+        assert_eq!(data[0].value, "metric");
+        assert_eq!(data[0].title, "Celsius");
+    }
+
+    #[test]
+    fn preference_type_accepts_all_supported_variants() {
+        for t in &[
+            "textfield",
+            "password",
+            "number",
+            "checkbox",
+            "dropdown",
+            "appPicker",
+            "file",
+            "directory",
+        ] {
+            let json = format!(r#"{{ "name":"x", "type":"{}", "title":"x" }}"#, t);
+            let _: PreferenceDeclaration = serde_json::from_str(&json)
+                .unwrap_or_else(|e| panic!("Failed to parse type {}: {}", t, e));
+        }
+    }
+
+    #[test]
+    fn search_bar_accessory_omitted_is_ok() {
+        let json = r#"{
+            "id": "show",
+            "name": "Show",
+            "mode": "view",
+            "component": "MyView"
+        }"#;
+        let cmd: ExtensionCommand = serde_json::from_str(json).unwrap();
+        assert!(cmd.search_bar_accessory.is_none());
+    }
+
+    #[test]
+    fn search_bar_accessory_dropdown_with_default_in_options_deserializes() {
+        let json = r#"{
+            "id": "show",
+            "name": "Show",
+            "mode": "view",
+            "component": "MyView",
+            "searchBarAccessory": {
+                "type": "dropdown",
+                "default": "all",
+                "options": [
+                    { "value": "all",  "title": "All" },
+                    { "value": "text", "title": "Text" }
+                ]
+            }
+        }"#;
+        let cmd: ExtensionCommand = serde_json::from_str(json).unwrap();
+        let acc = cmd.search_bar_accessory.unwrap();
+        let SearchBarAccessory::Dropdown { default, options } = acc;
+        assert_eq!(default.as_deref(), Some("all"));
+        assert_eq!(options.len(), 2);
+        assert_eq!(options[0].value, "all");
+        assert_eq!(options[0].title, "All");
+    }
+
+    #[test]
+    fn validate_search_bar_accessory_rejects_empty_options() {
+        let acc = SearchBarAccessory::Dropdown {
+            default: None,
+            options: vec![],
+        };
+        let err = validate_search_bar_accessory(&acc).unwrap_err();
+        assert!(err.contains("options"), "got: {err}");
+    }
+
+    #[test]
+    fn validate_search_bar_accessory_rejects_default_not_in_options() {
+        let acc = SearchBarAccessory::Dropdown {
+            default: Some("missing".to_string()),
+            options: vec![SearchBarAccessoryDropdownOption {
+                value: "all".to_string(),
+                title: "All".to_string(),
+            }],
+        };
+        let err = validate_search_bar_accessory(&acc).unwrap_err();
+        assert!(err.contains("default"), "got: {err}");
+    }
+
+    #[test]
+    fn validate_search_bar_accessory_accepts_no_default() {
+        let acc = SearchBarAccessory::Dropdown {
+            default: None,
+            options: vec![SearchBarAccessoryDropdownOption {
+                value: "all".to_string(),
+                title: "All".to_string(),
+            }],
+        };
+        assert!(validate_search_bar_accessory(&acc).is_ok());
+    }
+
+    #[test]
+    fn validate_search_bar_accessory_accepts_default_in_options() {
+        let acc = SearchBarAccessory::Dropdown {
+            default: Some("text".to_string()),
+            options: vec![
+                SearchBarAccessoryDropdownOption {
+                    value: "all".to_string(),
+                    title: "All".to_string(),
+                },
+                SearchBarAccessoryDropdownOption {
+                    value: "text".to_string(),
+                    title: "Text".to_string(),
+                },
+            ],
+        };
+        assert!(validate_search_bar_accessory(&acc).is_ok());
+    }
+
+    #[test]
+    fn deserializes_onboarding_command_field() {
+        let json = r#"{
+            "id": "org.example.coffee",
+            "name": "Coffee",
+            "version": "0.1.0",
+            "commands": [],
+            "onboarding": { "command": "setup" }
+        }"#;
+        let m: ExtensionManifest = serde_json::from_str(json).unwrap();
+        assert_eq!(m.onboarding.unwrap().command, "setup");
+    }
+
+    #[test]
+    fn missing_onboarding_field_is_none() {
+        let json = r#"{
+            "id": "x", "name": "X", "version": "0.1.0", "commands": []
+        }"#;
+        let m: ExtensionManifest = serde_json::from_str(json).unwrap();
+        assert!(m.onboarding.is_none());
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_search_bar_accessory_on_background_mode() {
+        let cmd = ExtensionCommand {
+            id: "tick".to_string(),
+            name: "Tick".to_string(),
+            description: String::new(),
+            trigger: None,
+            mode: Some("background".to_string()),
+            icon: None,
+            component: None,
+            schedule: None,
+            searchable: None,
+            preferences: None,
+            actions: None,
+            arguments: None,
+            require_any_of: None,
+            search_bar_accessory: Some(SearchBarAccessory::Dropdown {
+                default: None,
+                options: vec![SearchBarAccessoryDropdownOption {
+                    value: "x".to_string(),
+                    title: "X".to_string(),
+                }],
+            }),
+        };
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(
+            err.contains("searchBarAccessory") && err.contains("view"),
+            "got: {err}"
+        );
+    }
+
+    fn make_cmd_with_args(args: Vec<CommandArgument>) -> ExtensionCommand {
+        ExtensionCommand {
+            id: "test-cmd".to_string(),
+            name: "Test".to_string(),
+            description: String::new(),
+            trigger: None,
+            mode: None,
+            icon: None,
+            component: None,
+            schedule: None,
+            searchable: None,
+            preferences: None,
+            actions: None,
+            arguments: Some(args),
+            require_any_of: None,
+            search_bar_accessory: None,
+        }
+    }
+
+    fn text_arg(name: &str) -> CommandArgument {
+        CommandArgument {
+            name: name.to_string(),
+            argument_type: CommandArgumentType::Text,
+            placeholder: None,
+            required: None,
+            default: None,
+            data: None,
+            seed: None,
+        }
+    }
+
+    // `requireAnyOf` covers the shape `required` cannot: a command needing SOME
+    // input without being able to name which field it must come from.
+    #[test]
+    fn extension_command_deserializes_require_any_of() {
+        let json = r#"{
+            "id": "caffeinate-for",
+            "name": "Caffeinate For",
+            "description": "",
+            "requireAnyOf": ["hours", "minutes"],
+            "arguments": [
+                { "name": "hours", "type": "number", "default": 0 },
+                { "name": "minutes", "type": "number", "default": 0 }
+            ]
+        }"#;
+        let cmd: ExtensionCommand = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            cmd.require_any_of.as_deref(),
+            Some(["hours".to_string(), "minutes".to_string()].as_slice())
+        );
+        validate_extension_command(&cmd).expect("well-formed group should validate");
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_require_any_of_naming_unknown_argument() {
+        let mut cmd = make_cmd_with_args(vec![text_arg("hours"), text_arg("minutes")]);
+        cmd.require_any_of = Some(vec!["hours".to_string(), "nope".to_string()]);
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(
+            err.contains("requireAnyOf") && err.contains("nope"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_argument_both_required_and_in_the_group() {
+        // Contradictory: `required` says this exact field must be filled, the
+        // group says any one of several will do.
+        let mut required = text_arg("hours");
+        required.required = Some(true);
+        let mut cmd = make_cmd_with_args(vec![required, text_arg("minutes")]);
+        cmd.require_any_of = Some(vec!["hours".to_string(), "minutes".to_string()]);
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(
+            err.contains("requireAnyOf") && err.contains("required"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_single_member_require_any_of() {
+        // One member is just `required` spelled the long way.
+        let mut cmd = make_cmd_with_args(vec![text_arg("hours")]);
+        cmd.require_any_of = Some(vec!["hours".to_string()]);
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(err.contains("requireAnyOf"), "got: {err}");
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_require_any_of_without_arguments() {
+        let mut cmd = make_cmd_with_args(vec![]);
+        cmd.arguments = None;
+        cmd.require_any_of = Some(vec!["a".to_string(), "b".to_string()]);
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(err.contains("requireAnyOf"), "got: {err}");
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_four_arguments() {
+        let cmd = make_cmd_with_args(vec![
+            text_arg("a"),
+            text_arg("b"),
+            text_arg("c"),
+            text_arg("d"),
+        ]);
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(err.contains("at most 3"), "got: {err}");
+        assert!(err.contains("test-cmd"), "got: {err}");
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_required_after_optional_in_arguments() {
+        let mut req = text_arg("req");
+        req.required = Some(true);
+        let cmd = make_cmd_with_args(vec![text_arg("opt"), req]);
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(err.contains("cannot follow an optional"), "got: {err}");
+    }
+
+    #[test]
+    fn validate_extension_command_rejects_invalid_argument_name() {
+        let cmd = make_cmd_with_args(vec![text_arg("1bad")]);
+        let err = validate_extension_command(&cmd).unwrap_err();
+        assert!(err.contains("must match"), "got: {err}");
+    }
+
+    #[test]
+    fn validate_extension_command_accepts_well_formed_arguments() {
+        let mut req = text_arg("query");
+        req.required = Some(true);
+        let cmd = make_cmd_with_args(vec![req, text_arg("lang")]);
+        assert!(validate_extension_command(&cmd).is_ok());
+    }
+
+    #[test]
+    fn validate_extension_command_with_no_arguments_is_ok() {
+        let cmd = make_cmd_with_args(vec![]);
+        assert!(validate_extension_command(&cmd).is_ok());
+    }
+}

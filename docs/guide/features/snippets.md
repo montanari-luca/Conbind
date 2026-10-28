@@ -9,7 +9,7 @@ _Figure: the snippets list view._
 
 Snippets let you expand a short keyword into a longer piece of text — anywhere on your computer, in any app. For example, type `;email` and it expands to your full email address, or `;sig` becomes your email signature.
 
-Expansion happens in the background as soon as you type the keyword followed by a space or other word-boundary character. You do not need to open Asyar first.
+Expansion happens in the background as soon as you type the keyword followed by a space or other word-boundary character. You do not need to open Conbind first.
 
 Snippets also support dynamic placeholders inside the expansion text (such as `{Date}`, `{Time}`, `{Selected Text}`, etc.), with optional custom format attributes. These are resolved at the moment you trigger the snippet.
 
@@ -39,13 +39,13 @@ You can customize the output format by specifying a `format="..."` attribute:
 
 Standard formatting tokens (`YYYY`, `yyyy`, `MMMM`, `MMM`, `MM`, `dd`, `d`, `HH`, `hh`, `mm`, `ss`, `a`, `SSS`, `Z`) as well as native `strftime` patterns (e.g. `%Y-%m-%d`) are supported.
 
-> **Note (macOS only):** Background text expansion requires the macOS Accessibility permission. If you have not granted it yet, Asyar will show a warning banner inside the Snippets view with a button to open System Settings. On Windows and Linux this permission is not required — expansion works without any extra setup.
+> **Note (macOS only):** Background text expansion requires the macOS Accessibility permission. If you have not granted it yet, Conbind will show a warning banner inside the Snippets view with a button to open System Settings. On Windows and Linux this permission is not required — expansion works without any extra setup.
 
 ## How to use it
 
 **To browse and paste your snippets from the launcher:**
 
-1. Open Asyar and type `snippets` to open the Snippets view.
+1. Open Conbind and type `snippets` to open the Snippets view.
 2. Use `↑` / `↓` to move between snippets, or type in the search bar to filter.
 3. Press `Enter` to paste the selected snippet's expansion into the frontmost app.
 
@@ -93,17 +93,17 @@ Standard formatting tokens (`YYYY`, `yyyy`, `MMMM`, `MMM`, `MM`, `dd`, `d`, `HH`
 
 ## Emoji shortcodes
 
-If you install the official **Emoji extension** from the Store, it registers an emoji dictionary into Asyar's built-in inline expansion engine. Once installed, you can type a `:shortcode:` anywhere — like `:party:` — and it expands to the matching emoji in any app, just like your own text snippets.
+If you install the official **Emoji extension** from the Store, it registers an emoji dictionary into Conbind's built-in inline expansion engine. Once installed, you can type a `:shortcode:` anywhere — like `:party:` — and it expands to the matching emoji in any app, just like your own text snippets.
 
-Unknown shortcodes are not just ignored: Asyar can ask your AI provider to look up the right emoji and remember it for next time.
+Unknown shortcodes are not just ignored: Conbind can ask your AI provider to look up the right emoji and remember it for next time.
 
 To get started:
 
-1. Open Asyar and type **store** → `Enter`.
+1. Open Conbind and type **store** → `Enter`.
 2. Find the **Emoji** extension and install it.
 3. Start typing `:shortcode:` anywhere — for example `:thumbsup:` or `:rocket:`.
 
-The expansion engine itself is built into Asyar; the emoji dictionary comes from the Emoji extension, so shortcodes only work after you install it.
+The expansion engine itself is built into Conbind; the emoji dictionary comes from the Emoji extension, so shortcodes only work after you install it.
 
 ## Related
 

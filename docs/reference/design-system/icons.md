@@ -1,6 +1,6 @@
-# Asyar Built-in Icons
+# Conbind Built-in Icons
 
-Reference for all built-in icons available in the Asyar SDK.
+Reference for all built-in icons available in the Conbind SDK.
 
 ## Usage
 
@@ -18,24 +18,24 @@ Reference for all built-in icons available in the Asyar SDK.
    ```json
    { "icon": "icon.png" }
    ```
-   _Note: Relative paths are resolved and securely loaded via the `asyar-extension://` protocol. Provide transparent PNGs or SVGs to ensure crisp contrast across both Dark and Light themes._
+   _Note: Relative paths are resolved and securely loaded via the `conbind-extension://` protocol. Provide transparent PNGs or SVGs to ensure crisp contrast across both Dark and Light themes._
 
 **Inside your extension view** — use the SDK utilities:
 
 ```typescript
 // Register once in main.ts
-import { registerIconElement } from 'asyar-sdk';
+import { registerIconElement } from 'conbind-sdk';
 registerIconElement();
 ```
 
 ```html
-<asyar-icon name="calculator" size="20"></asyar-icon>
+<conbind-icon name="calculator" size="20"></conbind-icon>
 ```
 
 **Or programmatically:**
 
 ```typescript
-import { renderIcon } from 'asyar-sdk';
+import { renderIcon } from 'conbind-sdk';
 element.innerHTML = renderIcon('calculator', { size: 20 });
 ```
 
@@ -94,7 +94,7 @@ Icons are grouped by purpose to help you pick the right one quickly.
 ## Programmatic Access
 
 ```typescript
-import { listIcons, hasIcon, getIconData, renderIcon } from 'asyar-sdk';
+import { listIcons, hasIcon, getIconData, renderIcon } from 'conbind-sdk';
 
 listIcons(); // string[] — all available names
 hasIcon('calculator'); // true

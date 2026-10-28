@@ -1,9 +1,9 @@
 # Auto-generated files from Rust specta and generation scripts
-asyar-launcher/src/bindings.ts linguist-generated=true
-asyar-launcher/src/services/diagnostics/kinds.ts linguist-generated=true
-asyar-launcher/src/services/extension/gatedPermissions.ts linguist-generated=true
-asyar-sdk/cli/lib/gatedPermissions.ts linguist-generated=true
-asyar-sdk/cli/lib/knownRuntimes.ts linguist-generated=true
+conbind-launcher/src/bindings.ts linguist-generated=true
+conbind-launcher/src/services/diagnostics/kinds.ts linguist-generated=true
+conbind-launcher/src/services/extension/gatedPermissions.ts linguist-generated=true
+conbind-sdk/cli/lib/gatedPermissions.ts linguist-generated=true
+conbind-sdk/cli/lib/knownRuntimes.ts linguist-generated=true
 
 # Documentation, benchmarks, and fixtures
 docs/** linguist-documentation=true

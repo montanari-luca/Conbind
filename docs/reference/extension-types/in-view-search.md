@@ -4,12 +4,12 @@ order: 5
 
 ### In-view search (all types)
 
-When your extension's panel is open and `searchable: true`, the Asyar search bar becomes your extension's input field. Two messages are dispatched:
+When your extension's panel is open and `searchable: true`, the Conbind search bar becomes your extension's input field. Two messages are dispatched:
 
-| Message             | When fired         | Payload             |
-| ------------------- | ------------------ | ------------------- |
-| `asyar:view:search` | On every keystroke | `{ query: string }` |
-| `asyar:view:submit` | On Enter key       | `{ query: string }` |
+| Message               | When fired         | Payload             |
+| --------------------- | ------------------ | ------------------- |
+| `conbind:view:search` | On every keystroke | `{ query: string }` |
+| `conbind:view:submit` | On Enter key       | `{ query: string }` |
 
 **Svelte 5 implementation:**
 
@@ -24,13 +24,13 @@ When your extension's panel is open and `searchable: true`, the Asyar search bar
     if (event.source !== window.parent) return;
     const { type, payload } = event.data;
 
-    if (type === 'asyar:view:search') {
+    if (type === 'conbind:view:search') {
       query = payload?.query ?? '';
       // Filter or search your local data based on query
       results = myData.filter((item) => item.includes(query));
     }
 
-    if (type === 'asyar:view:submit') {
+    if (type === 'conbind:view:submit') {
       const submitted = payload?.query ?? '';
       if (submitted) handleSubmit(submitted);
     }

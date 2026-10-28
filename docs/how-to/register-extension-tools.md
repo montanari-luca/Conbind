@@ -4,7 +4,7 @@ order: 5
 
 ## Register Extension Tools for the Agent Runtime
 
-Asyar's agent runtime can invoke tools contributed by any enabled Tier 2 extension. The agent sees your tools alongside built-in tools (calculator, clipboard, shell, etc.) and MCP-sourced tools. This page walks through declaring tools in the extension manifest and registering handlers from the worker so the agent can call them.
+Conbind's agent runtime can invoke tools contributed by any enabled Tier 2 extension. The agent sees your tools alongside built-in tools (calculator, clipboard, shell, etc.) and MCP-sourced tools. This page walks through declaring tools in the extension manifest and registering handlers from the worker so the agent can call them.
 
 ---
 
@@ -62,8 +62,8 @@ Obtain `IToolsService` from the worker context and call `registerTool` for each 
 
 ```typescript
 // src/main.worker.ts
-import type { ExtensionContext } from 'asyar-sdk/worker';
-import type { IToolsService, ManifestTool, ToolHandler } from 'asyar-sdk/contracts';
+import type { ExtensionContext } from 'conbind-sdk/worker';
+import type { IToolsService, ManifestTool, ToolHandler } from 'conbind-sdk/contracts';
 
 export async function main(context: ExtensionContext): Promise<void> {
   const tools = context.getService<IToolsService>('tools');
@@ -118,7 +118,7 @@ See [Extension Runtime](../explanation/extension-runtime.md) for the worker life
 
 ### Verifying it worked
 
-1. Enable the extension in Asyar.
+1. Enable the extension in Conbind.
 2. Open an agent's edit view.
 3. In the tool picker, locate your extension's group. Your tool should appear as a checkbox row under your extension's name.
 4. Enable the tool in the picker, save the agent, and send a prompt that matches the tool's description.

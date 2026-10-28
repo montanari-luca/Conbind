@@ -6,7 +6,7 @@ order: 7
 
 **No permission required.** The manifest declaration is the authorization.
 
-Declarative recurring task execution. Declare `schedule` on any `no-view` command in `manifest.json` and Asyar calls your command handler at the configured interval — no JavaScript timers, no `setInterval`, no service calls. The platform owns the timer lifecycle entirely.
+Declarative recurring task execution. Declare `schedule` on any `no-view` command in `manifest.json` and Conbind calls your command handler at the configured interval — no JavaScript timers, no `setInterval`, no service calls. The platform owns the timer lifecycle entirely.
 
 ---
 
@@ -65,7 +65,7 @@ The ceiling (86400s = 24h) is unchanged — anything longer belongs in cron or a
 
 ## Receiving tick calls
 
-When the timer fires, Asyar calls your extension's `executeCommand` method:
+When the timer fires, Conbind calls your extension's `executeCommand` method:
 
 ```typescript
 class MyExtension implements Extension {
@@ -89,8 +89,8 @@ The `args` object includes `{ scheduledTick: true }` so you can tell the differe
 ## Complete example — deploy monitor
 
 ```typescript
-import type { Extension, ExtensionContext } from 'asyar-sdk';
-import type { INetworkService, IFeedbackService } from 'asyar-sdk';
+import type { Extension, ExtensionContext } from 'conbind-sdk';
+import type { INetworkService, IFeedbackService } from 'conbind-sdk';
 
 class DeployMonitor implements Extension {
   private network!: INetworkService;
@@ -144,8 +144,8 @@ The `lastSeenDeployId` field persists in memory between ticks. To persist it acr
 | Extension enabled     | Timer starts.                                                                                                |
 | Extension disabled    | Timer stops.                                                                                                 |
 | Extension uninstalled | Timer stops and is removed permanently.                                                                      |
-| Asyar quits           | All timers stop — tokio runtime shuts down.                                                                  |
-| Asyar restarts        | `discover_extensions` runs on startup, restarting timers for all enabled extensions with scheduled commands. |
+| Conbind quits         | All timers stop — tokio runtime shuts down.                                                                  |
+| Conbind restarts      | `discover_extensions` runs on startup, restarting timers for all enabled extensions with scheduled commands. |
 
 The platform skips the first tokio tick (fires immediately by default) — your command is first called one full interval after load, not instantly.
 
@@ -192,7 +192,7 @@ Open **Settings → Extensions** and scroll to the **Scheduled Tasks** section. 
 Rust (tokio)                          TS host                    Extension (worker)
 ─────────────────────────────────────────────────────────────────────────────────
 Timer fires (tokio::time::interval)
-emit "asyar:scheduler:tick"
+emit "conbind:scheduler:tick"
   { extensionId, commandId }
                                       extensionManager listens
                                       handleScheduledTick():
@@ -205,7 +205,7 @@ emit "asyar:scheduler:tick"
                                         ─────────────────────────────────────►
                                         for Tier 2 extensions:
                                           postMessage to the worker:
-                                          { type: 'asyar:command:execute',
+                                          { type: 'conbind:command:execute',
                                             payload: { commandId, args } }
                                                                              ExtensionBridge
                                                                              calls extension
@@ -220,7 +220,7 @@ The host uses `commandService.executeCommand()` directly — not `handleCommandA
 
 ## Worker for Tier 2 extensions
 
-Tier 2 extensions run their `mode: "background"` commands in the **worker** — a headless, always-on Web Worker Asyar mounts whenever the extension is enabled (published bundles that cannot start as a Web Worker temporarily fall back to a hidden iframe until 0.2.0). Schedules dispatch to the worker; declaring `commands[].schedule` therefore requires `background.main` in the manifest. The worker is materialised on enable and torn down on disable / uninstall, so a tick that fires while the launcher is closed still reaches your handler. See [extension runtime](../explanation/extension-runtime.md) for the full lifecycle.
+Tier 2 extensions run their `mode: "background"` commands in the **worker** — a headless, always-on Web Worker Conbind mounts whenever the extension is enabled (published bundles that cannot start as a Web Worker temporarily fall back to a hidden iframe until 0.2.0). Schedules dispatch to the worker; declaring `commands[].schedule` therefore requires `background.main` in the manifest. The worker is materialised on enable and torn down on disable / uninstall, so a tick that fires while the launcher is closed still reaches your handler. See [extension runtime](../explanation/extension-runtime.md) for the full lifecycle.
 
 You do not need to configure mounting — the platform handles it as long as the manifest declares `background.main`.
 
@@ -234,13 +234,13 @@ Timers are only started for extensions whose [compatibility status](../explanati
 
 ## SDK CLI validation
 
-`asyar validate` checks schedule declarations and reports errors before you publish:
+`conbind validate` checks schedule declarations and reports errors before you publish:
 
 ```
 ✗ Command "fast-check": schedule.intervalSeconds must be between 10 and 86400 (got 5)
 ✗ Command "slow-sync": scheduled commands must have mode "background"
 ```
 
-Run `asyar validate` before every `asyar build` to catch these early.
+Run `conbind validate` before every `conbind build` to catch these early.
 
 ---

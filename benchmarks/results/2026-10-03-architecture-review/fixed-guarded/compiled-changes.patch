@@ -4,18 +4,18 @@ index dd3f7814..98e9052a 100644
 +++ b/.github/workflows/test-and-lint.yml
 @@ -63,6 +63,9 @@ jobs:
          run: pnpm svelte-kit sync
-         working-directory: asyar-launcher
+         working-directory: conbind-launcher
  
 +      - name: Check launcher Svelte types
-+        run: pnpm --dir asyar-launcher check
++        run: pnpm --dir conbind-launcher check
 +
        - name: Run workspace tests (SDK + launcher frontend)
          run: pnpm -r --if-present test:run
  
-diff --git a/asyar-launcher/package.json b/asyar-launcher/package.json
+diff --git a/conbind-launcher/package.json b/conbind-launcher/package.json
 index be730d09..1d2a7805 100644
---- a/asyar-launcher/package.json
-+++ b/asyar-launcher/package.json
+--- a/conbind-launcher/package.json
++++ b/conbind-launcher/package.json
 @@ -32,7 +32,7 @@
      "@tauri-apps/plugin-fs": "~2.5.1",
      "@tauri-apps/plugin-global-shortcut": "~2.3.1",
@@ -25,10 +25,10 @@ index be730d09..1d2a7805 100644
      "@tauri-apps/plugin-notification": "~2.3.3",
      "@tauri-apps/plugin-opener": "^2.5.3",
      "@tauri-apps/plugin-os": "^2.3.2",
-diff --git a/asyar-launcher/src-tauri/src/extensions/installer.rs b/asyar-launcher/src-tauri/src/extensions/installer.rs
+diff --git a/conbind-launcher/src-tauri/src/extensions/installer.rs b/conbind-launcher/src-tauri/src/extensions/installer.rs
 index 592888b2..9a92c30b 100644
---- a/asyar-launcher/src-tauri/src/extensions/installer.rs
-+++ b/asyar-launcher/src-tauri/src/extensions/installer.rs
+--- a/conbind-launcher/src-tauri/src/extensions/installer.rs
++++ b/conbind-launcher/src-tauri/src/extensions/installer.rs
 @@ -256,9 +256,8 @@ pub(crate) fn validate_package_structure(
          "extension" => {
              // view.html is required when the extension exposes at least one
@@ -38,7 +38,7 @@ index 592888b2..9a92c30b 100644
 -            // `dist/` — per-extension Vite configs emit into `dist/`, and the
 +            // "view"). It may live at the extraction root OR under `dist/` —
 +            // per-extension Vite configs emit into `dist/`, and the
-             // `asyar-extension://` scheme handler already resolves both paths,
+             // `conbind-extension://` scheme handler already resolves both paths,
              // so the installer validator mirrors that contract.
              let has_view_commands = manifest
 @@ -274,14 +273,31 @@ pub(crate) fn validate_package_structure(
@@ -216,10 +216,10 @@ index 592888b2..9a92c30b 100644
          );
          // Confirm first_view_component is correctly derived.
          assert_eq!(m.first_view_component(), Some("MainView"));
-diff --git a/asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json b/asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json
+diff --git a/conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json b/conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json
 index 9c85bc5b..81556d68 100644
---- a/asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json
-+++ b/asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json
+--- a/conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json
++++ b/conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/manifest.json
 @@ -4,7 +4,7 @@
    "version": "1.0.0",
    "description": "Synthetic fixture used by end-to-end Rust tests for the dual-context model: one view command + one background command + background.main.",
@@ -229,10 +229,10 @@ index 9c85bc5b..81556d68 100644
    "commands": [
      { "id": "open", "name": "Open", "mode": "view", "component": "MainView" },
      { "id": "tick", "name": "Tick", "mode": "background" }
-diff --git a/asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.html b/asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.html
+diff --git a/conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.html b/conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.html
 deleted file mode 100644
 index 0ed4765b..00000000
---- a/asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.html
+--- a/conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.html
 +++ /dev/null
 @@ -1,7 +0,0 @@
 -<!doctype html>
@@ -242,10 +242,10 @@ index 0ed4765b..00000000
 -  </head>
 -  <body></body>
 -</html>
-diff --git a/asyar-launcher/src/built-in-features/scripts/scriptsManager.test.ts b/asyar-launcher/src/built-in-features/scripts/scriptsManager.test.ts
+diff --git a/conbind-launcher/src/built-in-features/scripts/scriptsManager.test.ts b/conbind-launcher/src/built-in-features/scripts/scriptsManager.test.ts
 index 1cb9109e..7a1d34db 100644
---- a/asyar-launcher/src/built-in-features/scripts/scriptsManager.test.ts
-+++ b/asyar-launcher/src/built-in-features/scripts/scriptsManager.test.ts
+--- a/conbind-launcher/src/built-in-features/scripts/scriptsManager.test.ts
++++ b/conbind-launcher/src/built-in-features/scripts/scriptsManager.test.ts
 @@ -153,8 +153,8 @@ describe('ScriptsManager', () => {
  
      await scriptsManager.start();
@@ -257,10 +257,10 @@ index 1cb9109e..7a1d34db 100644
        resolveScan = resolve;
      });
      vi.mocked(commands.scriptsRescan).mockReturnValueOnce(pendingScan);
-diff --git a/asyar-launcher/src/built-in-features/store/LazyDetailView.svelte b/asyar-launcher/src/built-in-features/store/LazyDetailView.svelte
+diff --git a/conbind-launcher/src/built-in-features/store/LazyDetailView.svelte b/conbind-launcher/src/built-in-features/store/LazyDetailView.svelte
 index 9438f5c5..d018c57a 100644
---- a/asyar-launcher/src/built-in-features/store/LazyDetailView.svelte
-+++ b/asyar-launcher/src/built-in-features/store/LazyDetailView.svelte
+--- a/conbind-launcher/src/built-in-features/store/LazyDetailView.svelte
++++ b/conbind-launcher/src/built-in-features/store/LazyDetailView.svelte
 @@ -1,11 +1,4 @@
  <script lang="ts">
 -  interface Props {
@@ -282,10 +282,10 @@ index 9438f5c5..d018c57a 100644
  {:catch}
    <div class="p-4 text-center text-[var(--accent-danger)] text-sm font-mono">
      Failed to load view
-diff --git a/asyar-launcher/src/lib/ipc/scriptCommands.ts b/asyar-launcher/src/lib/ipc/scriptCommands.ts
+diff --git a/conbind-launcher/src/lib/ipc/scriptCommands.ts b/conbind-launcher/src/lib/ipc/scriptCommands.ts
 index 2c31371e..ff6b9c21 100644
---- a/asyar-launcher/src/lib/ipc/scriptCommands.ts
-+++ b/asyar-launcher/src/lib/ipc/scriptCommands.ts
+--- a/conbind-launcher/src/lib/ipc/scriptCommands.ts
++++ b/conbind-launcher/src/lib/ipc/scriptCommands.ts
 @@ -22,7 +22,7 @@ export async function scriptsPickDirectory(): Promise<string | null> {
  }
  
@@ -295,10 +295,10 @@ index 2c31371e..ff6b9c21 100644
  > {
    return invokeSafe('scripts_rescan');
  }
-diff --git a/asyar-launcher/src/lib/ipc/systemMiscCommands.ts b/asyar-launcher/src/lib/ipc/systemMiscCommands.ts
+diff --git a/conbind-launcher/src/lib/ipc/systemMiscCommands.ts b/conbind-launcher/src/lib/ipc/systemMiscCommands.ts
 index e98d6b7b..cc47a2fd 100644
---- a/asyar-launcher/src/lib/ipc/systemMiscCommands.ts
-+++ b/asyar-launcher/src/lib/ipc/systemMiscCommands.ts
+--- a/conbind-launcher/src/lib/ipc/systemMiscCommands.ts
++++ b/conbind-launcher/src/lib/ipc/systemMiscCommands.ts
 @@ -28,7 +28,7 @@ export async function fetchUrl(params: {
    headers: Record<string, string>;
    body: string;
@@ -308,10 +308,10 @@ index e98d6b7b..cc47a2fd 100644
    return invokeSafe('fetch_url', {
      url: params.url,
      method: params.method ?? 'GET',
-diff --git a/asyar-launcher/src/lib/rankItems.test.ts b/asyar-launcher/src/lib/rankItems.test.ts
+diff --git a/conbind-launcher/src/lib/rankItems.test.ts b/conbind-launcher/src/lib/rankItems.test.ts
 index b0dcfeb4..8a3c8052 100644
---- a/asyar-launcher/src/lib/rankItems.test.ts
-+++ b/asyar-launcher/src/lib/rankItems.test.ts
+--- a/conbind-launcher/src/lib/rankItems.test.ts
++++ b/conbind-launcher/src/lib/rankItems.test.ts
 @@ -36,7 +36,7 @@ describe('rankItems (Zero-IPC Fast Path)', () => {
        id: (i) => i.id,
        title: (i) => i.name,
@@ -339,10 +339,10 @@ index b0dcfeb4..8a3c8052 100644
      });
      expect(result).toEqual([]);
    });
-diff --git a/asyar-launcher/src/services/application/applicationService.ts b/asyar-launcher/src/services/application/applicationService.ts
+diff --git a/conbind-launcher/src/services/application/applicationService.ts b/conbind-launcher/src/services/application/applicationService.ts
 index e1a9d482..15c51314 100644
---- a/asyar-launcher/src/services/application/applicationService.ts
-+++ b/asyar-launcher/src/services/application/applicationService.ts
+--- a/conbind-launcher/src/services/application/applicationService.ts
++++ b/conbind-launcher/src/services/application/applicationService.ts
 @@ -80,7 +80,7 @@ export class ApplicationService {
     * passing their `path` list to `uninstallApplication`. The scan is
     * advisory — Rust re-validates each path before trashing.
@@ -352,10 +352,10 @@ index e1a9d482..15c51314 100644
      return scanUninstallTargets(path);
    }
  }
-diff --git a/asyar-launcher/src/services/extension/extensionEventSubscriptions.test.ts b/asyar-launcher/src/services/extension/extensionEventSubscriptions.test.ts
+diff --git a/conbind-launcher/src/services/extension/extensionEventSubscriptions.test.ts b/conbind-launcher/src/services/extension/extensionEventSubscriptions.test.ts
 index d9b4166d..2d79b04a 100644
---- a/asyar-launcher/src/services/extension/extensionEventSubscriptions.test.ts
-+++ b/asyar-launcher/src/services/extension/extensionEventSubscriptions.test.ts
+--- a/conbind-launcher/src/services/extension/extensionEventSubscriptions.test.ts
++++ b/conbind-launcher/src/services/extension/extensionEventSubscriptions.test.ts
 @@ -4,8 +4,8 @@ vi.mock('../log/logService', () => ({
    logService: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), custom: vi.fn() },
  }));
@@ -376,10 +376,10 @@ index d9b4166d..2d79b04a 100644
  import { ExtensionEventSubscriptions } from './extensionEventSubscriptions';
  import { extensionPreferencesService } from './extensionPreferencesService.svelte';
  import { isBuiltInFeature } from './extensionDiscovery';
-diff --git a/asyar-launcher/src/services/extension/extensionEventSubscriptions.ts b/asyar-launcher/src/services/extension/extensionEventSubscriptions.ts
+diff --git a/conbind-launcher/src/services/extension/extensionEventSubscriptions.ts b/conbind-launcher/src/services/extension/extensionEventSubscriptions.ts
 index 9b87d2db..433845e6 100644
---- a/asyar-launcher/src/services/extension/extensionEventSubscriptions.ts
-+++ b/asyar-launcher/src/services/extension/extensionEventSubscriptions.ts
+--- a/conbind-launcher/src/services/extension/extensionEventSubscriptions.ts
++++ b/conbind-launcher/src/services/extension/extensionEventSubscriptions.ts
 @@ -1,4 +1,4 @@
 -import { listen } from '@tauri-apps/api/event';
 +import { appListen } from '../../lib/ipc/bridgeEvents';
@@ -392,7 +392,7 @@ index 9b87d2db..433845e6 100644
    async subscribe(deps: EventSubscriptionDeps): Promise<void> {
 -    this.unlistenScheduler = await listen<{ extensionId: string; commandId: string }>(
 +    this.unlistenScheduler = await appListen<{ extensionId: string; commandId: string }>(
-       'asyar:scheduler:tick',
+       'conbind:scheduler:tick',
        async (event) => {
          await this.handleScheduledTick(
 @@ -31,7 +31,7 @@ export class ExtensionEventSubscriptions {
@@ -401,7 +401,7 @@ index 9b87d2db..433845e6 100644
  
 -    this.unlistenPreferencesChanged = await listen<{ extensionId: string }>(
 +    this.unlistenPreferencesChanged = await appListen<{ extensionId: string }>(
-       'asyar:preferences-changed',
+       'conbind:preferences-changed',
        async (event) => {
          const extensionId = event.payload?.extensionId;
 @@ -59,7 +59,7 @@ export class ExtensionEventSubscriptions {
@@ -410,13 +410,13 @@ index 9b87d2db..433845e6 100644
      // most one trailing reload.
 -    this.unlistenEnabledChanged = await listen<{ extensionId: string; enabled: boolean }>(
 +    this.unlistenEnabledChanged = await appListen<{ extensionId: string; enabled: boolean }>(
-       'asyar:extension-enabled-changed',
+       'conbind:extension-enabled-changed',
        async () => {
          if (this.enabledChangeReloadInFlight) {
-diff --git a/asyar-launcher/src/services/extensionState/extensionStateService.ts b/asyar-launcher/src/services/extensionState/extensionStateService.ts
+diff --git a/conbind-launcher/src/services/extensionState/extensionStateService.ts b/conbind-launcher/src/services/extensionState/extensionStateService.ts
 index 2350a73e..332d4953 100644
---- a/asyar-launcher/src/services/extensionState/extensionStateService.ts
-+++ b/asyar-launcher/src/services/extensionState/extensionStateService.ts
+--- a/conbind-launcher/src/services/extensionState/extensionStateService.ts
++++ b/conbind-launcher/src/services/extensionState/extensionStateService.ts
 @@ -9,6 +9,7 @@ import {
  } from '../../lib/ipc/extensionLifecycleCommands';
  import type { IpcDispatchOutcome } from '../../lib/ipc/iframeLifecycleCommands';
@@ -502,7 +502,7 @@ index c314acf9..923a8663 100644
    runStep('Prettier Format Check', 'pnpm format:check');
    runStep('Design System Compliance', 'pnpm check:design');
    runStep('Workspace CI Coverage', 'node --test scripts/workspace-ci.test.mjs');
-+  runStep('Launcher Type Check', 'pnpm --dir asyar-launcher check');
++  runStep('Launcher Type Check', 'pnpm --dir conbind-launcher check');
    runStep('Workspace Frontend Tests', 'pnpm -r --if-present test:run');
  }
  
@@ -518,19 +518,19 @@ index 7273b69a..ba79624c 100644
 +test('local and platform CI enforce launcher Svelte types', () => {
 +  const local = readFileSync('scripts/check-ci.mjs', 'utf8');
 +  const platform = readFileSync('.github/workflows/test-and-lint.yml', 'utf8');
-+  assert.match(local, /runStep\('Launcher Type Check', 'pnpm --dir asyar-launcher check'\)/);
-+  assert.match(platform, /run: pnpm --dir asyar-launcher check/);
++  assert.match(local, /runStep\('Launcher Type Check', 'pnpm --dir conbind-launcher check'\)/);
++  assert.match(platform, /run: pnpm --dir conbind-launcher check/);
 +});
  .github/workflows/test-and-lint.yml                |   3 +
- asyar-launcher/package.json                        |   2 +-
+ conbind-launcher/package.json                        |   2 +-
  .../src-tauri/src/extensions/installer.rs          | 100 ++++++++++++++-------
  .../fixtures/worker_view_fixture/manifest.json     |   2 +-
  .../tests/fixtures/worker_view_fixture/worker.html |   7 --
  .../scripts/scriptsManager.test.ts                 |   4 +-
  .../built-in-features/store/LazyDetailView.svelte  |   9 +-
- asyar-launcher/src/lib/ipc/scriptCommands.ts       |   2 +-
- asyar-launcher/src/lib/ipc/systemMiscCommands.ts   |   2 +-
- asyar-launcher/src/lib/rankItems.test.ts           |   6 +-
+ conbind-launcher/src/lib/ipc/scriptCommands.ts       |   2 +-
+ conbind-launcher/src/lib/ipc/systemMiscCommands.ts   |   2 +-
+ conbind-launcher/src/lib/rankItems.test.ts           |   6 +-
  .../src/services/application/applicationService.ts |   2 +-
  .../extension/extensionEventSubscriptions.test.ts  |   6 +-
  .../extension/extensionEventSubscriptions.ts       |   8 +-
@@ -541,7 +541,7 @@ index 7273b69a..ba79624c 100644
  17 files changed, 116 insertions(+), 73 deletions(-)
 
 --- untracked new files ---
-asyar-launcher/src/services/extensionState/extensionStateService.test.ts:
+conbind-launcher/src/services/extensionState/extensionStateService.test.ts:
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -617,5 +617,5 @@ describe('extensionStateService.rpcRequest ReadyDeliverNow routing', () => {
   });
 });
 
-asyar-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.js:
+conbind-launcher/src-tauri/tests/fixtures/worker_view_fixture/worker.js:
 self.postMessage(1);

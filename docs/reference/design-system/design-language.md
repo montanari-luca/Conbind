@@ -1,8 +1,8 @@
 # Measure
 
-**The Asyar Design Language — Specification v1.0**
+**The Conbind Design Language — Specification v1.0**
 
-This document defines what Asyar looks like, how it moves, and why. It is the
+This document defines what Conbind looks like, how it moves, and why. It is the
 constitution; [`tokens.md`](./tokens.md) is the statute book, and
 [`.agents/skills/design-language/SKILL.md`](../../../.agents/skills/design-language/SKILL.md)
 is the field manual you actually reach for while building a screen.
@@ -13,7 +13,7 @@ Read this once, properly. Then work from the skill file.
 
 ## 0. Where this came from
 
-Asyar was built for several years without a written design language, and it
+Conbind was built for several years without a written design language, and it
 was not built badly. There was no sprawl of competing styles, no half-migrated
 redesign, no obvious mess to clean up. What there was instead is more subtle
 and more corrosive: **a large number of values that nobody could account for.**
@@ -21,7 +21,7 @@ and more corrosive: **a large number of values that nobody could account for.**
 The evidence was all in the codebase, and it is worth listing because it is
 what the thesis below is a response to:
 
-- The brand token `--asyar-brand` was a teal that appeared almost nowhere,
+- The brand token `--conbind-brand` was a teal that appeared almost nowhere,
   while `--accent-primary` — the app's most-used colour by an order of
   magnitude — was Apple's system blue. The product's identity colour was
   decorative and its working colour belonged to someone else.
@@ -62,9 +62,9 @@ the standard directly.
 
 ### The thesis
 
-> **Every value in Asyar is measured, not chosen.**
+> **Every value in Conbind is measured, not chosen.**
 
-Asyar is 750 × 480 pixels, of which 384 are content, and it is on screen for
+Conbind is 750 × 480 pixels, of which 384 are content, and it is on screen for
 two to six seconds. There is no room in that for a decision nobody can defend.
 A value in this system is either derived from a constraint — a window
 dimension, a contrast ratio, a scale step, a count of rows that must fit — or
@@ -77,7 +77,7 @@ invites a counter-opinion. "There is no measurement that produces that number"
 does not.
 
 Being an instrument rather than a place is the reason the method works here:
-Asyar is summoned by a keystroke, does one thing, and vanishes. It is held,
+Conbind is summoned by a keystroke, does one thing, and vanishes. It is held,
 not inhabited. An instrument does not introduce itself, so there is no logo in
 the UI. Its surface is entirely given over to the work, so there is no
 persistent chrome that isn't load-bearing. Every dimension of a tuning fork is
@@ -85,7 +85,7 @@ set by the pitch it must produce; none of them is styling.
 
 The emotional target is not _delight_, and it is not _expression_. It is **the
 particular confidence of a tool whose every dimension looks inevitable** — the
-sense that it could not have been laid out any other way. Nothing in Asyar
+sense that it could not have been laid out any other way. Nothing in Conbind
 should look like it was picked.
 
 ### The four principles
@@ -191,12 +191,12 @@ primary button sitting beside a selected row · category icons in saturated
 brand colours · a coloured badge on an unselected row · any hover state strong
 enough to be mistaken for selection.
 
-**The one carve-out: icons Asyar does not own.** Every result row renders the
+**The one carve-out: icons Conbind does not own.** Every result row renders the
 real application icon, and those are saturated, full-colour, and outside our
 control. A launcher that desaturated them would be harder to scan, not easier —
 recognising Safari by its blue compass is the fastest path there is. So
 third-party marks are exempt, and the exemption is narrow: it covers artwork
-the user already recognises, never chrome Asyar draws itself. An extension's
+the user already recognises, never chrome Conbind draws itself. An extension's
 _accent_ is still bound by the rule; only its _mark_ is free.
 
 ---
@@ -206,7 +206,7 @@ _accent_ is still bound by the rule; only its _mark_ is free.
 > If it can be done, it has a key path, and that key path is visible at the
 > moment it becomes possible.
 
-Asyar is a keyboard instrument. The mouse is supported the way a piano supports
+Conbind is a keyboard instrument. The mouse is supported the way a piano supports
 being played standing up. This is not asceticism: the entire value proposition
 of a launcher is that it is faster than the thing it replaces, and a control the
 user has to hunt for with a pointer has already lost to the Dock.
@@ -229,7 +229,7 @@ A design language needs elements that are recognisable in a screenshot with the
 logo cropped out. Linear has its micro-borders and its near-black; Stripe has
 its gradient and its isometry.
 
-Asyar's three are all things the product **already did**, before it had a
+Conbind's three are all things the product **already did**, before it had a
 design language — named here, defended, and made load-bearing. That is
 deliberate. A signature invented in order to have one is decoration wearing a
 badge; the ones worth keeping are the properties that were already true and
@@ -244,14 +244,14 @@ pass.
 
 #### Signature 1 — The Nine Rows
 
-**Asyar shows nine full result rows, and the number is exact.**
+**Conbind shows nine full result rows, and the number is exact.**
 
 ```
 384 content − 16 inset = 368 usable
 368 = 9 × 40 + 8 × 1
 ```
 
-Zero pixels left over. This is the most distinctive thing about an Asyar
+Zero pixels left over. This is the most distinctive thing about an Conbind
 screenshot and the most consequential property in the product: density is the
 feature, because the ninth result is the one a shallower launcher makes you
 type another character to reach.
@@ -271,7 +271,7 @@ in the rail: all at 16px from the window edge. The list insets by `--space-3`
 (8px) and the row pads by another `--space-3`, which lands result content on
 the same edge as the header's `px-4`.
 
-Alignment is the only structural device Asyar uses at full strength, and this
+Alignment is the only structural device Conbind uses at full strength, and this
 is why the app can afford so few borders — a shared edge already says _these
 things belong to the same column_, which is what a border would have been for
 (Principle II). Getting it exactly right matters more than usual here, because
@@ -318,12 +318,12 @@ alignment.
 There are exactly **four** elevations. Not a scale you extend — a list you
 choose from.
 
-| Level | Name       | What it is                                | Transmission        | Shadow                    |
-| ----- | ---------- | ----------------------------------------- | ------------------- | ------------------------- |
-| 0     | The Ground | The user's desktop. Asyar never draws it. | —                   | —                         |
-| 1     | The Shell  | The launcher window itself                | `--bg-primary`, 72% | `--shadow-launcher-popup` |
-| 2     | The Raised | Cards, sidebars, panels within the shell  | `--bg-secondary`    | `--shadow-sm` … `-md`     |
-| 3     | The Near   | Popups, menus, the ⌘K palette, dialogs    | `--bg-popup`, ~80%  | `--shadow-launcher-popup` |
+| Level | Name       | What it is                                  | Transmission        | Shadow                    |
+| ----- | ---------- | ------------------------------------------- | ------------------- | ------------------------- |
+| 0     | The Ground | The user's desktop. Conbind never draws it. | —                   | —                         |
+| 1     | The Shell  | The launcher window itself                  | `--bg-primary`, 72% | `--shadow-launcher-popup` |
+| 2     | The Raised | Cards, sidebars, panels within the shell    | `--bg-secondary`    | `--shadow-sm` … `-md`     |
+| 3     | The Near   | Popups, menus, the ⌘K palette, dialogs      | `--bg-popup`, ~80%  | `--shadow-launcher-popup` |
 
 Two rules govern the whole model:
 
@@ -336,11 +336,11 @@ Two rules govern the whole model:
    is the inverse of how most glass systems work, and it is correct:
    translucency is a measure of distance, not a texture.
 
-**Asyar never paints an opaque plane over the user's desktop unless the platform
+**Conbind never paints an opaque plane over the user's desktop unless the platform
 forces it.** The launcher floats over whatever the user was doing — that
 wallpaper, that half-read document — and depth comes from transmission rather
-than from stacking. There are no drop-shadowed white cards in Asyar, because a
-card is a thing sitting _on_ a surface and Asyar has no surface. Surfaces are
+than from stacking. There are no drop-shadowed white cards in Conbind, because a
+card is a thing sitting _on_ a surface and Conbind has no surface. Surfaces are
 also **tinted toward the system hue (~225°), never neutral grey**: a neutral
 grey panel over a warm wallpaper reads as a foreign object, where a consistent
 cool cast reads as a material.
@@ -377,7 +377,7 @@ surface reads as separate. Alignment is (Signature 2).
 **Satoshi, on every platform, including macOS.** This reverses a long-standing
 decision to fall back to San Francisco on macOS. The reasoning is simple: a
 design language and "use the OS default font" are mutually exclusive claims. San
-Francisco is a superb typeface and it makes Asyar look exactly like every other
+Francisco is a superb typeface and it makes Conbind look exactly like every other
 Mac app, on the platform where most of its users are. Satoshi is geometric,
 slightly warm, and has an unusually confident lowercase `a` and `g` — it reads
 as _drawn_ rather than _specified_.
@@ -409,12 +409,12 @@ column. A version number in a sentence stays in Satoshi. All mono carries
 
 ### Voice
 
-Asyar is mostly words. A result is a title and a subtitle; an empty state is a
+Conbind is mostly words. A result is a title and a subtitle; an empty state is a
 sentence; a failure is a sentence. Type is how they look, voice is what they
 say, and a design language that specifies one and not the other has only done
 half the job.
 
-**Asyar writes the way an instrument reports: flatly, in the user's terms, and
+**Conbind writes the way an instrument reports: flatly, in the user's terms, and
 without personality.** The product has no character to express — the user's task
 is the only subject. Principle II applies to words as much as to pixels, and it
 is stricter there: a sentence has no scale to fall back on, so the only
@@ -452,7 +452,7 @@ is the package that ships them.
 
 This is Principle I applied to measurement, and it is where the thesis is most
 literally true. Most design systems pick a spacing scale and then fit the
-product into it. Asyar cannot. The launcher window is a fixed 750 × 480, the
+product into it. Conbind cannot. The launcher window is a fixed 750 × 480, the
 header and footer are fixed, and what remains is the only thing the user
 actually looks at. The spatial system therefore answers exactly one question —
 **how many results fit in one glance** — and every other measurement is
@@ -490,7 +490,7 @@ next person to adjust a result row finds out first.
 The corollary governs the whole scale: **row separation is 1px, not
 `--space-0-5`.** Two pixels is the smallest step on the spacing grid and it
 looks like the obvious token to use here — but 9 × 40 + 8 × 2 = 376, which
-overflows 368 and costs a whole row. This is the one place in Asyar where a raw
+overflows 368 and costs a whole row. This is the one place in Conbind where a raw
 pixel beats a token, and the comment in `style.css` says so.
 
 ### Space is not size
@@ -500,7 +500,7 @@ analogue of the voice/fill split in colour.
 
 > **Space is the gap between objects. Size is the object.**
 
-Asyar had only a spacing scale until this specification, and the consequence
+Conbind had only a spacing scale until this specification, and the consequence
 was visible in the scale itself. `--space-*` had grown values of **11px, 13px and 23px** — numbers
 that make no sense as rhythm and perfect sense as things. 23px was the icon tile
 in a result row. 11px was the inline spinner. 13px was the glyph inside a
@@ -636,7 +636,7 @@ toolchain measures this.
 
 > **The number of hues in a system is a budget.**
 
-Asyar spends one on itself and three on state, and that is the entire ledger.
+Conbind spends one on itself and three on state, and that is the entire ledger.
 Everything that is not a state lives at **~225°** — surfaces, text, borders,
 brand and accent are all the same colour at different luminances and chromas.
 Only the three state colours leave that axis, and they leave it deliberately,
@@ -670,7 +670,7 @@ as a _fill_ under white text must be dark enough for white to reach 4.5:1 on top
 of it. On a dark ground those two constraints have no overlapping solution — it
 is arithmetically impossible for one value to do both jobs.
 
-Asyar therefore ships two ramps:
+Conbind therefore ships two ramps:
 
 | Ramp           | Token             | Use for                                                                      |
 | -------------- | ----------------- | ---------------------------------------------------------------------------- |
@@ -782,7 +782,7 @@ always agree.
 
 ### The physics
 
-Asyar's motion is built from **four durations and four curves**. Every animation
+Conbind's motion is built from **four durations and four curves**. Every animation
 in the product is one of each. There is no fifth of either, and adding one
 requires changing this document — that is Principle I applied to time.
 
@@ -812,7 +812,7 @@ system from leaking into everything.
 
 ### The rule that governs all of it
 
-Asyar's whole lifetime is shorter than most apps' launch animation. There is no
+Conbind's whole lifetime is shorter than most apps' launch animation. There is no
 budget for choreography. Motion exists to preserve object permanence — so the
 eye can follow a change instead of re-finding it — and for nothing else.
 
@@ -829,7 +829,7 @@ ever.
 
 ### What is built, and what is deliberately absent
 
-Everything in Asyar's motion language is shipped. **There is no
+Everything in Conbind's motion language is shipped. **There is no
 specified-but-unbuilt section in this document**, and there should never be
 one: a specification that describes behaviour nobody intends to build is worse
 than silence, because the next person reads it as a plan.
@@ -846,7 +846,7 @@ keystroke is nauseating. Rows swap instantly, which is why `.list-row` carries
 **Reduced motion.** Under `prefers-reduced-motion: reduce`, all durations
 collapse to 1ms globally and transforms are dropped outright. Durations collapse
 rather than zeroing so `transitionend` still fires for the components that
-sequence off it. This is safe by construction: every state in Asyar is
+sequence off it. This is safe by construction: every state in Conbind is
 distinguishable with all motion removed. If a state is only legible through its
 animation, that is a bug in the state, not in the motion.
 
@@ -875,9 +875,9 @@ behind a 320ms fade.
 
 ## 6. Component blueprints
 
-Three components carry the language. Asyar's anatomy differs from a phone-style
+Three components carry the language. Conbind's anatomy differs from a phone-style
 launcher, so the canonical trio maps as follows: the **Command Line** is the
-global search bar and command palette; the **Action Rail** is Asyar's adaptive
+global search bar and command palette; the **Action Rail** is Conbind's adaptive
 dock — context-sensitive, bottom-anchored, and driven by selection rather than
 by pinning; and the **Glance Chip** is the contextual widget surface.
 
@@ -934,7 +934,7 @@ placeholder that animates through suggestions (motion that reports nothing).
 
 `components/layout/BottomActionBar.svelte`
 
-Asyar's dock. It is adaptive in the only sense that matters for an instrument:
+Conbind's dock. It is adaptive in the only sense that matters for an instrument:
 its contents are a function of what is currently selected, not of what the user
 pinned there six months ago.
 
@@ -976,7 +976,7 @@ A rail that grows with available actions (`⌘K` exists).
 
 `components/layout/InformationPanel.svelte`
 
-Asyar's contextual widget. It answers one question — _where am I?_ — and it
+Conbind's contextual widget. It answers one question — _where am I?_ — and it
 answers it in one line.
 
 **Anatomy:** an accent-filled icon tile, the extension name, and an optional
@@ -998,7 +998,7 @@ subtitle the active view publishes.
 - **The subtitle is owned by the view, not the shell.** `viewManager` publishes
   it; the chip renders whatever it is handed and never invents copy.
 
-**Rejected alternatives.** A breadcrumb trail (Asyar is one level deep by
+**Rejected alternatives.** A breadcrumb trail (Conbind is one level deep by
 design). A persistent stats strip (nothing in a 2-second interaction is worth a
 permanent widget). Multiple simultaneous glances (Principle III).
 
@@ -1074,7 +1074,7 @@ Two rules that are not visible in the snippet and are easy to break:
 Stated plainly, so nobody mistakes silence for permission.
 
 - **Extension-authored view content.** Extensions receive every token and are
-  bound by the colour and spacing rules, but Asyar does not dictate their
+  bound by the colour and spacing rules, but Conbind does not dictate their
   layout. See [`extension-types/theme.md`](../extension-types/theme.md).
 - **Iconography.** The built-in icon set is documented in
   [`icons.md`](./icons.md) and is stylistically settled; a formal icon grid and
@@ -1082,7 +1082,7 @@ Stated plainly, so nobody mistakes silence for permission.
 - **The marketing site.** It shares the palette and the wordmark and is
   otherwise free — a website is a place, and this document is about an
   instrument.
-- **Sound.** Asyar makes none. If that ever changes, it needs its own section
+- **Sound.** Conbind makes none. If that ever changes, it needs its own section
   here first.
 - **Latency budgets.** Nothing here states a keystroke-to-paint target, a
   debounce doctrine, or a rule for what occupies the list while a slow source
@@ -1121,7 +1121,7 @@ it. Known gaps, in the order they are worth closing:
 ## 8. Enforcement
 
 A design language that is only a document decays within two release cycles.
-Asyar's is executable, and under this thesis that is not a nice-to-have: a
+Conbind's is executable, and under this thesis that is not a nice-to-have: a
 system claiming every value is derived has to be able to prove it on every
 commit.
 
@@ -1139,7 +1139,7 @@ years.
 **Token names are a public API.** `THEME_VAR_NAMES` in
 `lib/themeVariables.ts` is injected into extension iframes and third-party
 themes override these names. Change values freely; renaming breaks published
-extensions. Mirror any token change into `asyar-sdk/src/styles/tokens.css`.
+extensions. Mirror any token change into `conbind-sdk/src/styles/tokens.css`.
 
 ---
 

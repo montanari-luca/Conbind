@@ -7,11 +7,11 @@ _Figure: results list with the action panel visible._
 
 ## The search bar
 
-When you open Asyar with your global hotkey, the cursor is already in the search bar. Just start typing — there is no need to click.
+When you open Conbind with your global hotkey, the cursor is already in the search bar. Just start typing — there is no need to click.
 
 The search bar does several things depending on what you type and which features are active:
 
-- **Plain text** — Asyar searches your apps, commands, snippets, files, and installed extensions in real time.
+- **Plain text** — Conbind searches your apps, commands, snippets, files, and installed extensions in real time.
 - **Scoped search with `@`** — Type `@` to scope the search exclusively to runnable commands. A scope badge appears, and matching narrows to command titles and triggers.
 - **URLs** — Type a URL and press `Enter` to open it directly in your browser.
 - **Calculations** — Type a maths expression and the result appears immediately in the list.
@@ -22,17 +22,17 @@ A dropdown can appear beside the search bar for some commands to let you pick a 
 
 ## Results & how they're ranked
 
-Asyar ranks results by relevance. The most important factors are:
+Conbind ranks results by relevance. The most important factors are:
 
 - **How well the name matches** your query (exact prefix matches rise to the top).
-- **How often you use** a result — Asyar learns your habits and promotes items you run frequently.
+- **How often you use** a result — Conbind learns your habits and promotes items you run frequently.
 - **What type it is** — Built-in commands and installed extensions can declare a high-priority tier so their results always appear near the top for the right queries.
 
 Results from multiple sources — apps, commands, AI agents, browser bookmarks, clipboard history, and more — are merged into a single list. You do not need to switch modes to find things.
 
 ## Navigating with the keyboard
 
-Asyar is designed to be used entirely with the keyboard:
+Conbind is designed to be used entirely with the keyboard:
 
 | Key       | What it does                                                            |
 | --------- | ----------------------------------------------------------------------- |
@@ -42,14 +42,14 @@ Asyar is designed to be used entirely with the keyboard:
 | `Tab`     | Fill command arguments, or switch to AI / context mode                  |
 | `⌘P`      | Toggle the search-bar dropdown (when one is shown)                      |
 | `⌘,`      | Open Settings                                                           |
-| `Esc`     | Clear the search → go back from a view → hide Asyar                     |
+| `Esc`     | Clear the search → go back from a view → hide Conbind                   |
 | `⌫`       | Go back from an open view, or exit AI mode when the search bar is empty |
 
-Asyar keeps focus in the search bar automatically. You can click a result to select it, but you do not have to.
+Conbind keeps focus in the search bar automatically. You can click a result to select it, but you do not have to.
 
 ## Repositioning the launcher (drag & snap)
 
-By default, Asyar centers itself on your active display. You can reposition the window to suit your screen layout:
+By default, Conbind centers itself on your active display. You can reposition the window to suit your screen layout:
 
 - **Drag to move**: Click and drag the launcher from any non-interactive header or padding area to place it anywhere on your screen.
 - **Snap guides**: As you drag near screen edges or vertical/horizontal centers, subtle alignment snap guide lines appear. On macOS, alignment haptic feedback confirms when the launcher snaps into alignment.
@@ -58,7 +58,7 @@ By default, Asyar centers itself on your active display. You can reposition the 
 
 ## The action panel (⌘K)
 
-Every result in Asyar can have multiple actions beyond the default one. Press `⌘K` with a result selected (or highlighted) to open the **action panel** at the bottom of the window.
+Every result in Conbind can have multiple actions beyond the default one. Press `⌘K` with a result selected (or highlighted) to open the **action panel** at the bottom of the window.
 
 The action panel shows all available actions for that item. For example, an application might offer actions like Open, Reveal in Finder, or Hide All Windows. A command might offer Edit, Assign Shortcut, or Delete.
 
@@ -87,7 +87,7 @@ Some commands declare inline argument fields — for example, a "Translate" comm
 
 Press `Tab` to enter argument mode. A row of input chips appears inline in the search bar, one for each declared argument. Fill in the fields and press `Enter` to run the command with those inputs.
 
-Asyar remembers the last value you typed for each argument field (unless the extension explicitly disables seeding), so repeat invocations are fast.
+Conbind remembers the last value you typed for each argument field (unless the extension explicitly disables seeding), so repeat invocations are fast.
 
 To exit argument mode without running the command, press `Esc` or `⌫`.
 

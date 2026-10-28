@@ -111,7 +111,7 @@ and cloud metadata targets stay blocked.
 
 > **Deprecated, removed in 0.2.0:** extensions that don't declare `network:lan`
 > can still `fetch()` a **hostname** that resolves to a private or Tailscale
-> address (for example a self-hosted server URL a user typed in), and Asyar logs
+> address (for example a self-hosted server URL a user typed in), and Conbind logs
 > a deprecation warning. Private IP literals are blocked as before. From 0.2.0
 > these requests require `network:lan`, so add it now if your extension talks to
 > self-hosted or home-network services.
@@ -233,7 +233,7 @@ if (response.status === 401) {
   [threat model](../../explanation/permission-system.md#secret-references)).
 - Secret-bearing responses are capped at **10 MiB**, and request timeouts at
   **30 seconds**. These restrictions do not change ordinary fetch behavior.
-- Tokens are never refreshed or written by Asyar. Surface an expired token's
+- Tokens are never refreshed or written by Conbind. Surface an expired token's
   **HTTP 401** so the user can re-log in with their CLI.
 - WebSocket secret references are **unsupported**. `secretRefs` belongs only to
   HTTP `RequestOptions`.

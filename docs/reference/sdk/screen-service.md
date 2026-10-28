@@ -20,7 +20,7 @@ OCR text recognition runs entirely on-device:
 - **macOS** — Apple Vision Framework.
 - **Linux & Windows** — Local Tesseract OCR engine.
 
-Extracted text automatically passes through Asyar's secret redaction filter before being returned.
+Extracted text automatically passes through Conbind's secret redaction filter before being returned.
 
 ```typescript
 /** One sampled screen pixel in sRGB, as returned by the OS eyedropper. */
@@ -51,7 +51,7 @@ export interface IScreenService {
 **Hide the launcher first.** The launcher window sits under the cursor when you open the picker, so call `ctx.hideLauncher()` before `pickColor()` — otherwise the user's first pick lands on your own UI. On Windows, also surface a HUD (`FeedbackService.showHUD(...)`) so the user knows the eyedropper is armed, since the OS gives no visual cue.
 
 ```typescript
-import type { IScreenService } from 'asyar-sdk/contracts';
+import type { IScreenService } from 'conbind-sdk/contracts';
 
 const screen = context.getService<IScreenService>('screen');
 
@@ -71,7 +71,7 @@ if (color) {
 `captureText()` initiates interactive region selection and on-device text recognition. The launcher window dismisses during selection and returns the recognized, redacted text.
 
 ```typescript
-import type { IScreenService } from 'asyar-sdk/contracts';
+import type { IScreenService } from 'conbind-sdk/contracts';
 
 const screen = context.getService<IScreenService>('screen');
 

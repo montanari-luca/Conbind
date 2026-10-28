@@ -7,17 +7,17 @@ _Figure: the Manage MCP Servers view._
 
 ## What it does
 
-MCP (Model Context Protocol) servers are external programs that expose tools — things like reading files, querying databases, calling APIs, or running web searches. When you connect an MCP server to Asyar, its tools become available to your agents. You pick which tools each agent is allowed to use in the agent editor.
+MCP (Model Context Protocol) servers are external programs that expose tools — things like reading files, querying databases, calling APIs, or running web searches. When you connect an MCP server to Conbind, its tools become available to your agents. You pick which tools each agent is allowed to use in the agent editor.
 
-Asyar supports two ways to connect an MCP server: **stdio** (a local process you start via a command) and **HTTP** (a remote server you reach by URL).
+Conbind supports two ways to connect an MCP server: **stdio** (a local process you start via a command) and **HTTP** (a remote server you reach by URL).
 
-When an agent calls an MCP tool, Asyar can ask your permission first. You can allow the call once, allow it always, or deny it. Saved permission decisions live in the **Permissions** view so you can review and revoke them.
+When an agent calls an MCP tool, Conbind can ask your permission first. You can allow the call once, allow it always, or deny it. Saved permission decisions live in the **Permissions** view so you can review and revoke them.
 
 ## How to use it
 
 ### Install a new server manually
 
-1. Search for **Install MCP Server** in Asyar and press `Enter`.
+1. Search for **Install MCP Server** in Conbind and press `Enter`.
 2. Fill in the form:
    - **ID** — a short unique name for this server (e.g. `my-server`).
    - **Display Name** — the label shown in the UI.
@@ -29,7 +29,7 @@ When an agent calls an MCP tool, Asyar can ask your permission first. You can al
 
 ### Import from an existing config
 
-If you already use MCP servers in another app (such as Claude Desktop), Asyar can detect those configs automatically:
+If you already use MCP servers in another app (such as Claude Desktop), Conbind can detect those configs automatically:
 
 1. Search for **Import MCP Servers** and press `Enter`.
 2. On the **From Detected Configs** tab, tick the servers you want to bring in and click **Import Selected**.
@@ -65,7 +65,7 @@ When strict mode is on, every MCP tool call asks for your permission — even fo
 - After installing a server, edit the relevant agent and check the new tools in the **Tools** picker. Tools are grouped by server.
 - If **Test Connection** shows an error, double-check the command path (use an absolute path if needed) and that any required environment variables are filled in.
 - Saved permission decisions (allow always / never) persist across restarts. Review them in the **Permissions** view, which is accessible from the Manage Servers view.
-- You can import servers from multiple sources at once using the detected-configs tab — Asyar shows which config file each server came from so you know where it originated.
+- You can import servers from multiple sources at once using the detected-configs tab — Conbind shows which config file each server came from so you know where it originated.
 
 ## Related
 

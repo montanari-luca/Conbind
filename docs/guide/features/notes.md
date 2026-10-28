@@ -4,7 +4,7 @@
 
 ## What it does
 
-Notes gives you an instant, distraction-free Markdown scratchpad directly inside Asyar. Whether you need to jot down a quick thought, draft meeting notes, pin a checklist to your desktop as a sticky window, or append a line to your daily log, Notes handles it without having to launch a bulky note-taking application.
+Notes gives you an instant, distraction-free Markdown scratchpad directly inside Conbind. Whether you need to jot down a quick thought, draft meeting notes, pin a checklist to your desktop as a sticky window, or append a line to your daily log, Notes handles it without having to launch a bulky note-taking application.
 
 Every note is stored locally in SQLite on your machine, with full Markdown rendering, code highlighting, title and content search, and pinning.
 
@@ -12,7 +12,7 @@ Every note is stored locally in SQLite on your machine, with full Markdown rende
 
 ### Open the Notes editor
 
-1. Open Asyar and type `notes` — or select **Notes** from search results.
+1. Open Conbind and type `notes` — or select **Notes** from search results.
 2. The notes view opens. The left pane lists your notes (pinned notes first, followed by recent notes).
 3. Use `↑` / `↓` to move through your notes, or start typing in the search bar to filter by title or body.
 4. Press `⌘N` (or choose **New Note** from `⌘K`) to create a new note.
@@ -22,7 +22,7 @@ Every note is stored locally in SQLite on your machine, with full Markdown rende
 
 Capture ideas without opening the full editor view:
 
-1. Open Asyar and type `note <your thought here>`.
+1. Open Conbind and type `note <your thought here>`.
 2. Press `Enter`.
 3. The note is created and saved immediately in the background, confirmed with a toast notification.
 
@@ -30,9 +30,9 @@ Capture ideas without opening the full editor view:
 
 Keep a daily running journal or scratchpad:
 
-1. Open Asyar and type `today <log entry>`.
+1. Open Conbind and type `today <log entry>`.
 2. Press `Enter`.
-3. Asyar appends your text to today's note (automatically titled with today's date, creating it if it doesn't exist yet).
+3. Conbind appends your text to today's note (automatically titled with today's date, creating it if it doesn't exist yet).
 
 ### Desktop Sticky Notes
 

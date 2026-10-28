@@ -4,7 +4,7 @@ order: 14
 
 # AI Providers and the Rust Agent Runtime
 
-Asyar supports OpenAI, Anthropic, Google Gemini, Ollama, OpenRouter, and custom OpenAI-compatible endpoints. Provider execution is intentionally owned by Rust. The frontend only renders provider settings, starts a run, and displays typed stream events.
+Conbind supports OpenAI, Anthropic, Google Gemini, Ollama, OpenRouter, and custom OpenAI-compatible endpoints. Provider execution is intentionally owned by Rust. The frontend only renders provider settings, starts a run, and displays typed stream events.
 
 ## Ownership boundary
 
@@ -52,7 +52,7 @@ Provider-specific algorithms, retry policies, and stream accumulators must not b
 
 ## Extension boundary
 
-Extensions can register agent tools through [`ToolsService`](../reference/sdk/tools-service.md). Asyar does not expose the user's AI provider as a general extension service. This keeps credentials, quota-consuming requests, and agent policy inside the host-owned Rust runtime.
+Extensions can register agent tools through [`ToolsService`](../reference/sdk/tools-service.md). Conbind does not expose the user's AI provider as a general extension service. This keeps credentials, quota-consuming requests, and agent policy inside the host-owned Rust runtime.
 
 ## Cross-references
 

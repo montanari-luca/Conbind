@@ -26,7 +26,7 @@ log.error(new Error('API request failed'));
 log.custom('User selected item #3', 'UI', 'cyan', 'MyExtension');
 ```
 
-Log messages appear in Asyar's developer log panel (accessible from the tray menu).
+Log messages appear in Conbind's developer log panel (accessible from the tray menu).
 
 **Guidelines:**
 

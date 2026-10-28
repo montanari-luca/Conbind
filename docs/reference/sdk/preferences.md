@@ -1,7 +1,7 @@
 # Preferences
 
 **Runs in:** both worker and view. Each iframe's `ExtensionContext`
-receives the same preferences bundle on `asyar:extension:loaded`, and
+receives the same preferences bundle on `conbind:extension:loaded`, and
 both stay in sync via the host's preference fan-out.
 
 Extensions declare typed preferences in their `manifest.json`. The launcher auto-generates a settings UI in the Extensions settings tab and populates `context.preferences` at extension boot with a unified object that provides synchronous snapshot reads and async mutation methods.
@@ -178,9 +178,9 @@ context.preferences.values.theme; // → 'dark' (already updated)
 ```
 
 - **Tier 1 (built-in) features** are fully reloaded — their `initialize()` runs again with a fresh `context`.
-- **Tier 2 (sandboxed iframe) extensions** receive an `asyar:event:preferences:set-all` postMessage. The SDK replaces `context.preferences.values` with a new frozen snapshot and then fires any registered `onPreferencesChanged` listeners.
+- **Tier 2 (sandboxed iframe) extensions** receive an `conbind:event:preferences:set-all` postMessage. The SDK replaces `context.preferences.values` with a new frozen snapshot and then fires any registered `onPreferencesChanged` listeners.
 
-> The message type lives under the `asyar:event:*` namespace because the SDK's `MessageBroker` only routes messages with that prefix to registered listeners. A plain `asyar:preferences:set-all` would be dropped at the routing switch.
+> The message type lives under the `conbind:event:*` namespace because the SDK's `MessageBroker` only routes messages with that prefix to registered listeners. A plain `conbind:preferences:set-all` would be dropped at the routing switch.
 
 Extensions should **not** cache `context.preferences.values` entries into long-lived module state unless they also subscribe to `context.onPreferencesChanged` to recompute when values change.
 
@@ -194,7 +194,7 @@ context.setExtensionId(extensionId);
 // ... use services via context.getService(...) or context.proxies
 ```
 
-That `setExtensionId` call also **self-registers** the context with the iframe's `ExtensionBridge` singleton. Without that step, the bridge's preference listener would have no handle on the live context and would drop incoming `asyar:event:preferences:set-all` messages silently. You do not need to do anything extra — just call `setExtensionId` as usual.
+That `setExtensionId` call also **self-registers** the context with the iframe's `ExtensionBridge` singleton. Without that step, the bridge's preference listener would have no handle on the live context and would drop incoming `conbind:event:preferences:set-all` messages silently. You do not need to do anything extra — just call `setExtensionId` as usual.
 
 If the launcher replies with the initial preferences bundle **before** your `main.ts` has constructed the context (a race condition during async bootstrap), the bridge stashes the bundle under an internal sentinel key and drains it on the next `setExtensionId` call. Either way, your context ends up with the correct preferences by the time any `initialize()` or view-mount code runs.
 
@@ -203,7 +203,7 @@ If the launcher replies with the initial preferences bundle **before** your `mai
 Extensions that need to react to preference edits — for example, a timer that derives its duration from `focusMinutes` — can subscribe to change notifications. **Tier 2 (sandboxed iframe) extensions** use the `context.onPreferencesChanged()` method:
 
 ```ts
-import type { ExtensionContext } from 'asyar-sdk';
+import type { ExtensionContext } from 'conbind-sdk';
 
 let focusSeconds = 25 * 60;
 
@@ -242,7 +242,7 @@ Sync conflict resolution is controlled from the Profile settings tab. Default st
 
 Manifest validation runs at two layers:
 
-1. **SDK CLI** (`asyar build` / `asyar validate`) — catches schema errors at publish time.
+1. **SDK CLI** (`conbind build` / `conbind validate`) — catches schema errors at publish time.
 2. **Rust discovery** — re-validates on every launcher boot. Invalid preference declarations fail the whole extension load (fail-loud).
 
 Rules:

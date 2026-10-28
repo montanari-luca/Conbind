@@ -10,7 +10,7 @@ The detail pane on the right shows a real preview: images render as thumbnails, 
 
 ### Inline results in Root Search
 
-You don't always need to enter File Search to find a document. As you type queries in Asyar's main search bar, top matching files appear directly inline below apps and commands:
+You don't always need to enter File Search to find a document. As you type queries in Conbind's main search bar, top matching files appear directly inline below apps and commands:
 
 - Up to 4 relevant file results are displayed with native OS file icons and parent-folder paths (e.g., `~/Documents/Projects`).
 - When more matches exist, a **Search files for “…”…** row appears at the bottom of the file block. Press `Enter` on it to jump straight into the full File Search view with your query preserved.
@@ -19,7 +19,7 @@ You don't always need to enter File Search to find a document. As you type queri
 
 ## How to use it
 
-1. Open Asyar and type `files` — or select **Search Files** from search results.
+1. Open Conbind and type `files` — or select **Search Files** from search results.
 2. Start typing a filename. Results narrow as you type; the more specific your query, the faster it narrows.
 3. Use `↑` / `↓` to move through results. The preview pane on the right updates as you move.
 4. To narrow by file type, click the dropdown in the search bar (or press `⌘P`) and choose Documents, Images, Code, Audio & Video, Archives, or Folders.
@@ -37,7 +37,7 @@ You don't always need to enter File Search to find a document. As you type queri
 | Copy Name                       | `⌘⌥C`                                                  |
 | Open in Terminal                | `⌘T`                                                   |
 | Toggle Pin                      | `⌘P`                                                   |
-| Send to Asyar AI                | `Tab` or `⌘I`                                          |
+| Send to Conbind AI              | `Tab` or `⌘I`                                          |
 | Search Everywhere (Deep Search) | `⌘⇧F`                                                  |
 | Open action panel               | `⌘K`                                                   |
 
@@ -47,9 +47,9 @@ You don't always need to enter File Search to find a document. As you type queri
 - **Copy Path / Copy Name** — copies the absolute path or just the filename to your clipboard.
 - **Open in Terminal** — opens the file's containing folder in your default terminal app.
 - **Toggle Pin** — pins the file so it shows up first when you open File Search with no query yet, or unpins it.
-- **Move to Trash** — moves the file to the system trash. This is destructive — Asyar asks for confirmation.
+- **Move to Trash** — moves the file to the system trash. This is destructive — Conbind asks for confirmation.
 - **Quick Look** — a full preview without opening the file.
-- **Send to Asyar AI** — opens AI Chat with the file's path (and, for text/code files under the size cap, its contents) pre-filled so you can ask a question about it.
+- **Send to Conbind AI** — opens AI Chat with the file's path (and, for text/code files under the size cap, its contents) pre-filled so you can ask a question about it.
 - **Search Everywhere** — escalates your current query to your OS's native search (Spotlight on macOS, Everything on Windows if installed, `plocate` on Linux if installed). Useful for finding something outside your indexed folders, or by content rather than name. This runs once, on demand — never automatically as you type.
 - **Clear Search History** — forgets which files you've selected before (used to rank frequently-opened files higher). Also available from the root search bar without opening the view.
 
@@ -57,10 +57,10 @@ You don't always need to enter File Search to find a document. As you type queri
 
 - **Pin your most-used files.** With no search query typed, the list shows your pinned files instead of being empty — a quick way to jump to a handful of files you open constantly.
 - **The fallback row saves a step.** If you're already typing in the main search bar and it's not matching many apps or commands, look for "Search files for…" and press `Enter` instead of retyping into File Search.
-- **Search Everywhere is a deliberate extra step**, not something that runs on every keystroke — it shells out to a real OS search tool, which is slower than Asyar's own index but reaches files outside your indexed roots.
+- **Search Everywhere is a deliberate extra step**, not something that runs on every keystroke — it shells out to a real OS search tool, which is slower than Conbind's own index but reaches files outside your indexed roots.
 - **Large files are never fully loaded just to preview them.** Text previews are capped, and images/other previews are generated as small cached thumbnails — so even a huge video file or a multi-gigabyte archive previews quickly instead of stalling the app.
 - **Configure what gets indexed** in **Settings → File Search** — narrow to specific folders, add exclude patterns, or turn indexing off entirely. See [Settings](../settings.md#file-search).
-- **Indexing your whole home folder uses more resources than the rest of Asyar.** Keeping a live, searchable index of a large home folder means some ongoing background CPU/memory use beyond Asyar's usual light footprint — normally brief scans plus small background updates as files change. If you'd rather keep Asyar as lean as possible and don't need file search, turn it off (or narrow **Search Roots** to just the folders you actually search) in **Settings → File Search**.
+- **Indexing your whole home folder uses more resources than the rest of Conbind.** Keeping a live, searchable index of a large home folder means some ongoing background CPU/memory use beyond Conbind's usual light footprint — normally brief scans plus small background updates as files change. If you'd rather keep Conbind as lean as possible and don't need file search, turn it off (or narrow **Search Roots** to just the folders you actually search) in **Settings → File Search**.
 - **Disabling the File Search UI** — You can disable the bundled File Search feature in **Settings → Extensions**. Disabling removes the `Search Files` command, the root search fallback row, and direct views. The underlying file index and watcher platform service remain intact and accessible to permission-authorized Tier 2 extensions via `IFilesService`.
 
 ## Related

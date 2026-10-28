@@ -6,7 +6,7 @@ register the matching `commands.onCommand(...)` handler there too.
 
 **Permissions required:** `timers:schedule`, `timers:cancel`, `timers:list` — declared per method, not bundled.
 
-Persist a "fire command `C` with args `A` at Unix-millis `T`" commitment across restarts. The host writes every scheduled timer to SQLite; if `fireAt` elapses while Asyar is quit, the timer fires (staggered) on the next launch.
+Persist a "fire command `C` with args `A` at Unix-millis `T`" commitment across restarts. The host writes every scheduled timer to SQLite; if `fireAt` elapses while Conbind is quit, the timer fires (staggered) on the next launch.
 
 **What this is not:** a recurring-timer service. For periodic work, use a manifest-declared `schedule` on a command ([scheduler docs](./command-service.md)). Timers are explicitly one-shot — each row fires once and then sits in the audit window before it's pruned.
 
@@ -46,7 +46,7 @@ Declare only the verbs you use — a read-only inspection extension can declare 
 #### Example: Pomodoro timer with a notification that reschedules a 5-minute snooze
 
 ```typescript
-import type { IFeedbackService, ITimerService } from 'asyar-sdk';
+import type { IFeedbackService, ITimerService } from 'conbind-sdk';
 
 const timers = context.getService<ITimerService>('timers');
 const feedback = context.getService<IFeedbackService>('feedback');
@@ -73,7 +73,7 @@ export async function pomodoroStartSnooze(): Promise<void> {
 #### Example: One-off reminder at a human-parsed time
 
 ```typescript
-import type { ITimerService } from 'asyar-sdk';
+import type { ITimerService } from 'conbind-sdk';
 
 const timers = context.getService<ITimerService>('timers');
 
@@ -107,8 +107,8 @@ const pending = await timers.list();
 
 #### Persistence and catch-up semantics
 
-- Rows are written to `extension_timers` in the launcher's `asyar_data.db` at schedule time, before `schedule` resolves.
-- The scheduler polls once per second and emits the Tauri `asyar:timer:fire` event for each row whose `fire_at <= now`.
+- Rows are written to `extension_timers` in the launcher's `conbind_data.db` at schedule time, before `schedule` resolves.
+- The scheduler polls once per second and emits the Tauri `conbind:timer:fire` event for each row whose `fire_at <= now`.
 - Ordering is persist-first-emit-second: the row is marked `fired = 1` _before_ the event is emitted, so a crash mid-emit cannot cause a duplicate fire on the next tick.
 - At app launch any timer whose `fire_at` elapsed while the launcher was quit is caught up, staggered at 100 ms intervals (first 10 fire immediately), so 50 overdue timers don't slam the extension bridge in one tick.
 

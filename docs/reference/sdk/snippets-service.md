@@ -4,7 +4,7 @@
 
 **Permission required:** `snippets:contribute`.
 
-`SnippetsService` lets an extension contribute a static dictionary of `:shortcode:` → expansion pairs to Asyar's system-wide snippets engine. Once registered, typing one of your shortcodes in **any** text input on **any** application — browser address bar, code editor, chat client — triggers an in-place replacement, just as if the user had created a snippet manually. No window opens, no UI flickers.
+`SnippetsService` lets an extension contribute a static dictionary of `:shortcode:` → expansion pairs to Conbind's system-wide snippets engine. Once registered, typing one of your shortcodes in **any** text input on **any** application — browser address bar, code editor, chat client — triggers an in-place replacement, just as if the user had created a snippet manually. No window opens, no UI flickers.
 
 Keys follow the Slack-style bounded form `:[a-z0-9_+-]{1,32}:`. The opening `:` arms the matcher; the closing `:` commits the replacement. Examples: `:party:`, `:red_heart:`, `:+1:`, `:a-b:`. Uppercase, spaces, and out-of-charset characters are rejected at registration time.
 
@@ -29,7 +29,7 @@ export interface ISnippetsService {
 **Usage:**
 
 ```typescript
-import type { ISnippetsService, ShortcodeMap } from 'asyar-sdk/contracts';
+import type { ISnippetsService, ShortcodeMap } from 'conbind-sdk/contracts';
 
 // In your worker entry point:
 const snippets = context.getService<ISnippetsService>('snippets');
@@ -69,7 +69,7 @@ When the user types `:xxx:` and no entry in the merged catalog (user snippets + 
 
 **Platform considerations:**
 
-System-wide expansion works on macOS, Windows, and X11/XWayland Linux. **Pure Wayland sessions cannot deliver global keystrokes to unprivileged processes** (Wayland security model); on those sessions the listener becomes a one-time-warned no-op. The picker UI inside Asyar itself still works. Matches Espanso / AutoKey posture.
+System-wide expansion works on macOS, Windows, and X11/XWayland Linux. **Pure Wayland sessions cannot deliver global keystrokes to unprivileged processes** (Wayland security model); on those sessions the listener becomes a one-time-warned no-op. The picker UI inside Conbind itself still works. Matches Espanso / AutoKey posture.
 
 On macOS, system-wide expansion additionally requires **Accessibility permission** (System Settings → Privacy & Security → Accessibility). The user grants this once when first enabling snippets; your extension does not request it.
 

@@ -1,8 +1,8 @@
 # Component Catalogue
 
-Every component in the Asyar launcher, grouped by what you would be building
+Every component in the Conbind launcher, grouped by what you would be building
 when you reach for it. All of them are exported from
-`asyar-launcher/src/components/index.ts`:
+`conbind-launcher/src/components/index.ts`:
 
 ```svelte
 import {(Button, EmptyState, ListItem, SplitView)} from '../../components';
@@ -10,7 +10,7 @@ import {(Button, EmptyState, ListItem, SplitView)} from '../../components';
 
 > These are **launcher-internal** components. Third-party (Tier 2) extensions
 > run in a sandboxed iframe and cannot import them — extensions get the design
-> tokens and the `<asyar-icon>` web component instead. See
+> tokens and the `<conbind-icon>` web component instead. See
 > [Tokens](./tokens.md) and [Icons](./icons.md).
 
 The rules for choosing between them live in

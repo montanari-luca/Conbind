@@ -7,10 +7,10 @@ _Figure: the Applications tab assigning a shortcut or alias._
 
 ## What it does
 
-Asyar gives you two ways to reach any app or command faster:
+Conbind gives you two ways to reach any app or command faster:
 
 - **Aliases** — a short word (1–10 lowercase letters or digits) that, when typed in the search bar, immediately runs the matching app or command. For example, set `c` as an alias for Chrome and typing `c` launches Chrome directly.
-- **Shortcuts** — a global keyboard combination (for example `⌥⌘C`) assigned to any app or command. Press the hotkey from anywhere on your computer and Asyar runs the target immediately, without you needing to open the launcher first.
+- **Shortcuts** — a global keyboard combination (for example `⌥⌘C`) assigned to any app or command. Press the hotkey from anywhere on your computer and Conbind runs the target immediately, without you needing to open the launcher first.
 
 Both types are assigned per item — one alias and one shortcut per app or command. You can assign, change, or remove them at any time.
 
@@ -20,7 +20,7 @@ Both types are assigned per item — one alias and one shortcut per app or comma
 
 **From search results (quickest way):**
 
-1. Open Asyar and search for the app or command you want.
+1. Open Conbind and search for the app or command you want.
 2. With the result highlighted, open the action panel with `⌘K`.
 3. Choose **Assign Alias** (or **Change Alias** if one is already set).
 4. Type 1–10 lowercase letters or digits and press `Enter` to save.
@@ -37,7 +37,7 @@ Both types are assigned per item — one alias and one shortcut per app or comma
 
 1. Search for the app or command, highlight it, then press `⌘K`.
 2. Choose **Assign Shortcut** (or **Change Shortcut**).
-3. Press the key combination you want to assign. Asyar checks for conflicts and confirms.
+3. Press the key combination you want to assign. Conbind checks for conflicts and confirms.
 
 **From Settings:**
 
@@ -74,11 +74,11 @@ The shortcuts and aliases themselves are configured via the action panel on sear
 ## Tips
 
 - **Aliases rules** — an alias can only contain lowercase letters and digits (`a–z`, `0–9`) and must be 1–10 characters long. No spaces or symbols.
-- **Conflict detection** — if the alias you type is already used by another item, Asyar asks if you want to reassign it.
-- **Shortcuts vs aliases** — shortcuts work even when Asyar is hidden; aliases require you to open the launcher and type. Use shortcuts for the apps you reach dozens of times a day, aliases for everything else.
+- **Conflict detection** — if the alias you type is already used by another item, Conbind asks if you want to reassign it.
+- **Shortcuts vs aliases** — shortcuts work even when Conbind is hidden; aliases require you to open the launcher and type. Use shortcuts for the apps you reach dozens of times a day, aliases for everything else.
 - **One alias per item** — each app or command can have only one alias, but the same alias cannot be shared.
 - **Shortcuts view** — type `shortcuts` in the search bar to open a dedicated view that lists every shortcut you have assigned, grouped by Applications and Commands. It is handy for a quick audit.
-- **Hyper Key (`✦`) Support** — If you use a physical or remapped Hyper key (such as `Caps Lock` mapped to `Ctrl+Alt+Shift+Cmd`), Asyar detects when all four modifiers are pressed together and renders them concisely in the UI using the special `✦` glyph (e.g. `✦Space` or `✦K`).
+- **Hyper Key (`✦`) Support** — If you use a physical or remapped Hyper key (such as `Caps Lock` mapped to `Ctrl+Alt+Shift+Cmd`), Conbind detects when all four modifiers are pressed together and renders them concisely in the UI using the special `✦` glyph (e.g. `✦Space` or `✦K`).
 - **Single-key function shortcuts (`F1`–`F24`) & Copilot Key** — While alphanumeric characters (`A–Z`, `0–9`, symbols) strictly require at least one modifier key (`⌘`, `⌥`, `⌃`, `⇧`) to protect normal text input, standalone function keys (`F1` through `F24`, including extended keys `F13`–`F24` and the Windows Copilot key `F23`) can be assigned directly without any modifiers. This is particularly useful for hardware macro pads, Stream Decks, gaming mice, or remapped keys like `Caps Lock`.
 - **Destructive action safety** — Deleting items or clearing history is never bound to quick deletion hotkeys like `Cmd+Backspace`. Destructive actions are deliberately housed in the `⌘K` action panel and guarded by confirmation dialogs.
 

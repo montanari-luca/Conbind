@@ -6,7 +6,7 @@ runs from the view since it needs user interaction.
 
 **Permission required:** `oauth:use`.
 
-Lets extensions authorize users with any OAuth 2.0 provider (GitHub, Notion, Google, Slack, Jira, …) using a PKCE flow. The extension never handles client secrets or raw tokens — Asyar manages PKCE generation, code exchange, token encryption, and persistent storage entirely in Rust. Extensions call `authorize()`, receive a token, and use it; the rest is handled by the host.
+Lets extensions authorize users with any OAuth 2.0 provider (GitHub, Notion, Google, Slack, Jira, …) using a PKCE flow. The extension never handles client secrets or raw tokens — Conbind manages PKCE generation, code exchange, token encryption, and persistent storage entirely in Rust. Extensions call `authorize()`, receive a token, and use it; the rest is handled by the host.
 
 ```typescript
 interface OAuthConfig {
@@ -57,7 +57,7 @@ interface IOAuthService {
 **Minimal usage:**
 
 ```typescript
-import type { IOAuthService } from 'asyar-sdk';
+import type { IOAuthService } from 'conbind-sdk';
 
 const oauth = context.getService<IOAuthService>('oauth');
 
@@ -78,7 +78,7 @@ const response = await network.fetch('https://api.github.com/user', {
 **Typical "connect and use" pattern:**
 
 ```typescript
-import type { IOAuthService, INetworkService, IFeedbackService } from 'asyar-sdk';
+import type { IOAuthService, INetworkService, IFeedbackService } from 'conbind-sdk';
 
 const oauth = context.getService<IOAuthService>('oauth');
 const network = context.getService<INetworkService>('network');
@@ -128,7 +128,7 @@ Extension iframe                        Host (SvelteKit + Rust)
 ──────────────────────────────────────────────────────────────────────────
 1. SDK generates flowId
 2. window.addEventListener('message', …)   ← registered BEFORE invoke
-3. broker.invoke('asyar:service:OAuthService:authorize',
+3. broker.invoke('conbind:service:OAuthService:authorize',
      { providerId, clientId, authorizationUrl, tokenUrl, scopes, flowId })
                                            ────────────────────────────►
                                            4. IpcRouter: permission check (oauth:use)
@@ -147,8 +147,8 @@ Extension iframe                        Host (SvelteKit + Rust)
    SDK keeps window listener active…
 
    [User authorizes in browser]
-   Provider → asyar://oauth/callback?code=X&state=Y
-                                           Tauri deep-link → 'asyar:deep-link' event
+   Provider → conbind://oauth/callback?code=X&state=Y
+                                           Tauri deep-link → 'conbind:deep-link' event
                                            _handleCallback():
                                              Rust: POST tokenUrl
                                                    { code, code_verifier, client_id, … }
@@ -156,7 +156,7 @@ Extension iframe                        Host (SvelteKit + Rust)
                                              AES-256-GCM encrypt tokens
                                              Store in SQLite oauth_tokens table
                                            ◄────────────────────────────
-{ type: 'asyar:oauth:result', flowId, token }   (postMessage push)
+{ type: 'conbind:oauth:result', flowId, token }   (postMessage push)
 
 7. window listener fires, flowId matches
 8. authorize() Promise resolves with OAuthToken ✓

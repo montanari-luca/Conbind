@@ -4,7 +4,7 @@ order: 1
 
 ### Type 1: Extension (`type: "extension"`)
 
-Asyar has a single Tier 2 extension type. The pre-split distinction between
+Conbind has a single Tier 2 extension type. The pre-split distinction between
 "view", "result", and "logic" is gone. Every extension declares
 `type: "extension"` (or omits it — `"extension"` is the default), and each
 **command** independently picks `mode: "view"` (opens a panel) or
@@ -18,7 +18,7 @@ other type is [`theme`](./theme.md).
 
 ## How it works
 
-When the extension is enabled, Asyar materialises **two iframes** for it:
+When the extension is enabled, Conbind materialises **two iframes** for it:
 
 - A **worker iframe** — hidden, always-on while the extension is enabled,
   loads `worker.html`. Hosts long-lived work: push subscriptions, scheduled
@@ -28,8 +28,8 @@ When the extension is enabled, Asyar materialises **two iframes** for it:
   command, evicted ~120 s after the last user interaction. Loads `view.html`.
   Hosts UI rendering only.
 
-Both iframes are sandboxed at `asyar-extension://<id>/` (macOS/Linux) or
-`http://asyar-extension.localhost/<id>/` (Windows). They communicate with
+Both iframes are sandboxed at `conbind-extension://<id>/` (macOS/Linux) or
+`http://conbind-extension.localhost/<id>/` (Windows). They communicate with
 each other through a launcher-brokered state mailbox and an RPC primitive.
 
 For the lifecycle state machine, mailbox semantics, and the view↔worker RPC
@@ -48,7 +48,7 @@ A pomodoro-style extension that exercises both contexts:
   "author": "Your Name",
   "icon": "🍅",
   "type": "extension",
-  "asyarSdk": "^2.1.0",
+  "conbindSdk": "^2.1.0",
   "background": { "main": "dist/worker.js" },
   "permissions": ["notifications:send", "timers:schedule", "timers:cancel"],
   "commands": [
@@ -81,12 +81,12 @@ For the full schema, see [`manifest.md`](../manifest.md).
 ## Worker entry — `src/main.worker.ts`
 
 The worker bundle runs as a hidden iframe. It must import from
-`asyar-sdk/worker`, never from `asyar-sdk/view` — the `/worker` entry asserts
-`window.__ASYAR_ROLE__ === "worker"` at load time and exposes the
+`conbind-sdk/worker`, never from `conbind-sdk/view` — the `/worker` entry asserts
+`window.__CONBIND_ROLE__ === "worker"` at load time and exposes the
 worker-safe proxy bag (no DOM-dependent helpers).
 
 ```typescript
-import { ExtensionContext, extensionBridge } from 'asyar-sdk/worker';
+import { ExtensionContext, extensionBridge } from 'conbind-sdk/worker';
 
 const extensionId = window.location.hostname || 'com.yourname.pomodoro';
 const context = new ExtensionContext();
@@ -113,17 +113,17 @@ context.onRequest<{}, { rounds: number }>('getStats', async () => {
   return { rounds: (await context.state.get<number>('rounds')) ?? 0 };
 });
 
-window.parent.postMessage({ type: 'asyar:extension:loaded', extensionId, role: 'worker' }, '*');
+window.parent.postMessage({ type: 'conbind:extension:loaded', extensionId, role: 'worker' }, '*');
 ```
 
 ## View entry — `src/main.view.ts`
 
-The view bundle imports from `asyar-sdk/view`, which asserts
-`window.__ASYAR_ROLE__ === "view"` and exposes the full proxy bag plus DOM
+The view bundle imports from `conbind-sdk/view`, which asserts
+`window.__CONBIND_ROLE__ === "view"` and exposes the full proxy bag plus DOM
 helpers (icon custom element, theme injector).
 
 ```typescript
-import { ExtensionContext, extensionBridge, registerIconElement } from 'asyar-sdk/view';
+import { ExtensionContext, extensionBridge, registerIconElement } from 'conbind-sdk/view';
 import PomodoroView from './PomodoroView.svelte';
 import { mount } from 'svelte';
 
@@ -140,14 +140,14 @@ mount(PomodoroView, {
   props: { context },
 });
 
-window.parent.postMessage({ type: 'asyar:extension:loaded', extensionId, role: 'view' }, '*');
+window.parent.postMessage({ type: 'conbind:extension:loaded', extensionId, role: 'view' }, '*');
 ```
 
 Inside the view component, call worker handlers with `context.request`:
 
 ```svelte
 <script lang="ts">
-  import type { ExtensionContext } from 'asyar-sdk/view';
+  import type { ExtensionContext } from 'conbind-sdk/view';
   let { context }: { context: ExtensionContext } = $props();
   let stats = $state<{ rounds: number } | null>(null);
 
@@ -166,7 +166,7 @@ opened, a command fired) rather than leaving the launcher floating.
 
 ```svelte
 <script lang="ts">
-  import type { ExtensionContext } from 'asyar-sdk/view';
+  import type { ExtensionContext } from 'conbind-sdk/view';
   let { context }: { context: ExtensionContext } = $props();
 
   async function killAndDismiss(pids: number[]) {
@@ -177,7 +177,7 @@ opened, a command fired) rather than leaving the launcher floating.
 ```
 
 It is **synchronous, fire-and-forget, and ungated** — no permission, no
-return value. Under the hood it posts `asyar:window:hide` to the host frame;
+return value. Under the hood it posts `conbind:window:hide` to the host frame;
 calling it outside a view iframe is a no-op.
 
 ## Searchable extensions
@@ -188,7 +188,7 @@ for `search()` is the **worker** — it stays mounted while the user types, so
 results are instant. Register the search handler in `main.worker.ts`:
 
 ```typescript
-import { ExtensionContext, extensionBridge } from 'asyar-sdk/worker';
+import { ExtensionContext, extensionBridge } from 'conbind-sdk/worker';
 
 extensionBridge.registerExtensionImplementation(extensionId, {
   async search(query: string) {

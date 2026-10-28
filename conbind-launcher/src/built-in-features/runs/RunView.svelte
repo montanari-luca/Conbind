@@ -1,0 +1,341 @@
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+  import {
+    SplitView,
+    ListItem,
+    EmptyState,
+    Button,
+    StatusDot,
+    MetadataList,
+  } from '../../components';
+  import { runService } from '../../services/run/runService.svelte';
+  import { formatRunSubtitle } from './runViewLogic';
+  import { statusIconName } from '../../components/run/runningSectionLogic';
+  import { invokeSafe } from '../../lib/ipc/invokeSafe';
+  import { scrollSelectedIntoView, resetListScroll } from '../../lib/listScroll';
+  import type { Run } from 'conbind-sdk/contracts';
+  import { t } from '../../services/i18n';
+
+  let combinedRuns = $derived(runService.combined);
+  let selectedRun = $derived(combinedRuns.find((r) => r.id === runService.selectedRunId) ?? null);
+  let selectedIndex = $derived(
+    runService.selectedRunId
+      ? combinedRuns.findIndex((r) => r.id === runService.selectedRunId)
+      : -1,
+  );
+  let outputLines = $state<string[]>([]);
+  let outputUnlisten: UnlistenFn | null = null;
+  let listEl = $state<HTMLDivElement | undefined>();
+
+  onMount(async () => {
+    void runService.loadHistory();
+    outputUnlisten = await listen<{ id: string; line: string }>('runs:output', (ev) => {
+      if (ev.payload.id === runService.selectedRunId) {
+        outputLines = [...outputLines, ev.payload.line];
+      }
+    });
+  });
+
+  onDestroy(() => {
+    if (outputUnlisten) {
+      outputUnlisten();
+      outputUnlisten = null;
+    }
+  });
+
+  $effect(() => {
+    const run = selectedRun;
+    if (!run) {
+      outputLines = [];
+      return;
+    }
+    void invokeSafe<string[]>('runs_get_output', { id: run.id })
+      .then((lines) => {
+        outputLines = lines;
+      })
+      .catch(() => {
+        outputLines = [];
+      });
+  });
+
+  $effect(() => {
+    const idx = selectedIndex;
+    const _runs = combinedRuns;
+    if (!listEl) return;
+    requestAnimationFrame(() => {
+      if (listEl) {
+        if (idx >= 0) {
+          scrollSelectedIntoView(listEl, idx);
+        } else {
+          resetListScroll(listEl);
+        }
+      }
+    });
+  });
+
+  function statusDotColor(status: Run['status']): 'success' | 'warning' | 'danger' | 'info' {
+    switch (status) {
+      case 'running':
+        return 'info';
+      case 'succeeded':
+        return 'success';
+      case 'failed':
+        return 'danger';
+      case 'cancelled':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  }
+
+  function handleSelectRun(id: string) {
+    runService.selectedRunId = id;
+  }
+
+  async function handleCancel() {
+    if (selectedRun && selectedRun.status === 'running' && selectedRun.cancellable) {
+      await runService.cancelById(selectedRun.id);
+    }
+  }
+
+  const relativeTimeFormat = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+
+  function formatRelativeTime(ms: number): string {
+    const diffSeconds = Math.round((ms - Date.now()) / 1000);
+    const abs = Math.abs(diffSeconds);
+    if (abs < 60) return 'just now';
+    if (abs < 3600) return relativeTimeFormat.format(Math.round(diffSeconds / 60), 'minute');
+    if (abs < 86400) return relativeTimeFormat.format(Math.round(diffSeconds / 3600), 'hour');
+    return relativeTimeFormat.format(Math.round(diffSeconds / 86400), 'day');
+  }
+
+  function formatDuration(run: Run): string | null {
+    if (run.startedAt && run.endedAt) {
+      const ms = Math.max(0, run.endedAt - run.startedAt);
+      if (ms < 1000) return `${ms}ms`;
+      return `${(ms / 1000).toFixed(2)}s`;
+    }
+    return null;
+  }
+</script>
+
+<SplitView>
+  {#snippet left()}
+    <div class="runs-list custom-scrollbar" bind:this={listEl}>
+      {#each combinedRuns as run, index (run.id)}
+        <ListItem
+          data-index={index}
+          selected={run.id === runService.selectedRunId}
+          title={run.label}
+          subtitle={formatRunSubtitle(run)}
+          onclick={() => handleSelectRun(run.id)}
+        >
+          {#snippet leading()}
+            <StatusDot color={statusDotColor(run.status)} pulse={run.status === 'running'} />
+          {/snippet}
+        </ListItem>
+      {/each}
+      {#if combinedRuns.length === 0}
+        <EmptyState
+          message={t('features.runs.no_runs')}
+          description={t('features.runs.no_runs_description')}
+        />
+      {/if}
+    </div>
+  {/snippet}
+
+  {#snippet right()}
+    <div class="run-detail custom-scrollbar">
+      {#if selectedRun}
+        <div class="run-detail-header">
+          <div class="text-title">{selectedRun.label}</div>
+          <div class="text-caption run-detail-subtitle">{formatRunSubtitle(selectedRun)}</div>
+        </div>
+        {#if selectedRun.cancellable && selectedRun.status === 'running'}
+          <div class="run-detail-actions">
+            <Button onclick={handleCancel}>{t('common.cancel')}</Button>
+          </div>
+        {/if}
+        {#if selectedRun.kind === 'agent' || selectedRun.kind === 'ai-chat'}
+          <div class="run-status-panel">
+            <div class="run-status-header">
+              <span>💬</span>
+              <span class="text-title">{t('features.runs.ui.ai_thread')}</span>
+            </div>
+            <div class="run-status-content">
+              <div class="text-caption">
+                {t('features.runs.ui.ai_thread_desc')}
+              </div>
+            </div>
+          </div>
+        {:else if outputLines.length > 0}
+          <div class="run-output custom-scrollbar">
+            {#each outputLines as line, i (i)}
+              <div class="run-output-line">{line}</div>
+            {/each}
+          </div>
+        {:else if selectedRun.status === 'failed'}
+          <div class="run-status-panel run-status-failed">
+            <div class="run-status-header">
+              <span>❌</span>
+              <span class="text-title" style="color: var(--accent-danger);"
+                >{t('features.runs.ui.failed')}</span
+              >
+            </div>
+            <div class="run-status-content">
+              <div class="text-caption">{t('features.runs.ui.failed_desc')}</div>
+              <div class="run-status-error-box">
+                {selectedRun.errorMessage || t('features.runs.ui.exit_nonzero')}
+              </div>
+            </div>
+          </div>
+        {:else if selectedRun.status === 'succeeded'}
+          <div class="run-status-panel run-status-success">
+            <div class="run-status-header">
+              <span>✅</span>
+              <span class="text-title" style="color: var(--accent-success);"
+                >{t('features.runs.ui.succeeded')}</span
+              >
+            </div>
+            <div class="run-status-content">
+              {#if selectedRun.endedAt && selectedRun.startedAt}
+                <div class="text-caption">
+                  {t('features.runs.ui.succeeded_in', {
+                    seconds: ((selectedRun.endedAt - selectedRun.startedAt) / 1000).toFixed(2),
+                  })}
+                </div>
+              {:else}
+                <div class="text-caption">
+                  {t('features.runs.ui.succeeded_silent')}
+                </div>
+              {/if}
+            </div>
+          </div>
+        {:else}
+          <EmptyState
+            message={t('features.runs.no_output')}
+            description={selectedRun.status === 'running'
+              ? t('features.runs.streaming_output')
+              : t('features.runs.dismissed_output')}
+          />
+        {/if}
+
+        <MetadataList
+          title={t('common.information')}
+          items={[
+            {
+              label: t('features.runs.ui.status'),
+              value: selectedRun.status,
+            },
+            {
+              label: t('features.runs.ui.started'),
+              value: formatRelativeTime(selectedRun.startedAt),
+              title: new Date(selectedRun.startedAt).toLocaleString(),
+            },
+            {
+              label: t('features.runs.ui.duration'),
+              value: formatDuration(selectedRun),
+            },
+          ]}
+        />
+      {:else}
+        <EmptyState
+          message={t('features.runs.select_run')}
+          description={t('features.runs.select_run_description')}
+        />
+      {/if}
+    </div>
+  {/snippet}
+</SplitView>
+
+<style>
+  .runs-list {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-2);
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .run-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .run-detail-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .run-detail-subtitle {
+    color: var(--text-secondary);
+  }
+
+  .run-detail-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .run-output {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .run-output-line {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-primary);
+    line-height: 1.5;
+  }
+
+  .run-status-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+  }
+
+  .run-status-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+  }
+
+  .run-status-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .run-status-error-box {
+    background: color-mix(in srgb, var(--accent-danger) 8%, var(--bg-primary));
+    border: 1px solid color-mix(in srgb, var(--accent-danger) 20%, transparent);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    color: var(--accent-danger);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.5;
+  }
+</style>

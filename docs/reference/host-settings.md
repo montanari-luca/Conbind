@@ -4,11 +4,11 @@ order: 11
 
 ## 11. Host Settings Reference
 
-Asyar provides several system-level settings to customize behavior and application discovery.
+Conbind provides several system-level settings to customize behavior and application discovery.
 
 ### Application Search
 
-Asyar automatically indexes applications from standard OS locations. If you have applications in non-standard folders or standalone binaries you'd like to reach via global search, use **Additional Scan Paths**.
+Conbind automatically indexes applications from standard OS locations. If you have applications in non-standard folders or standalone binaries you'd like to reach via global search, use **Additional Scan Paths**.
 
 #### Default Scan Paths
 
@@ -22,7 +22,7 @@ Asyar automatically indexes applications from standard OS locations. If you have
 
 You can add custom directories to the application scanner in **Settings > Extensions > Applications -> Additional Scan Paths**.
 
-- **Recursive Search**: Asyar will recursively scan these directories for executable bundles (like `.app` on macOS) or `.desktop` files (on Linux).
+- **Recursive Search**: Conbind will recursively scan these directories for executable bundles (like `.app` on macOS) or `.desktop` files (on Linux).
 - **Standalone Binaries**: On Windows, it will also index `.exe` files found in these paths.
 - **Index Sync**: Changes to these paths trigger an immediate background re-index of the application store.
 
@@ -33,7 +33,7 @@ You can add custom directories to the application scanner in **Settings > Extens
 
 ### File Search
 
-Asyar indexes filenames across your home folder in the background (**Settings > File Search**). The index is a compact in-memory structure rebuilt on demand, backed by a snapshot on disk so restarts don't require a full rescan.
+Conbind indexes filenames across your home folder in the background (**Settings > File Search**). The index is a compact in-memory structure rebuilt on demand, backed by a snapshot on disk so restarts don't require a full rescan.
 
 #### Default exclusions
 
@@ -118,7 +118,7 @@ cannot leave the launcher unreachable.
 
 ### Clipboard History Retention
 
-Asyar manages captured clipboard items with encryption at rest and automated retention cleanup (**Settings > Privacy > Clipboard Privacy**).
+Conbind manages captured clipboard items with encryption at rest and automated retention cleanup (**Settings > Privacy > Clipboard Privacy**).
 
 #### Retention Period (TTL)
 
@@ -145,7 +145,7 @@ The `clipboardHistory.retentionMs` setting controls how long non-favourited clip
 
 ### AI Conversation History Retention
 
-Asyar provides automatic history management and retention pruning for AI conversation threads (**Settings > AI > Behavior > History retention cap**).
+Conbind provides automatic history management and retention pruning for AI conversation threads (**Settings > AI > Behavior > History retention cap**).
 
 #### Retention Cap
 

@@ -20,13 +20,13 @@ Window Management lets you instantly resize, reposition, move between displays, 
 ### Apply layout presets
 
 1. Switch to the application window you want to resize.
-2. Open Asyar with your global hotkey.
+2. Open Conbind with your global hotkey.
 3. Type part of the layout name — for example `left half`, `first fourth`, `center third`, or `maximize`.
-4. Press `Enter`. The window snaps immediately, a brief heads-up confirmation appears, and Asyar dismisses.
+4. Press `Enter`. The window snaps immediately, a brief heads-up confirmation appears, and Conbind dismisses.
 
 ### Switch between active windows
 
-1. Open Asyar and type `switch windows` (or `switch` or `windows`).
+1. Open Conbind and type `switch windows` (or `switch` or `windows`).
 2. Press `Enter` to open the **Switch Windows** view.
 3. A live list of all open application windows appears, showing the application icon, application name, and window title.
 4. Type in the search bar to filter by app name or window title.
@@ -42,7 +42,7 @@ If you use multiple displays, use display navigation commands:
 ### Manage custom layouts
 
 1. Position and resize an app window to your desired dimensions.
-2. Open Asyar, search for **Save Current Window as Layout**, and press `Enter` (or open **Manage Window Layouts**, press `⌘K`, and choose **Save Current Window as Layout**).
+2. Open Conbind, search for **Save Current Window as Layout**, and press `Enter` (or open **Manage Window Layouts**, press `⌘K`, and choose **Save Current Window as Layout**).
 3. Give your layout a descriptive name (e.g. "Coding Left Split").
 4. Your saved layout now appears in search results alongside built-in presets.
 5. To rename or delete custom layouts, open **Manage Window Layouts**, select the layout, and choose **Rename** or **Delete** from the action panel (`⌘K`).
@@ -99,7 +99,7 @@ If you use multiple displays, use display navigation commands:
 ## Tips
 
 - **Assign hotkeys for common splits**: Open **Settings → Extensions**, expand **Window Management**, and bind hotkeys like `⌃⌥←` for Left Half, `⌃⌥→` for Right Half, and `⌃⌥Enter` for Maximize.
-- **Switch app first, then open Asyar**: Layout presets apply to whichever window was active immediately before summoning Asyar.
+- **Switch app first, then open Conbind**: Layout presets apply to whichever window was active immediately before summoning Conbind.
 - **Vertical Fourths on ultrawide monitors**: The `First Fourth` through `Last Fourth` presets are ideal for 34"+ ultrawide and 4K displays where half-screen windows are too wide.
 - **Restore only remembers one step**: Restore undoes the single most recent layout change.
 - **Disabling Window Management** — If you use a third-party tiling window manager or prefer not to have window snap commands in search, you can turn off Window Management in **Settings → Extensions**. Disabling removes preset commands and layouts, while the underlying window management platform APIs (`window:manage`) remain available for extensions.

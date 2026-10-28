@@ -8,12 +8,12 @@ worker.
 
 Every top-level `IStatusBarItem` an extension registers becomes an
 **independent menu-bar tray icon** owned by the host (Raycast's `MenuBarExtra`
-model). There is no shared "Asyar" tray that extensions land under anymore —
-Asyar keeps its own separate tray icon with only core controls (Settings /
+model). There is no shared "Conbind" tray that extensions land under anymore —
+Conbind keeps its own separate tray icon with only core controls (Settings /
 Check for Updates / Quit).
 
-> **Breaking change:** the pre-Beta "merge everything under one Asyar tray"
-> behavior is gone. Extensions now render as peers of Asyar's own icon. See
+> **Breaking change:** the pre-Beta "merge everything under one Conbind tray"
+> behavior is gone. Extensions now render as peers of Conbind's own icon. See
 > the migration note at the bottom.
 
 ## Interface
@@ -27,7 +27,7 @@ interface StatusBarClickContext {
 interface IStatusBarItem {
   id: string;
   icon?: string; // Emoji / unicode / label prefix
-  iconPath?: string; // Absolute path or asyar-extension://{id}/path.png
+  iconPath?: string; // Absolute path or conbind-extension://{id}/path.png
   title?: string; // Optional visible title — top level only, max 32 characters
   text: string; // Tooltip at top level; label in submenus
   checked?: boolean; // ✓ state — submenu only
@@ -70,14 +70,14 @@ interface IStatusBarService {
 
 ### Icon paths
 
-- `asyar-extension://{extensionId}/path/to/icon.png` — resolved against
+- `conbind-extension://{extensionId}/path/to/icon.png` — resolved against
   your extension's bundle.
 - Absolute filesystem path (`/Users/…/icon.png`, `C:\…\icon.png`) — used
   verbatim.
 - **Anything else** (http(s), file, relative paths) is rejected.
 - Recommended size: **16×16 PNG** (macOS template-renders monochrome
   automatically when matching template conventions).
-- Traversal (`..`) inside the `asyar-extension://` path is rejected.
+- Traversal (`..`) inside the `conbind-extension://` path is rejected.
 
 ## Example — Spotify-style "Now Playing"
 
@@ -86,7 +86,7 @@ const statusBar = context.getService<IStatusBarService>('statusBar');
 
 statusBar.registerItem({
   id: 'spotify-now-playing',
-  iconPath: 'asyar-extension://com.example.spotify/assets/icon-16.png',
+  iconPath: 'conbind-extension://com.example.spotify/assets/icon-16.png',
   text: '♪ In Rainbows', // tooltip
   title: 'In Rainbows', // visible menu-bar title where supported
   submenu: [
@@ -116,7 +116,7 @@ statusBar.registerItem({
 ```
 
 A separate **mug icon** could be registered by another extension — both
-appear independently in the menu bar alongside Asyar's own tray.
+appear independently in the menu bar alongside Conbind's own tray.
 
 ## Updating state
 
@@ -143,7 +143,7 @@ updates and removal. Extensions never supply `extensionId` in status-bar payload
 
 ## Click payload wire format
 
-Rust emits `asyar:tray-item-click` to the host with:
+Rust emits `conbind:tray-item-click` to the host with:
 
 ```json
 {
@@ -178,7 +178,7 @@ path, the click is a no-op.
 | `enabled: false` greying        | ✅                     | ✅                      | ✅                  |
 
 ¹ Windows/Linux trays need a bitmap. When the extension supplies only an
-emoji via `icon`, Asyar attaches a 1×1 transparent PNG so the tray still
+emoji via `icon`, Conbind attaches a 1×1 transparent PNG so the tray still
 registers — the user sees a blank icon with the tooltip. Provide `iconPath`
 to avoid this.
 
@@ -194,7 +194,7 @@ a tray/AppIndicator extension. Emoji is not included in the Linux title label.
 
 ## Migration
 
-Pre-Beta extensions relied on Asyar bundling their `{icon text}` pair as a
+Pre-Beta extensions relied on Conbind bundling their `{icon text}` pair as a
 row under its shared tray. That path is removed. To migrate:
 
 1. Add `iconPath` (preferred) or keep `icon` for emoji-only fallback.

@@ -1,0 +1,429 @@
+<script lang="ts">
+  import {
+    Input,
+    Button,
+    Icon,
+    Toggle,
+    Badge,
+    SettingsCard,
+    SettingsRow,
+  } from '../../../components';
+  import { type UnlistenFn } from '@tauri-apps/api/event';
+  import { open } from '@tauri-apps/plugin-dialog';
+  import { settingsService } from '../../../services/settings/settingsService.svelte';
+  import { setFocusLock } from '../../../lib/ipc/commands';
+  import { fileIndexStatus, fileIndexRebuild } from '../../../lib/ipc/fileSearchCommands';
+  import { logService } from '../../../services/log/logService';
+  import type { IndexStatus } from '../../../bindings';
+  import { canAddRoot, canAddExcludePattern } from './fileSearchTab.helpers';
+  import { t } from '../../../services/i18n';
+  import { appListen } from '../../../lib/ipc/bridgeEvents';
+
+  let roots = $derived(settingsService.currentSettings.fileSearch.includeRoots ?? []);
+  let excludePatterns = $derived(settingsService.currentSettings.fileSearch.excludePatterns ?? []);
+  let recentIgnorePatterns = $derived(
+    settingsService.currentSettings.fileSearch.recentIgnorePatterns ?? [],
+  );
+  let enabled = $derived(settingsService.currentSettings.fileSearch.enabled);
+  let rootSearchEnabled = $derived(settingsService.currentSettings.fileSearch.rootSearchEnabled);
+
+  let isBrowsing = $state(false);
+  let newExcludePattern = $state('');
+  let newRecentIgnorePattern = $state('');
+  let errorMessage = $state<string | null>(null);
+  let status = $state<IndexStatus | null>(null);
+  let rebuilding = $state(false);
+
+  const STATE_LABELS: Record<string, string> = {
+    disabled: 'Disabled',
+    building: 'Building…',
+    ready: 'Ready',
+    rescanning: 'Rescanning…',
+    'cap-reached': 'Index cap reached',
+  };
+
+  async function refreshStatus() {
+    status = await fileIndexStatus();
+  }
+
+  $effect(() => {
+    void refreshStatus();
+    let unlisten: UnlistenFn | undefined;
+    appListen<IndexStatus>('conbind:file-index-status', (e) => {
+      status = e.payload;
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  });
+
+  async function persistFileSearch(
+    patch: Partial<{
+      enabled: boolean;
+      rootSearchEnabled: boolean;
+      includeRoots: string[];
+      excludePatterns: string[];
+      indexHidden: boolean;
+      recentIgnorePatterns: string[];
+    }>,
+  ) {
+    const ok = await settingsService.updateSettings('fileSearch', patch);
+    if (!ok) {
+      errorMessage = 'Failed to save file search settings';
+      return;
+    }
+    errorMessage = null;
+  }
+
+  async function handleToggleEnabled() {
+    await persistFileSearch({ enabled: !enabled });
+  }
+
+  async function handleToggleRootSearch() {
+    await persistFileSearch({ rootSearchEnabled: !rootSearchEnabled });
+  }
+
+  async function handleAddRoot() {
+    if (isBrowsing) return;
+    isBrowsing = true;
+    errorMessage = null;
+    try {
+      await setFocusLock(true);
+      const picked = await open({
+        directory: true,
+        multiple: false,
+        title: t('settings.file_search.add_search_root_title'),
+      });
+      if (!picked || typeof picked !== 'string') return;
+      if (!canAddRoot(picked, roots)) {
+        errorMessage = `${picked} is already in the list`;
+        return;
+      }
+      await persistFileSearch({ includeRoots: [...roots, picked] });
+    } catch (err) {
+      logService.warn(`Directory picker failed: ${err}`);
+      errorMessage = 'Could not open directory picker';
+    } finally {
+      await setFocusLock(false);
+      isBrowsing = false;
+    }
+  }
+
+  async function handleRemoveRoot(path: string) {
+    await persistFileSearch({ includeRoots: roots.filter((p) => p !== path) });
+  }
+
+  async function handleAddExcludePattern() {
+    const pattern = newExcludePattern.trim();
+    if (!canAddExcludePattern(pattern, excludePatterns)) {
+      errorMessage = pattern ? `"${pattern}" is already excluded` : null;
+      return;
+    }
+    errorMessage = null;
+    await persistFileSearch({ excludePatterns: [...excludePatterns, pattern] });
+    newExcludePattern = '';
+  }
+
+  async function handleRemoveExcludePattern(pattern: string) {
+    await persistFileSearch({ excludePatterns: excludePatterns.filter((p) => p !== pattern) });
+  }
+
+  async function handleAddRecentIgnorePattern() {
+    const pattern = newRecentIgnorePattern.trim();
+    if (!canAddExcludePattern(pattern, recentIgnorePatterns)) {
+      errorMessage = pattern ? `"${pattern}" is already ignored` : null;
+      return;
+    }
+    errorMessage = null;
+    await persistFileSearch({ recentIgnorePatterns: [...recentIgnorePatterns, pattern] });
+    newRecentIgnorePattern = '';
+  }
+
+  async function handleRemoveRecentIgnorePattern(pattern: string) {
+    await persistFileSearch({
+      recentIgnorePatterns: recentIgnorePatterns.filter((p) => p !== pattern),
+    });
+  }
+
+  // The command itself resolves as soon as the background scan is
+  // *spawned*, not when it's done — the actual duration is reflected by
+  // `status.state` transitioning through `rescanning` (set synchronously,
+  // before the command returns) back to `ready`. `rebuilding` only guards
+  // the brief window between the click and that first status event landing.
+  let isRebuilding = $derived(rebuilding || status?.state === 'rescanning');
+
+  async function handleRebuild() {
+    if (isRebuilding) return;
+    rebuilding = true;
+    try {
+      await fileIndexRebuild();
+    } finally {
+      rebuilding = false;
+    }
+  }
+</script>
+
+{#snippet patternList(patterns: string[], onRemove: (pattern: string) => void)}
+  {#if patterns.length > 0}
+    <SettingsCard>
+      <ul class="path-list">
+        {#each patterns as pattern (pattern)}
+          <li class="path-row">
+            <Icon name="filter" size={14} class="path-icon" />
+            <span class="path-text text-mono" title={pattern}>{pattern}</span>
+            <button
+              type="button"
+              class="btn btn-danger remove-btn"
+              aria-label="Remove {pattern}"
+              onclick={() => onRemove(pattern)}
+            >
+              <Icon name="trash" size={14} />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </SettingsCard>
+  {/if}
+{/snippet}
+
+<div class="section-header">{t('settings.file_search.section_status')}</div>
+<div id="file-search-status">
+  <SettingsCard>
+    <SettingsRow
+      label={t('settings.file_search.file_search_title')}
+      description={t('settings.file_search.file_search_description')}
+    >
+      <Toggle checked={enabled} onchange={handleToggleEnabled} />
+    </SettingsRow>
+    <SettingsRow
+      label={t('settings.file_search.root_search_title')}
+      description={t('settings.file_search.root_search_description')}
+    >
+      <Toggle checked={rootSearchEnabled} onchange={handleToggleRootSearch} disabled={!enabled} />
+    </SettingsRow>
+  </SettingsCard>
+
+  {#if status}
+    <div class="index-status">
+      <Badge text={STATE_LABELS[status.state] ?? status.state} variant="default" />
+      <span class="text-caption">{status.entryCount.toLocaleString()} files indexed</span>
+      {#if status.lastScanMs > 0}
+        <span class="text-caption opacity-70">last scan {status.lastScanMs}ms</span>
+      {/if}
+      {#if status.snapshotLoaded}
+        <span class="text-caption opacity-70">{t('settings.file_search.restored_snapshot')}</span>
+      {/if}
+      <Button onclick={handleRebuild} disabled={isRebuilding}>
+        {isRebuilding ? 'Rebuilding…' : 'Rebuild Index'}
+      </Button>
+    </div>
+    {#if status.capReached}
+      <div class="warning" role="alert">
+        {t('settings.file_search.index_size_warning')}
+      </div>
+    {/if}
+  {/if}
+</div>
+
+<div class="section-header">{t('settings.file_search.search_roots')}</div>
+<div id="file-search-roots">
+  <p class="section-description">
+    {t('settings.file_search.search_roots_description')}
+  </p>
+
+  <div class="add-row">
+    <Button onclick={handleAddRoot} disabled={isBrowsing}>
+      <span class="btn-content">
+        <Icon name="plus" size={14} />
+        {isBrowsing ? 'Opening…' : 'Add Root'}
+      </span>
+    </Button>
+  </div>
+
+  {#if errorMessage}
+    <div class="error" role="alert">{errorMessage}</div>
+  {/if}
+
+  {#if roots.length > 0}
+    <SettingsCard>
+      <ul class="path-list">
+        {#each roots as path (path)}
+          <li class="path-row">
+            <Icon name="folder" size={14} class="path-icon" />
+            <span class="path-text" title={path}>{path}</span>
+            <button
+              type="button"
+              class="btn btn-danger remove-btn"
+              aria-label="Remove {path}"
+              onclick={() => handleRemoveRoot(path)}
+            >
+              <Icon name="trash" size={14} />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </SettingsCard>
+  {/if}
+</div>
+
+<div class="section-header">{t('settings.file_search.exclude_patterns')}</div>
+<div id="file-search-excludes">
+  <p class="section-description">
+    {t('settings.file_search.exclude_patterns_description')}
+  </p>
+
+  <div class="add-row exclude-add-row">
+    <Input
+      unstyled
+      textIntent="exact"
+      type="text"
+      class="exclude-input"
+      placeholder={t('settings.file_search.pattern_placeholder')}
+      bind:value={newExcludePattern}
+      onkeydown={(e) => e.key === 'Enter' && handleAddExcludePattern()}
+    />
+    <Button onclick={handleAddExcludePattern}>{t('common.add')}</Button>
+  </div>
+
+  {@render patternList(excludePatterns, handleRemoveExcludePattern)}
+</div>
+
+<div class="section-header">{t('settings.file_search.recent_ignore_patterns')}</div>
+<div id="file-search-recent-ignores">
+  <p class="section-description">
+    {t('settings.file_search.recent_ignore_patterns_description')}
+  </p>
+
+  <div class="add-row exclude-add-row">
+    <Input
+      unstyled
+      textIntent="exact"
+      type="text"
+      class="exclude-input"
+      placeholder={t('settings.file_search.pattern_placeholder')}
+      bind:value={newRecentIgnorePattern}
+      onkeydown={(e) => e.key === 'Enter' && handleAddRecentIgnorePattern()}
+    />
+    <Button onclick={handleAddRecentIgnorePattern}>{t('common.add')}</Button>
+  </div>
+
+  {@render patternList(recentIgnorePatterns, handleRemoveRecentIgnorePattern)}
+</div>
+
+<style>
+  .section-description {
+    margin: 0 0 var(--space-3) 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Deliberately NOT a SettingsCard: it holds a Badge (variant="default")
+     and a Button, both of which default to var(--bg-tertiary) — the same
+     token SettingsCard uses. Nesting either inside a SettingsCard here would
+     make it blend invisibly into the card (see Global Constraints). */
+  .index-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary-full-opacity);
+    flex-wrap: wrap;
+  }
+
+  .warning {
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in srgb, var(--accent-warning) 10%, transparent);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+  }
+
+  .add-row {
+    margin-bottom: var(--space-3);
+    align-self: flex-start;
+  }
+
+  .exclude-add-row {
+    display: flex;
+    gap: var(--space-2);
+    align-self: stretch;
+  }
+
+  :global(.exclude-input) {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+  }
+
+  .btn-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .error {
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in srgb, var(--accent-danger) 10%, transparent);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--accent-danger);
+  }
+
+  .path-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .path-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+  }
+
+  .path-row:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: var(--space-6);
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--border-color);
+  }
+
+  :global(.path-icon) {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .path-text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .remove-btn {
+    padding: var(--space-1);
+  }
+</style>

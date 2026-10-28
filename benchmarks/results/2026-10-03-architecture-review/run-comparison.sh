@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
-OUT="/Users/khoshbin/develop/Asyar-Project/benchmarks/results/2026-10-03-architecture-review"
-HARNESS="/private/tmp/asyar-comparison-harness/benchmarks"
-MAIN="/private/tmp/asyar-benchmark-apps/main/Asyar Dev.app"
-BRANCH="/private/tmp/asyar-benchmark-apps/branch/Asyar Dev.app"
+OUT="/Users/khoshbin/develop/Conbind-Project/benchmarks/results/2026-10-03-architecture-review"
+HARNESS="/private/tmp/conbind-comparison-harness/benchmarks"
+MAIN="/private/tmp/conbind-benchmark-apps/main/Conbind Dev.app"
+BRANCH="/private/tmp/conbind-benchmark-apps/branch/Conbind Dev.app"
 [[ -d "$MAIN" && -d "$BRANCH" ]] || { echo "Both prepared release bundles are required." >&2; exit 1; }
 echo "This will quit/relaunch the benchmarked apps and send synthetic keys for about 15 minutes."
 echo "Keep the keyboard and mouse idle. Default hotkeys: Option+Space."
 for revision in main branch; do
   if [[ "$revision" == main ]]; then app="$MAIN"; sha=9145d66c145e9f58f824945606d0df43266dbb25; else app="$BRANCH"; sha=3e1a94084a48cca8cecb3967bfa703c847088720; fi
-  bash "$HARNESS/bench.sh" --yes --asyar-app "$app" "$@"
+  bash "$HARNESS/bench.sh" --yes --conbind-app "$app" "$@"
   mkdir -p "$OUT/$revision"
   ditto "$HARNESS/results" "$OUT/$revision"
   printf '

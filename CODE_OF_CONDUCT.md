@@ -51,15 +51,15 @@ decisions when appropriate.
 ## Scope
 
 This Code of Conduct applies within all community spaces (including GitHub
-repositories, issue trackers, pull request discussions, and our official Discord
-server), and also applies when an individual is officially representing the
+repositories, issue trackers, pull request discussions, and GitHub Discussions),
+and also applies when an individual is officially representing the
 community in public spaces.
 
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainer at **xoshbin@gmail.com** or privately via the
-[official Discord server](https://discord.gg/vvYRXrs7Xa). All complaints will be
+reported to the project maintainer (MintFlow Technologies, Luca Montanari) by a
+private message to **montanari-luca** on GitHub. All complaints will be
 reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

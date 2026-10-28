@@ -64,7 +64,7 @@ interface FrontmostApplication {
 
 ### Capability note — what Raycast doesn't have
 
-Raycast's `getFrontmostApplication` is strictly pull-based; there is no way to subscribe to launch, terminate, or frontmost-changed events without polling. Asyar exposes those three events through `ApplicationService.on*`. Extensions that want to react _when_ the user switches apps (rather than asking Asyar every second) should use the push surface; those that just need the current state can keep using `getFrontmostApplication()` or `isRunning()`.
+Raycast's `getFrontmostApplication` is strictly pull-based; there is no way to subscribe to launch, terminate, or frontmost-changed events without polling. Conbind exposes those three events through `ApplicationService.on*`. Extensions that want to react _when_ the user switches apps (rather than asking Conbind every second) should use the push surface; those that just need the current state can keep using `getFrontmostApplication()` or `isRunning()`.
 
 ### Usage — query surface
 
@@ -145,7 +145,7 @@ On Wayland there is no portable equivalent of `_NET_ACTIVE_WINDOW`, so `onFrontm
 
 #### macOS Accessibility permissions
 
-Retrieving the **window title** via `getFrontmostApplication` on macOS requires **Accessibility Permissions**. If Asyar lacks them, `windowTitle` is returned as an empty string. On the first call Asyar checks and will guide the user to **System Settings > Privacy & Security > Accessibility** if needed.
+Retrieving the **window title** via `getFrontmostApplication` on macOS requires **Accessibility Permissions**. If Conbind lacks them, `windowTitle` is returned as an empty string. On the first call Conbind checks and will guide the user to **System Settings > Privacy & Security > Accessibility** if needed.
 
 #### Windows
 
@@ -157,17 +157,17 @@ The launcher action panel exposes a built-in **Uninstall Application** action. I
 
 - The `application:*` namespace today is read-only (frontmost metadata, installed-app listing, presence queries). Adding a destructive file-system write to it would be a capability jump that every extension using the namespace would inherit.
 - The UX belongs in the launcher shell. Confirmation, trash/uninstaller feedback, and the action-panel gating are all shell responsibilities.
-- The backing Tauri command rejects any Tier 2 caller with `AppError::Permission`. Even `asyar:api:invoke` pass-through can't reach it.
+- The backing Tauri command rejects any Tier 2 caller with `AppError::Permission`. Even `conbind:api:invoke` pass-through can't reach it.
 
 Extensions that need to react to uninstalls — for example to invalidate cached bundle metadata — should subscribe to `onApplicationsChanged`; the index watcher fires automatically when the bundle disappears from a scanned directory.
 
 **Platform behaviour:**
 
-| Platform | Action visibility                                                                   | Behaviour on confirm                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| -------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS    | Shown for `type: 'application'` results whose `path` does not start with `/System/` | Before the confirm sheet, Asyar scans `~/Library/*` for user data keyed by the app's `CFBundleIdentifier` (Application Support, Caches, Logs, Containers, HTTPStorages, WebKit, Application Scripts, Preferences/*.plist, ByHost preferences, Saved Application State, LaunchAgents, Cookies) plus two name-keyed fallbacks. The confirm sheet shows the total size. On confirm, the `.app` bundle is moved to Trash via the `trash` crate, followed by each user-data path. All items remain reversible from Finder's Trash. |
-| Windows  | Shown for `type: 'application'` results with a `.lnk` path                          | The shortcut's display-name is matched case-insensitively against `HKLM/HKCU\…\CurrentVersion\Uninstall\*`; the discovered `UninstallString` is launched via `cmd /C`. The vendor's own uninstaller UI takes over (including any UAC prompt). Asyar does not scan user data — the vendor uninstaller is responsible for that cleanup.                                                                                                                                                                                         |
-| Linux    | Hidden                                                                              | Not supported — package-manager fragmentation (apt/dnf/pacman/flatpak/snap/AppImage) makes a single first-party implementation impractical.                                                                                                                                                                                                                                                                                                                                                                                   |
+| Platform | Action visibility                                                                   | Behaviour on confirm                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| -------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS    | Shown for `type: 'application'` results whose `path` does not start with `/System/` | Before the confirm sheet, Conbind scans `~/Library/*` for user data keyed by the app's `CFBundleIdentifier` (Application Support, Caches, Logs, Containers, HTTPStorages, WebKit, Application Scripts, Preferences/*.plist, ByHost preferences, Saved Application State, LaunchAgents, Cookies) plus two name-keyed fallbacks. The confirm sheet shows the total size. On confirm, the `.app` bundle is moved to Trash via the `trash` crate, followed by each user-data path. All items remain reversible from Finder's Trash. |
+| Windows  | Shown for `type: 'application'` results with a `.lnk` path                          | The shortcut's display-name is matched case-insensitively against `HKLM/HKCU\…\CurrentVersion\Uninstall\*`; the discovered `UninstallString` is launched via `cmd /C`. The vendor's own uninstaller UI takes over (including any UAC prompt). Conbind does not scan user data — the vendor uninstaller is responsible for that cleanup.                                                                                                                                                                                         |
+| Linux    | Hidden                                                                              | Not supported — package-manager fragmentation (apt/dnf/pacman/flatpak/snap/AppImage) makes a single first-party implementation impractical.                                                                                                                                                                                                                                                                                                                                                                                     |
 
 **macOS data-scan scope** — the scanner is intentionally conservative:
 
@@ -179,7 +179,7 @@ Extensions that need to react to uninstalls — for example to invalidate cached
 
 - Empty or missing `UninstallString` → `AppError::Validation`.
 - Entry flagged `SystemComponent = 1` → `AppError::Permission` (these are Windows updates/components and never user-uninstallable).
-- Entry's `DisplayName` matches Asyar itself (case-insensitive) → `AppError::Permission` (no self-uninstall).
+- Entry's `DisplayName` matches Conbind itself (case-insensitive) → `AppError::Permission` (no self-uninstall).
 - No matching registry entry → `AppError::NotFound` (the UI surfaces this as a "Uninstall failed: …" HUD).
 
 ---

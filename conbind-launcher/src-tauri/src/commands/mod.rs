@@ -1,0 +1,117 @@
+pub mod agents;
+pub mod app;
+pub mod app_events;
+pub mod app_updater;
+pub mod application_index;
+pub mod applications;
+pub mod argument_model;
+pub mod browser;
+pub mod calculator;
+pub mod clipboard_capture;
+pub mod clipboard_markup;
+pub mod clipboard_privacy;
+pub mod command_arg_defaults;
+pub mod crypto;
+pub mod dynamic_commands;
+pub mod extension_onboarding;
+pub mod extension_preferences;
+pub mod extension_runtime;
+pub mod extension_state;
+pub mod extensions;
+pub mod factory_reset;
+pub mod feedback;
+pub mod file_manager;
+pub mod files;
+pub mod fs_watcher;
+pub mod handlers;
+pub mod hud;
+pub mod input;
+pub mod locale;
+pub mod mcp;
+pub mod oauth;
+pub mod ocr;
+pub mod opener;
+pub mod power;
+pub mod process;
+pub mod profile;
+pub mod query_history;
+pub mod raycast_import;
+pub mod runs;
+pub mod runtimes;
+pub mod screen;
+pub mod scripts;
+pub mod searchbar_accessory;
+pub mod secret_detection;
+pub mod selection;
+pub mod settings_panes;
+pub mod shell;
+pub mod shortcuts;
+pub mod snap_guides;
+pub mod snippet_commands;
+pub mod system;
+pub mod system_actions;
+pub mod system_events;
+pub mod templating;
+pub mod timers;
+pub mod usage;
+pub mod walkthrough;
+pub mod window_management;
+
+#[cfg(test)]
+mod agents_test;
+
+pub use app::*;
+pub use app_events::*;
+pub use app_updater::*;
+pub use application_index::*;
+pub use applications::*;
+pub use argument_model::*;
+pub use command_arg_defaults::*;
+pub use extension_preferences::*;
+pub use extension_runtime::*;
+pub use extensions::*;
+pub use factory_reset::*;
+pub use feedback::*;
+pub use file_manager::*;
+pub use files::*;
+pub use hud::*;
+pub use input::*;
+pub use locale::*;
+pub use oauth::*;
+pub use ocr::*;
+pub use opener::*;
+pub use power::*;
+pub use profile::*;
+pub use query_history::*;
+pub use screen::*;
+pub use searchbar_accessory::*;
+pub use selection::*;
+pub use settings_panes::*;
+pub use shell::*;
+pub use shortcuts::*;
+pub use snap_guides::*;
+pub use snippet_commands::*;
+pub use system::*;
+pub use system_actions::*;
+pub use system_events::*;
+pub use templating::*;
+pub use timers::*;
+pub use window_management::*;
+
+#[cfg(test)]
+mod dialog_api_tests {
+    #[test]
+    fn async_commands_do_not_use_blocking_dialog_apis() {
+        let command_sources = [
+            include_str!("extensions.rs"),
+            include_str!("profile.rs"),
+            include_str!("scripts.rs"),
+            include_str!("../storage/commands.rs"),
+        ];
+
+        for source in command_sources {
+            assert!(!source.contains(concat!("blocking_", "pick")));
+            assert!(!source.contains(concat!("blocking_", "save")));
+        }
+    }
+}

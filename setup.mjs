@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Asyar Development Workspace Setup
+ * Conbind Development Workspace Setup
  *
  * Clones bundled extensions, installs workspace dependencies, builds the SDK,
  * and verifies the setup.
  *
  * Usage:
- *   git clone https://github.com/Xoshbin/asyar.git
- *   cd asyar
+ *   git clone https://github.com/montanari-luca/Conbind.git
+ *   cd conbind
  *   node setup.mjs
  *
  * Cross-platform (Node.js, no bash dependencies).
@@ -57,7 +57,9 @@ for (const check of checks) {
 }
 
 if (!preflight) {
-  console.error('\nMissing prerequisites. See https://github.com/Xoshbin/asyar#prerequisites');
+  console.error(
+    '\nMissing prerequisites. See https://github.com/montanari-luca/Conbind#prerequisites',
+  );
   process.exit(1);
 }
 
@@ -105,16 +107,16 @@ for (const ext of extensions) {
   console.log(`  Building extensions/${ext.name}...`);
   run('pnpm build', { cwd: dir });
   console.log(`  Attaching extensions/${ext.name}...`);
-  run('pnpm exec asyar attach', { cwd: dir });
+  run('pnpm exec conbind attach', { cwd: dir });
   console.log(`  ✓ extensions/${ext.name} built and attached`);
 }
 
 // ── Verify setup ─────────────────────────────────────────────────────────────
 
-step('Verifying setup (asyar doctor)');
+step('Verifying setup (conbind doctor)');
 
 try {
-  run('node dist/cli/index.js doctor', { cwd: resolve(root, 'asyar-sdk') });
+  run('node dist/cli/index.js doctor', { cwd: resolve(root, 'conbind-sdk') });
 } catch {
   console.error('\n⚠ Doctor reported issues — see above for details.');
   console.error('  The workspace is installed but may need manual fixes.');
@@ -126,7 +128,7 @@ try {
 console.log(`
 ${'─'.repeat(64)}
 
-  ✓ Asyar development workspace is ready!
+  ✓ Conbind development workspace is ready!
 
   Quick start:
     pnpm dev          Build SDK and start the app
@@ -134,7 +136,7 @@ ${'─'.repeat(64)}
     pnpm check        Run doctor + type checks
 
   Docs:
-    https://github.com/Xoshbin/asyar
+    https://github.com/montanari-luca/Conbind
 
 ${'─'.repeat(64)}
 `);
