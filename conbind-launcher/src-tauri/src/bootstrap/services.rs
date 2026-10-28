@@ -295,9 +295,6 @@ pub fn init_daemons(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
         let sched = app.state::<crate::scheduler::Scheduler>();
         let handle = app.handle();
         sched.register(crate::app_updater::scheduler::job(handle.clone()));
-        sched.register(crate::app_updater::scheduler::idle_restart_job(
-            handle.clone(),
-        ));
         sched.register(crate::extensions::update_scheduler::job(handle.clone()));
         sched.register(crate::shell::scheduler::job(
             app.state::<crate::shell::ShellProcessRegistry>()
@@ -552,14 +549,6 @@ pub fn init_daemons(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
                 &payload,
             );
         }));
-    }
-
-    // Apply pending update
-    {
-        let handle = app.handle().clone();
-        tauri::async_runtime::spawn(async move {
-            crate::app_updater::service::apply_on_start(&handle).await;
-        });
     }
 
     // Extension runtime ticker

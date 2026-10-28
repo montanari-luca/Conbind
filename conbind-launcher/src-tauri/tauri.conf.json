@@ -75,7 +75,6 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -93,13 +92,6 @@
   "plugins": {
     "fs": {},
     "http": null,
-    "updater": {
-      "active": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMyNDUwMkFDNTdBOUQxMjUKUldRbDBhbFhyQUpGd3ArcUplOWtFTk1UV1I1QWIweGtCRU0zMTd5YjZZTXdJbi95Zm43aExZZk0K",
-      "endpoints": [
-        "https://github.com/montanari-luca/Conbind/releases/latest/download/latest.json"
-      ]
-    },
     "deep-link": {
       "desktop": {
         "schemes": ["conbind"]

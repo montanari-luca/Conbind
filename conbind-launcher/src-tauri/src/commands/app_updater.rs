@@ -1,39 +1,18 @@
 use crate::app_updater::{AppUpdaterState, PendingUpdate};
 use tauri::AppHandle;
 
-/// Read the update channel from settings.dat.
-/// Falls back to "stable" when the store or key is unavailable.
-fn read_channel_from_store(app: &AppHandle) -> String {
-    use tauri_plugin_store::StoreExt;
-    app.store("settings.dat")
-        .ok()
-        .and_then(|s| s.get("settings"))
-        .and_then(|v| v.get("updates").cloned())
-        .and_then(|u| u.get("channel").cloned())
-        .and_then(|c| c.as_str().map(|s| s.to_owned()))
-        .unwrap_or_else(|| "stable".to_string())
-}
-
 /// Manual "Check for updates now" — called by the About tab button.
 /// Delegates entirely to the service layer; no logic here.
 #[tauri::command]
-pub async fn app_updater_check_now(app: AppHandle) -> Result<Option<String>, String> {
-    let channel = read_channel_from_store(&app);
-    crate::app_updater::service::check_and_maybe_download(&app, &channel).await
+pub async fn app_updater_check_now(app: AppHandle) -> Result<Option<PendingUpdate>, String> {
+    crate::app_updater::service::check_for_update(&app).await
 }
 
-/// Returns the pending update info if a download is ready.
-/// Frontend calls this on mount to restore badge state across sessions.
+/// Returns the available update (if one was found) so the frontend can restore
+/// its badge state after the webview loads.
 #[tauri::command]
 pub fn app_updater_get_pending(state: tauri::State<'_, AppUpdaterState>) -> Option<PendingUpdate> {
     state.pending.lock().ok()?.clone()
-}
-
-/// Restart the app so the sentinel-based updater can apply the pending update
-/// on the next cold start.
-#[tauri::command]
-pub fn app_relaunch(app: AppHandle) {
-    app.restart();
 }
 
 /// Returns true when the What's New panel should be shown after an app update.
@@ -58,12 +37,6 @@ pub fn app_updater_should_show_whats_new(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app_updater::scheduler::DEFAULT_CHANNEL;
-
-    #[test]
-    fn test_fallback_channel_matches_scheduler_default() {
-        assert_eq!(DEFAULT_CHANNEL, "stable");
-    }
 
     #[test]
     fn test_should_show_whats_new_fresh_install() {

@@ -127,7 +127,7 @@ This section is split across two related tabs.
 
 - **Version** — Shows the current Conbind version.
 - **Update channel** — Switch between Stable and Beta update channels.
-- **Check for updates** — Manually trigger an update check. If an update is available, you can download and install it from here without leaving the app.
+- **Check for updates** — Manually trigger an update check. If a newer version is available, a **Download** button opens the installer link for your platform; run it to update.
 
 ## Related
 

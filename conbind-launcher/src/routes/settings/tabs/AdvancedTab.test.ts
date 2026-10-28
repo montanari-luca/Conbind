@@ -138,7 +138,7 @@ function createMockHandler(overrides?: Partial<SettingsHandler>): SettingsHandle
       extensions: { enabled: {}, autoUpdate: true },
       onboarding: { completed: false },
       feedback: { promptSeen: false },
-      updates: { channel: 'stable', autoCheck: true },
+      updates: { autoCheck: true },
       ai: {
         providers: {},
         temperature: 0.7,

@@ -4,7 +4,7 @@ This monorepo contains two independently-released packages. Each has its own flo
 
 | Package                            | Trigger             | Destination                                                                       |
 | ---------------------------------- | ------------------- | --------------------------------------------------------------------------------- |
-| **Launcher** (`conbind-launcher/`) | Push a `v*` tag     | GitHub Releases + in-app updater feed (`latest.json`)                             |
+| **Launcher** (`conbind-launcher/`) | Push a `v*` tag     | GitHub Releases + update feed (`conbind.json` in `MintFlow-Releases`)             |
 | **SDK** (`conbind-sdk/`)           | Push a `sdk-v*` tag | npm: [`conbind-sdk`](https://www.npmjs.com/package/conbind-sdk) + GitHub Releases |
 
 ## Ordering: release the SDK first
@@ -84,7 +84,7 @@ pnpm run release <patch|minor|major|beta>
 6. **Build matrix**: macOS arm64 + x64 (per-arch, not a universal binary), Windows x64/arm64, Linux amd64/arm64 — all 6 required
 7. **GitHub Release**: published directly (not a draft) with auto-generated notes
 8. **Pre-release detection**: tags with a hyphen (e.g., `v0.1.0-1`) are automatically marked "Pre-release"
-9. **Updater manifest**: `latest.json` is attached to the GitHub Release; the app's updater reads `releases/latest/download/latest.json`
+9. **Update feed**: after publishing, edit `conbind.json` in [`montanari-luca/MintFlow-Releases`](https://github.com/montanari-luca/MintFlow-Releases) (`{ "latest": "<version>", "windows": "<url>", "macos": "<url>", "linux": "<url>" }`, each platform entry a direct download link). The app reads it from `https://raw.githubusercontent.com/montanari-luca/MintFlow-Releases/refs/heads/main/conbind.json`, and **Check for Updates** offers the matching link when `latest` is newer than the running version
 
 > The Rust `SUPPORTED_SDK_VERSION` is **not** set by the release script — `src-tauri/build.rs` injects it at compile time from the local `conbind-sdk/package.json`, so it can never drift.
 
@@ -100,7 +100,7 @@ The tag triggers the build from the `release/vX.Y.Z` branch, so the installers a
 
 1. **Merge the release PR.** This lands the version bump on `main` so the _next_ release calculates from the right number.
 
-That's it — the GitHub Release and its updater manifest are published automatically.
+That's it for the GitHub Release; the update feed above is a manual step.
 
 ---
 
@@ -202,7 +202,7 @@ failing if `HOMEBREW_TAP_TOKEN` is ever missing.
   A `livecheck` block for `brew bump-cask-pr`-style automation isn't included
   because Homebrew's `github_latest` strategy only resolves GitHub's `/releases/latest`,
   which excludes prereleases entirely — it would find nothing.
-- `auto_updates true` is set because Conbind has its own updater (the GitHub Releases `latest.json` feed).
+- `auto_updates true` is set because Conbind has its own update check (the `conbind.json` feed).
   Brew is the _install_ channel; the app's own updater is the _stay current_ channel.
   This also means plain `brew upgrade` skips it — that's intentional, not a bug.
 - Only the two macOS `.dmg` artifacts are needed (Homebrew Cask is macOS-only);
@@ -225,9 +225,8 @@ Microsoft's manifest validation + moderator review before this can be automated 
 and winget-pkgs won't accept a package whose **only** available version is a pre-release
 (see "Pre-release gating" below).
 
-> **The MSI installers are not code-signed.** `build-windows` in the workflow only applies
-> the Tauri updater signature (`TAURI_SIGNING_PRIVATE_KEY`) — that verifies auto-updates,
-> it isn't an Authenticode/EV certificate. Expect winget/Windows to show a SmartScreen
+> **The MSI installers are not code-signed.** `build-windows` in the workflow does not apply
+> an Authenticode/EV certificate. Expect winget/Windows to show a SmartScreen
 > "unknown publisher" warning on install until the MSI is properly code-signed. This is a
 > pre-existing gap, not something introduced by the winget submission — flagging it here
 > since winget is the first channel where end users will actually notice it.
@@ -378,7 +377,7 @@ idempotent — so re-running is always safe.
 
 **Notes**
 
-- Launcher publish intentionally requires **all 6** targets — the auto-updater feed must never be half-published. The improvement is one-click recovery, not relaxing that invariant.
+- Launcher publish intentionally requires **all 6** targets — the update feed must never be half-published. The improvement is one-click recovery, not relaxing that invariant.
 - The build runs from the tag (the release branch's bump commit), so released binaries always carry the right version even before the PR merges. Merge the release PR so `main` carries the bump and the next release calculates correctly.
 
 > This table is also kept standalone at [`docs/how-to/release-recovery.md`](docs/how-to/release-recovery.md) for quick reference during an incident.

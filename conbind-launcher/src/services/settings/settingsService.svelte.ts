@@ -1,7 +1,6 @@
 import { Store, load } from '@tauri-apps/plugin-store';
 import { logService } from '../log/logService';
 import { appDataDir, join } from '@tauri-apps/api/path';
-import { getVersion } from '@tauri-apps/api/app';
 import * as commands from '../../lib/ipc/commands';
 import type { ISettingsService } from './interfaces/ISettingsService';
 import type { AppSettings, AISettings } from './types/AppSettingsType';
@@ -17,10 +16,9 @@ import { createPersistence } from '../../lib/persistence/extensionStore';
 // block guard both ends.
 // `AppSettings['updates']` is optional, so spreading `DEFAULT_SETTINGS.updates`
 // directly would widen every field to optional and drop the required
-// `autoCheck`. Keeping the defaults in their own complete constant lets the
-// channel auto-detection below spread them safely.
+// `autoCheck`. Keeping the defaults in their own complete constant keeps the
+// field required.
 const DEFAULT_UPDATE_SETTINGS: NonNullable<AppSettings['updates']> = {
-  channel: 'stable',
   autoCheck: true,
 };
 
@@ -155,20 +153,6 @@ class SettingsService implements ISettingsService {
       });
 
       this.initialized = true;
-
-      // Auto-detect update channel on first launch (storedRaw is null) or when
-      // upgrading from old settings that lacked the 'updates' key. Only fires once.
-      if (!storedRaw || (storedRaw as Partial<AppSettings>).updates === undefined) {
-        try {
-          const version = await getVersion();
-          if (/-/.test(version)) {
-            this.currentSettings.updates = { ...DEFAULT_UPDATE_SETTINGS, channel: 'beta' };
-            await this.save();
-          }
-        } catch {
-          // Non-fatal: version detection failed, keep stable default
-        }
-      }
 
       // Ensure autostart state matches settings
       try {

@@ -81,7 +81,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     promptSeen: false,
   },
   updates: {
-    channel: 'stable' as const,
     autoCheck: true,
   },
   ai: {
@@ -668,10 +667,6 @@ export class SettingsHandler {
     } catch (error) {
       logService.error(`Failed to update history retention cap: ${error}`);
     }
-  }
-
-  async updateChannel(channel: 'stable' | 'beta') {
-    await settingsService.updateSettings('updates', { channel });
   }
 
   async updateAutoCheck(autoCheck: boolean) {

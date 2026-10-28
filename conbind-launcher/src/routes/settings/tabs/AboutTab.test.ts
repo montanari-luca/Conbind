@@ -10,7 +10,8 @@ const { invokeMock, listenMock } = vi.hoisted(() => ({
 vi.mock('@tauri-apps/api/core', () => ({ invoke: invokeMock }));
 vi.mock('@tauri-apps/api/event', () => ({ listen: listenMock }));
 vi.mock('@tauri-apps/api/app', () => ({ getVersion: vi.fn().mockResolvedValue('0.1.0') }));
-vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }));
+const { openUrlMock } = vi.hoisted(() => ({ openUrlMock: vi.fn() }));
+vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: openUrlMock }));
 
 const { runUpdateCheckMock } = vi.hoisted(() => ({
   runUpdateCheckMock: vi.fn(),
@@ -30,50 +31,47 @@ import {
 function createMockHandler(): SettingsHandler {
   return {
     settings: {
-      updates: { channel: 'stable', autoCheck: true },
+      updates: { autoCheck: true },
     },
-    updateChannel: vi.fn(),
     updateAutoCheck: vi.fn(),
     activeTab: 'about',
   } as unknown as SettingsHandler;
 }
 
-describe('AboutTab update restart button', () => {
+describe('AboutTab update download button', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     destroyAppUpdateStore();
     invokeMock.mockResolvedValue(null);
   });
 
-  it('shows Restart Now button after clicking Check for Updates when an update is installed', async () => {
-    runUpdateCheckMock.mockResolvedValueOnce({ kind: 'installed', version: '0.2.0' });
+  it('shows a Download button after Check for Updates finds a newer version', async () => {
+    runUpdateCheckMock.mockResolvedValueOnce({
+      kind: 'available',
+      version: '0.2.0',
+      downloadUrl: 'https://example.test/conbind-0.2.0.dmg',
+    });
 
     const handler = createMockHandler();
     render(AboutTab, { props: { handler } });
 
-    // Initially no restart button
-    expect(screen.queryByRole('button', { name: /restart now/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^download$/i })).toBeNull();
 
-    // Click Check for Updates button
-    const checkBtn = screen.getByRole('button', { name: /check for updates/i });
-    await fireEvent.click(checkBtn);
+    await fireEvent.click(screen.getByRole('button', { name: /check for updates/i }));
 
-    // Expect Restart Now button to appear
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /restart now/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /^download$/i })).toBeTruthy();
     });
 
-    // Clicking Restart Now calls app_relaunch
-    const restartBtn = screen.getByRole('button', { name: /restart now/i });
-    await fireEvent.click(restartBtn);
-
-    expect(invokeMock).toHaveBeenCalledWith('app_relaunch', undefined);
+    // Clicking Download opens the direct link from the release feed
+    await fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
+    expect(openUrlMock).toHaveBeenCalledWith('https://example.test/conbind-0.2.0.dmg');
   });
 
-  it('shows Restart Now button on mount if an update was already downloaded and is pending', async () => {
+  it('shows the Download button on mount if an update was already found', async () => {
     invokeMock.mockImplementation(async (cmd: string) => {
       if (cmd === 'app_updater_get_pending') {
-        return { version: '0.2.0' };
+        return { version: '0.2.0', downloadUrl: 'https://example.test/x' };
       }
       return null;
     });
@@ -82,11 +80,11 @@ describe('AboutTab update restart button', () => {
     render(AboutTab, { props: { handler } });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /restart now/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /^download$/i })).toBeTruthy();
     });
   });
 
-  it('does not show Restart Now button when up to date', async () => {
+  it('does not show the Download button when up to date', async () => {
     runUpdateCheckMock.mockResolvedValueOnce({ kind: 'up-to-date' });
 
     const handler = createMockHandler();
@@ -99,10 +97,10 @@ describe('AboutTab update restart button', () => {
       expect(screen.getByText("You're running the latest version.")).toBeTruthy();
     });
 
-    expect(screen.queryByRole('button', { name: /restart now/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^download$/i })).toBeNull();
   });
 
-  it('does not show Restart Now button when update check fails', async () => {
+  it('does not show the Download button when update check fails', async () => {
     runUpdateCheckMock.mockResolvedValueOnce({ kind: 'error', message: 'network unreachable' });
 
     const handler = createMockHandler();
@@ -115,6 +113,6 @@ describe('AboutTab update restart button', () => {
       expect(screen.getByText(/Update check failed: network unreachable/i)).toBeTruthy();
     });
 
-    expect(screen.queryByRole('button', { name: /restart now/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^download$/i })).toBeNull();
   });
 });

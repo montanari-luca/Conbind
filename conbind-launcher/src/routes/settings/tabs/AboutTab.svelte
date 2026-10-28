@@ -1,15 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { SettingsCard, SettingsRow, Button, SegmentedControl, Toggle } from '../../../components';
+  import { SettingsCard, SettingsRow, Button, Toggle } from '../../../components';
   import type { SettingsHandler } from '../settingsHandlers.svelte';
   import { runUpdateCheck } from '../../../services/update/updateService';
   import {
     appUpdateState,
     initAppUpdateStore,
+    markUpdateAvailable,
+    openUpdateDownload,
     refreshPendingUpdate,
   } from '../../../services/update/appUpdateStore.svelte';
   import { type UnlistenFn } from '@tauri-apps/api/event';
-  import { appRelaunch } from '../../../lib/ipc/commands';
   import { getVersion } from '@tauri-apps/api/app';
   import { openUrl } from '@tauri-apps/plugin-opener';
   import logoUrl from '../../../resources/images/Square142x142Logo.png';
@@ -22,23 +23,10 @@
     handler: SettingsHandler;
   } = $props();
 
-  let updateStatus = $state<
-    'idle' | 'checking' | 'downloading' | 'available' | 'up-to-date' | 'error' | 'installed'
-  >('idle');
+  let updateStatus = $state<'idle' | 'checking' | 'available' | 'up-to-date' | 'error'>('idle');
   let updateVersion = $state('');
   let updateError = $state('');
   let appVersion = $state('');
-
-  let selectedChannel = $state<'stable' | 'beta'>('stable');
-  $effect(() => {
-    selectedChannel = handler.settings.updates?.channel ?? 'stable';
-  });
-  $effect(() => {
-    const current = handler.settings.updates?.channel ?? 'stable';
-    if (selectedChannel !== current) {
-      handler.updateChannel(selectedChannel as 'stable' | 'beta');
-    }
-  });
 
   onMount(async () => {
     await initAppUpdateStore();
@@ -68,7 +56,7 @@
   });
 
   async function checkForUpdates() {
-    if (updateStatus === 'checking' || updateStatus === 'downloading') return;
+    if (updateStatus === 'checking') return;
 
     updateStatus = 'checking';
     updateError = '';
@@ -76,11 +64,10 @@
 
     const result = await runUpdateCheck();
 
-    if (result.kind === 'installed') {
+    if (result.kind === 'available') {
       updateVersion = result.version;
-      updateStatus = 'installed';
-      appUpdateState.phase = 'ready';
-      appUpdateState.pendingVersion = result.version;
+      updateStatus = 'available';
+      markUpdateAvailable(result);
     } else if (result.kind === 'up-to-date') {
       updateStatus = 'up-to-date';
     } else if (result.kind === 'error') {
@@ -91,28 +78,20 @@
     }
   }
 
-  let isUpdateReady = $derived(appUpdateState.phase === 'ready' || updateStatus === 'installed');
+  let isUpdateReady = $derived(appUpdateState.phase === 'ready' || updateStatus === 'available');
   let readyVersion = $derived(appUpdateState.pendingVersion || updateVersion);
 
   let updateStatusText = $derived(
     updateStatus === 'checking'
       ? 'Checking for updates...'
       : updateStatus === 'available'
-        ? `Update ${updateVersion} is available. Starting download...`
-        : updateStatus === 'downloading'
-          ? `Downloading and installing update ${updateVersion}...`
-          : updateStatus === 'installed'
-            ? `Update ${updateVersion} installed. Restart Conbind to apply.`
-            : updateStatus === 'up-to-date'
-              ? "You're running the latest version."
-              : updateStatus === 'error'
-                ? `Update check failed: ${updateError}`
-                : '',
+        ? t('settings.about.update_available', { version: updateVersion })
+        : updateStatus === 'up-to-date'
+          ? "You're running the latest version."
+          : updateStatus === 'error'
+            ? `Update check failed: ${updateError}`
+            : '',
   );
-
-  async function restartAndUpdate() {
-    await appRelaunch();
-  }
 </script>
 
 <div class="about-tab">
@@ -124,21 +103,6 @@
         <div class="app-name">Conbind</div>
         <div class="app-version">Version {appVersion}</div>
       </div>
-
-      <SettingsRow
-        label={t('settings.about.release_channel')}
-        description={t('settings.about.release_channel_description')}
-      >
-        {#snippet children()}
-          <SegmentedControl
-            options={[
-              { value: 'stable', label: t('settings.about.channel_stable') },
-              { value: 'beta', label: t('settings.about.channel_beta') },
-            ]}
-            bind:value={selectedChannel}
-          />
-        {/snippet}
-      </SettingsRow>
 
       <SettingsRow
         label={t('settings.about.auto_updates')}
@@ -154,11 +118,11 @@
 
       {#if isUpdateReady}
         <SettingsRow
-          label={`Update ${readyVersion} ready`}
-          description={t('settings.about.auto_install_next_launch')}
+          label={t('settings.about.update_available', { version: readyVersion })}
+          description={t('settings.about.update_available_desc')}
         >
           {#snippet children()}
-            <Button onclick={restartAndUpdate}>{t('settings.about.restart_now')}</Button>
+            <Button onclick={openUpdateDownload}>{t('settings.about.download_update')}</Button>
           {/snippet}
         </SettingsRow>
       {/if}
@@ -166,18 +130,15 @@
       <SettingsRow label={t('settings.about.section_updates')}>
         {#snippet children()}
           <div class="update-control">
-            <Button
-              onclick={checkForUpdates}
-              disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
-            >
-              {updateStatus === 'checking' || updateStatus === 'downloading'
+            <Button onclick={checkForUpdates} disabled={updateStatus === 'checking'}>
+              {updateStatus === 'checking'
                 ? t('settings.about.checking')
                 : t('settings.about.check_for_updates')}
             </Button>
             {#if updateStatus !== 'idle'}
               <span
                 class="update-status"
-                class:status-success={updateStatus === 'up-to-date' || updateStatus === 'installed'}
+                class:status-success={updateStatus === 'up-to-date' || updateStatus === 'available'}
                 class:status-error={updateStatus === 'error'}
               >
                 {updateStatusText}

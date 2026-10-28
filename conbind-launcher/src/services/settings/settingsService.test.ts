@@ -55,7 +55,6 @@ const DEFAULT: AppSettings = {
     completed: false,
   },
   updates: {
-    channel: 'stable',
     autoCheck: true,
   },
   ai: {

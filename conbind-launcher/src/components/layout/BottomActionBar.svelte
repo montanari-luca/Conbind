@@ -14,8 +14,7 @@
   import InformationPanel from './InformationPanel.svelte';
   import ShowMoreBarHuds from './ShowMoreBarHuds.svelte';
   import { t } from '../../services/i18n';
-  import { appUpdateState } from '../../services/update/appUpdateStore.svelte';
-  import { appRelaunch } from '../../lib/ipc/commands';
+  import { appUpdateState, openUpdateDownload } from '../../services/update/appUpdateStore.svelte';
 
   let {
     selectedItem = null,
@@ -83,8 +82,8 @@
   let isUpdateReady = $derived(appUpdateState.phase === 'ready');
   let readyVersion = $derived(appUpdateState.pendingVersion);
 
-  async function handleRestart() {
-    await appRelaunch();
+  async function handleDownload() {
+    await openUpdateDownload();
   }
 
   function handleActionClick() {
@@ -129,15 +128,15 @@
       <button
         type="button"
         class="update-ready-pill"
-        onclick={handleRestart}
-        title={t('settings.about.restart_now')}
+        onclick={handleDownload}
+        title={t('settings.about.download_update')}
         aria-label={readyVersion
-          ? `Update ${readyVersion} ready. Click to restart.`
-          : 'Update ready. Click to restart.'}
+          ? `Update ${readyVersion} available. Click to download.`
+          : 'Update available. Click to download.'}
       >
         <StatusDot color="info" size={6} />
         <span class="update-ready-text"
-          >{readyVersion ? `Update ${readyVersion} ready` : 'Update ready'}</span
+          >{readyVersion ? `Update ${readyVersion} available` : 'Update available'}</span
         >
       </button>
       <span aria-hidden="true" class="bottom-bar-separator"></span>
@@ -181,15 +180,15 @@
       <button
         type="button"
         class="update-ready-pill"
-        onclick={handleRestart}
-        title={t('settings.about.restart_now')}
+        onclick={handleDownload}
+        title={t('settings.about.download_update')}
         aria-label={readyVersion
-          ? `Update ${readyVersion} ready. Click to restart.`
-          : 'Update ready. Click to restart.'}
+          ? `Update ${readyVersion} available. Click to download.`
+          : 'Update available. Click to download.'}
       >
         <StatusDot color="info" size={6} />
         <span class="update-ready-text"
-          >{readyVersion ? `Update ${readyVersion} ready` : 'Update ready'}</span
+          >{readyVersion ? `Update ${readyVersion} available` : 'Update available'}</span
         >
       </button>
       <span aria-hidden="true" class="bottom-bar-separator"></span>

@@ -6,15 +6,15 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn(async () => () => {}),
 }));
 
-const mockAppRelaunch = vi.fn(async () => {});
+const mockOpenUrl = vi.fn(async (_url: string) => {});
 
-vi.mock('../../lib/ipc/commands', () => ({
-  appRelaunch: () => mockAppRelaunch(),
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openUrl: (url: string) => mockOpenUrl(url),
 }));
 
 vi.mock('../../services/i18n', () => ({
   t: (key: string) => {
-    if (key === 'settings.about.restart_now') return 'Restart Now';
+    if (key === 'settings.about.download_update') return 'Download';
     if (key === 'actions.title') return 'Actions';
     if (key === 'common.show_more') return 'Show More';
     return key;
@@ -55,6 +55,7 @@ describe('BottomActionBar - Update Ready Pill', () => {
     vi.clearAllMocks();
     appUpdateState.phase = 'idle';
     appUpdateState.pendingVersion = null;
+    appUpdateState.downloadUrl = null;
   });
 
   it('does not render update-ready pill when phase is idle', () => {
@@ -66,12 +67,13 @@ describe('BottomActionBar - Update Ready Pill', () => {
       },
     });
 
-    expect(screen.queryByTitle('Restart Now')).toBeNull();
+    expect(screen.queryByTitle('Download')).toBeNull();
   });
 
-  it('renders update-ready pill with version and restarts on click when phase is ready', async () => {
+  it('renders update pill with version and opens the download link on click when phase is ready', async () => {
     appUpdateState.phase = 'ready';
     appUpdateState.pendingVersion = '0.1.2';
+    appUpdateState.downloadUrl = 'https://example.test/conbind.dmg';
 
     render(BottomActionBar, {
       props: {
@@ -81,12 +83,12 @@ describe('BottomActionBar - Update Ready Pill', () => {
       },
     });
 
-    const pills = screen.getAllByTitle('Restart Now');
+    const pills = screen.getAllByTitle('Download');
     expect(pills.length).toBeGreaterThanOrEqual(1);
-    expect(pills[0].textContent).toContain('Update 0.1.2 ready');
+    expect(pills[0].textContent).toContain('Update 0.1.2 available');
 
     await fireEvent.click(pills[0]);
-    expect(mockAppRelaunch).toHaveBeenCalledTimes(1);
+    expect(mockOpenUrl).toHaveBeenCalledWith('https://example.test/conbind.dmg');
   });
 
   it('suppresses search selectedItem action when an extension view is active without activeViewPrimaryActionLabel', () => {

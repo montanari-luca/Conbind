@@ -7,10 +7,12 @@ pub struct AppUpdaterState {
     pub pending: Arc<Mutex<Option<PendingUpdate>>>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PendingUpdate {
     pub version: String,
+    /// Direct download link for this platform, when the manifest provides one.
+    pub download_url: Option<String>,
 }
 
 impl AppUpdaterState {
@@ -49,6 +51,7 @@ mod tests {
     fn test_pending_update_serialize() {
         let update = PendingUpdate {
             version: "1.2.3".to_string(),
+            download_url: None,
         };
         let json = serde_json::to_string(&update).unwrap();
         assert!(json.contains("\"version\""));
@@ -59,8 +62,10 @@ mod tests {
     fn test_pending_update_clone() {
         let update = PendingUpdate {
             version: "2.0.0".to_string(),
+            download_url: Some("https://example.test/x".to_string()),
         };
         let cloned = update.clone();
         assert_eq!(cloned.version, "2.0.0");
+        assert_eq!(cloned, update);
     }
 }

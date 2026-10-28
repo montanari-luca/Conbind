@@ -1,143 +1,229 @@
-use log::{error, info};
+use log::{info, warn};
+use serde::Deserialize;
+use std::time::Duration;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_updater::UpdaterExt;
 
-const CHANNEL_HEADER: &str = "X-Update-Channel";
+use crate::app_updater::PendingUpdate;
 
-/// Check for an available update, download it if found, and persist the sentinel.
-/// Emits events to the frontend during the flow:
-///   - `conbind:app-update:checking`   — before the network check
-///   - `conbind:app-update:idle`       — when no update is available
-///   - `conbind:app-update:downloading`— when an update is found and download begins
-///   - `conbind:app-update:ready`      — when download+install is complete
-///
-/// Returns `Ok(Some(version))` when an update was downloaded, `Ok(None)` when
-/// no update was found, or `Err(message)` on failure.
-pub async fn check_and_maybe_download(
-    app: &AppHandle,
-    channel: &str,
-) -> Result<Option<String>, String> {
-    // 1. Emit checking
-    crate::event_bridge::bridge_emit(app, "conbind:app-update:checking", ());
+/// Where the latest release is announced. The file is a small JSON document:
+/// `{ "latest": "0.1.0", "windows": "<url>", "macos": "<url>", "linux": "<url>" }`
+/// where each platform entry is a direct download link.
+pub const UPDATE_MANIFEST_URL: &str =
+    "https://raw.githubusercontent.com/montanari-luca/MintFlow-Releases/refs/heads/main/conbind.json";
 
-    // 2. Build updater with channel header
-    let updater = app
-        .updater_builder()
-        .header(CHANNEL_HEADER, channel)
-        .map_err(|e| e.to_string())?
-        .build()
-        .map_err(|e| e.to_string())?;
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
-    // 3. Check for an update
-    let update = updater.check().await.map_err(|e| e.to_string())?;
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct UpdateManifest {
+    pub latest: String,
+    #[serde(default)]
+    pub windows: String,
+    #[serde(default)]
+    pub macos: String,
+    #[serde(default)]
+    pub linux: String,
+}
 
-    match update {
-        None => {
-            info!("app_updater: no update available");
-            crate::event_bridge::bridge_emit(app, "conbind:app-update:idle", ());
-            Ok(None)
-        }
-        Some(u) => {
-            // `version` is the announced/new version; `current_version` is the running one.
-            let version = u.version.clone();
-            info!("app_updater: update found: {}", version);
-
-            // Write to managed state so "Restart now" can read the pending version.
-            if let Some(updater_state) = app.try_state::<crate::app_updater::AppUpdaterState>() {
-                if let Ok(mut pending) = updater_state.pending.lock() {
-                    *pending = Some(crate::app_updater::PendingUpdate {
-                        version: version.clone(),
-                    });
-                }
-            }
-
-            // Emit downloading
-            crate::event_bridge::bridge_emit(
-                app,
-                "conbind:app-update:downloading",
-                serde_json::json!({ "version": version }),
-            );
-
-            // Write sentinel BEFORE downloading so that even if the download fails,
-            // the next startup will re-check.
-            crate::app_updater::sentinel::write_sentinel(app, &version).ok();
-
-            // Download and install (passive — relies on sentinel for apply-on-next-launch flow).
-            let install_result = u.download_and_install(|_chunk, _total| {}, || {}).await;
-
-            if let Err(e) = install_result {
-                error!("app_updater: download_and_install failed: {}", e);
-                // Don't return error — sentinel is written; next start will retry.
-            }
-
-            // Emit ready
-            crate::event_bridge::bridge_emit(
-                app,
-                "conbind:app-update:ready",
-                serde_json::json!({ "version": version }),
-            );
-
-            Ok(Some(version))
-        }
+/// Key of the manifest entry that holds this platform's download link.
+pub fn platform_key() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else {
+        "linux"
     }
 }
 
-/// Called at cold start (before the main window shows). If a sentinel exists,
-/// it means a previous run downloaded an update; re-check and apply it now.
-pub async fn apply_on_start(app: &AppHandle) {
-    let sentinel = crate::app_updater::sentinel::read_sentinel(app);
-    if sentinel.is_none() {
-        return;
+pub fn parse_manifest(body: &str) -> Result<UpdateManifest, String> {
+    serde_json::from_str(body).map_err(|e| format!("invalid update manifest: {e}"))
+}
+
+fn parse_version(raw: &str) -> Result<semver::Version, String> {
+    semver::Version::parse(raw.trim().trim_start_matches('v'))
+        .map_err(|e| format!("invalid version {raw:?}: {e}"))
+}
+
+/// Pure decision: is `manifest.latest` newer than `current`? When it is, returns
+/// the update together with this platform's download link (`None` while the
+/// manifest has no link for the platform yet).
+pub fn evaluate(
+    manifest: &UpdateManifest,
+    current: &str,
+    platform: &str,
+) -> Result<Option<PendingUpdate>, String> {
+    let latest = parse_version(&manifest.latest)?;
+    if latest <= parse_version(current)? {
+        return Ok(None);
     }
-
-    info!("app_updater: pending update sentinel found, applying on start...");
-
-    // Delete sentinel first so a crash here doesn't loop forever.
-    crate::app_updater::sentinel::delete_sentinel(app);
-
-    // Read channel from settings, default to stable
-    let channel = {
-        use tauri_plugin_store::StoreExt;
-        app.store("settings.dat")
-            .ok()
-            .and_then(|s| s.get("settings"))
-            .and_then(|v| v.get("updates").cloned())
-            .and_then(|u| u.get("channel").cloned())
-            .and_then(|c| c.as_str().map(|s| s.to_owned()))
-            .unwrap_or_else(|| "stable".to_string())
+    let link = match platform {
+        "macos" => &manifest.macos,
+        "windows" => &manifest.windows,
+        _ => &manifest.linux,
     };
+    let link = link.trim();
+    Ok(Some(PendingUpdate {
+        version: manifest.latest.trim().trim_start_matches('v').to_string(),
+        download_url: (!link.is_empty()).then(|| link.to_string()),
+    }))
+}
 
-    if let Err(e) = check_and_maybe_download(app, &channel).await {
-        error!("app_updater: apply_on_start failed: {}", e);
+async fn fetch_manifest() -> Result<UpdateManifest, String> {
+    let client = reqwest::Client::builder()
+        .timeout(REQUEST_TIMEOUT)
+        .user_agent(concat!("Conbind/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let response = client
+        .get(UPDATE_MANIFEST_URL)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "update manifest returned HTTP {}",
+            response.status()
+        ));
     }
+    let body = response.text().await.map_err(|e| e.to_string())?;
+    parse_manifest(&body)
+}
 
-    // Clear pending state after apply attempt
-    if let Some(updater_state) = app.try_state::<crate::app_updater::AppUpdaterState>() {
-        if let Ok(mut pending) = updater_state.pending.lock() {
-            *pending = None;
+/// Check the update manifest and, when a newer version is announced, remember it.
+/// Emits events to the frontend during the flow:
+///   - `conbind:app-update:checking` — before the network check
+///   - `conbind:app-update:idle`     — when the app is up to date
+///   - `conbind:app-update:ready`    — when a newer version is available; the
+///     payload carries `version` and `downloadUrl`
+///
+/// Returns `Ok(Some(update))` when a newer version exists, `Ok(None)` when the
+/// app is up to date, or `Err(message)` on failure.
+pub async fn check_for_update(app: &AppHandle) -> Result<Option<PendingUpdate>, String> {
+    crate::event_bridge::bridge_emit(app, "conbind:app-update:checking", ());
+
+    let manifest = fetch_manifest().await?;
+    let current = app.package_info().version.to_string();
+    let update = evaluate(&manifest, &current, platform_key())?;
+
+    if let Some(state) = app.try_state::<crate::app_updater::AppUpdaterState>() {
+        if let Ok(mut pending) = state.pending.lock() {
+            *pending = update.clone();
         }
     }
+
+    match &update {
+        None => {
+            info!("app_updater: up to date ({current})");
+            crate::event_bridge::bridge_emit(app, "conbind:app-update:idle", ());
+        }
+        Some(u) => {
+            info!("app_updater: update available: {}", u.version);
+            if u.download_url.is_none() {
+                warn!(
+                    "app_updater: manifest has no download link for {}",
+                    platform_key()
+                );
+            }
+            crate::event_bridge::bridge_emit(app, "conbind:app-update:ready", u);
+        }
+    }
+    Ok(update)
 }
 
 #[cfg(test)]
 mod tests {
-    // NOTE: `check_and_maybe_download` and `apply_on_start` both require a live
-    // `AppHandle` with the updater plugin registered.  Constructing a fully wired
-    // mock AppHandle in unit tests is not practical with Tauri 2's architecture
-    // (the plugin graph and async runtime need to be real).
-    //
-    // What IS tested here:
-    //   • The `CHANNEL_HEADER` constant has the expected value so callers can rely on it.
-    //   • Sentinel interactions used inside the service are covered by `sentinel.rs` tests.
-    //
-    // Integration / smoke testing:
-    //   • Run the app in dev mode, open the updater settings, and click "Check for updates".
-    //   • Observe the `conbind:app-update:*` events in the browser DevTools console.
-
     use super::*;
 
+    fn manifest(latest: &str) -> UpdateManifest {
+        UpdateManifest {
+            latest: latest.into(),
+            windows: "https://example.test/conbind.msi".into(),
+            macos: "https://example.test/conbind.dmg".into(),
+            linux: String::new(),
+        }
+    }
+
     #[test]
-    fn test_channel_header_constant() {
-        assert_eq!(CHANNEL_HEADER, "X-Update-Channel");
+    fn parses_the_published_shape() {
+        let m = parse_manifest(r#"{ "latest": "0.1.0", "windows": "", "macos": "", "linux": "" }"#)
+            .unwrap();
+        assert_eq!(m.latest, "0.1.0");
+        assert!(m.macos.is_empty());
+    }
+
+    #[test]
+    fn missing_platform_entries_default_to_empty() {
+        let m = parse_manifest(r#"{ "latest": "1.2.3" }"#).unwrap();
+        assert!(m.windows.is_empty() && m.macos.is_empty() && m.linux.is_empty());
+    }
+
+    #[test]
+    fn rejects_garbage() {
+        assert!(parse_manifest("not json").is_err());
+        assert!(parse_manifest(r#"{ "macos": "x" }"#).is_err());
+    }
+
+    #[test]
+    fn same_or_older_version_is_not_an_update() {
+        assert_eq!(
+            evaluate(&manifest("0.1.0"), "0.1.0", "macos").unwrap(),
+            None
+        );
+        assert_eq!(
+            evaluate(&manifest("0.0.9"), "0.1.0", "macos").unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn newer_version_returns_the_platform_link() {
+        let u = evaluate(&manifest("0.2.0"), "0.1.0", "macos")
+            .unwrap()
+            .unwrap();
+        assert_eq!(u.version, "0.2.0");
+        assert_eq!(
+            u.download_url.as_deref(),
+            Some("https://example.test/conbind.dmg")
+        );
+        let w = evaluate(&manifest("0.2.0"), "0.1.0", "windows")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            w.download_url.as_deref(),
+            Some("https://example.test/conbind.msi")
+        );
+    }
+
+    #[test]
+    fn empty_platform_link_is_none() {
+        let u = evaluate(&manifest("0.2.0"), "0.1.0", "linux")
+            .unwrap()
+            .unwrap();
+        assert_eq!(u.download_url, None);
+    }
+
+    #[test]
+    fn leading_v_and_whitespace_are_tolerated() {
+        let u = evaluate(&manifest(" v0.3.0 "), "0.1.0", "macos")
+            .unwrap()
+            .unwrap();
+        assert_eq!(u.version, "0.3.0");
+    }
+
+    #[test]
+    fn prerelease_is_older_than_release() {
+        assert!(evaluate(&manifest("0.1.0"), "0.1.0-5", "macos")
+            .unwrap()
+            .is_some());
+    }
+
+    #[test]
+    fn unparsable_version_is_an_error() {
+        assert!(evaluate(&manifest("soon"), "0.1.0", "macos").is_err());
+    }
+
+    #[test]
+    fn manifest_url_is_the_release_feed() {
+        assert!(UPDATE_MANIFEST_URL.ends_with("/MintFlow-Releases/refs/heads/main/conbind.json"));
     }
 }

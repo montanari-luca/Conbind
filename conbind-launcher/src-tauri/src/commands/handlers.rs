@@ -50,7 +50,6 @@ macro_rules! app_commands {
                 $crate::commands::get_locale_candidates,
                 $crate::commands::app_updater_check_now,
                 $crate::commands::app_updater_get_pending,
-                $crate::commands::app_relaunch,
                 $crate::commands::app_updater_should_show_whats_new,
                 $crate::onboarding::commands::get_onboarding_state,
                 $crate::onboarding::commands::advance_onboarding_step,

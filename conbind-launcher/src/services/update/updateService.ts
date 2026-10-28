@@ -1,11 +1,9 @@
 import { appUpdaterCheckNow } from '../../lib/ipc/updateCommands';
 import { logService } from '../log/logService';
 
-export type UpdateChannel = 'stable' | 'beta';
-
 export type UpdateResult =
   | { kind: 'up-to-date' }
-  | { kind: 'installed'; version: string }
+  | { kind: 'available'; version: string; downloadUrl: string | null }
   | { kind: 'error'; message: string }
   | { kind: 'busy' };
 
@@ -25,13 +23,13 @@ export async function runUpdateCheck(): Promise<UpdateResult> {
   logService.info('updateService: checking for updates');
 
   try {
-    const version = await appUpdaterCheckNow();
-    if (!version) {
+    const update = await appUpdaterCheckNow();
+    if (!update) {
       logService.info('updateService: no update available');
       return { kind: 'up-to-date' };
     }
-    logService.info(`updateService: update ${version} downloaded`);
-    return { kind: 'installed', version };
+    logService.info(`updateService: update ${update.version} available`);
+    return { kind: 'available', version: update.version, downloadUrl: update.downloadUrl ?? null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logService.error(`updateService: check failed — ${message}`);

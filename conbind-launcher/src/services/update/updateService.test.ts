@@ -23,10 +23,23 @@ describe('runUpdateCheck', () => {
     expect(logService.info).toHaveBeenCalled();
   });
 
-  it('returns installed with version when invoke resolves a version string', async () => {
-    vi.mocked(invoke).mockResolvedValueOnce('1.2.3');
+  it('returns available with version and link when a newer version exists', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      version: '1.2.3',
+      downloadUrl: 'https://example.test/conbind.dmg',
+    });
     const result = await runUpdateCheck();
-    expect(result).toEqual({ kind: 'installed', version: '1.2.3' });
+    expect(result).toEqual({
+      kind: 'available',
+      version: '1.2.3',
+      downloadUrl: 'https://example.test/conbind.dmg',
+    });
+  });
+
+  it('returns available with a null link when the feed has none for this platform', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({ version: '1.2.3', downloadUrl: null });
+    const result = await runUpdateCheck();
+    expect(result).toEqual({ kind: 'available', version: '1.2.3', downloadUrl: null });
   });
 
   it('returns error kind when invoke rejects', async () => {

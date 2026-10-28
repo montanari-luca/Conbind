@@ -48,7 +48,6 @@ export interface AppSettings {
   };
   feedback?: FeedbackSettings;
   updates?: {
-    channel: 'stable' | 'beta';
     autoCheck: boolean;
     lastSeenVersion?: string;
   };

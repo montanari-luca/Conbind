@@ -34,10 +34,11 @@ describe('appUpdateStore', () => {
   });
 
   it('sets phase to ready when pending update exists on init', async () => {
-    vi.mocked(invoke).mockResolvedValueOnce({ version: '2.0.0' });
+    vi.mocked(invoke).mockResolvedValueOnce({ version: '2.0.0', downloadUrl: 'https://x.test/a' });
     await initAppUpdateStore();
     expect(appUpdateState.phase).toBe('ready');
     expect(appUpdateState.pendingVersion).toBe('2.0.0');
+    expect(appUpdateState.downloadUrl).toBe('https://x.test/a');
   });
 
   it('is idempotent — second init call is a no-op', async () => {
