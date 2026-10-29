@@ -1311,6 +1311,24 @@
         "most_used": "Mais usados"
       }
     },
+    "battery": {
+      "ui": {
+        "title": "Bateria",
+        "remaining": "Tempo restante",
+        "charging": "Carregando",
+        "left": "{time} restantes",
+        "to_full": "{time} até carregar",
+        "hours_minutes": "{hours} h {minutes} min",
+        "minutes": "{minutes} min",
+        "calculating": "Calculando… o dispositivo ainda está fazendo a estimativa",
+        "charging_no_estimate": "Carregando, ainda sem estimativa",
+        "charged": "Totalmente carregada",
+        "plugged": "Conectada, sem descarregar",
+        "percent": "{percent}% de carga",
+        "no_battery": "Nenhuma bateria detectada",
+        "error": "Não foi possível ler a bateria"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "Uso de recursos",

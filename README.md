@@ -158,6 +158,7 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 - **Run Tracking** — Long-running work — agents and scripts — shows live status dots in the launcher. Failed runs stay until dismissed; succeeded agent threads stay until you close them, so you can pick a conversation back up at any time.
 - **Cleanup** — Free up disk space from the launcher: clear app caches, logs and temp files, developer leftovers (Xcode DerivedData, npm/pnpm/Cargo/Gradle caches), find data left behind by uninstalled apps, explore what's using your space with a drill-down analyzer, flush DNS and network caches, and empty the Trash. Everything is moved to the Trash first and only inside your home folder, with a review and confirm step.
 - **Resource Usage** — Type `resource usage` to open a live view of CPU, GPU, RAM, VRAM, network, and disk usage, refreshed every second while it's open. Nothing is recorded or sent anywhere.
+- **Battery** — Type `battery` to see your charge level and how long your battery will last, using the estimate your system already calculates. Nothing is recorded or sent anywhere.
 - **Calculator** — Instant math evaluation with currency conversion, directly in the search bar
 - **Clipboard History** — Search and reuse anything you've copied, with rich markdown, syntax highlighting, and LaTeX rendering for text items. Cmd/Ctrl-click (or Cmd/Ctrl+↑/↓) to select several items, then Enter merges them into a single paste
 - **File Search** — Find any file across your home folder instantly; a Rust-native index keeps per-keystroke search fast regardless of how much is indexed, with real image thumbnails and (on macOS) Quick Look-style previews for documents, videos, and archives
@@ -278,6 +279,7 @@ See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy
 | Calculator            |  ✅   |   ✅    |      ✅      |
 | Cleanup               |  ✅   |   ⚠️    |      ⚠️      |
 | Resource Usage        |  ✅   |   ⚠️    |      ⚠️      |
+| Battery               |  ✅   |   ⚠️    |      ⚠️      |
 | Clipboard History     |  ✅   |   ✅    |      ✅      |
 | File Search           |  ✅   |   ✅    |      ✅      |
 | Context Modes         |  ✅   |   ✅    |      ✅      |
@@ -295,6 +297,7 @@ See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy
 
 > - **Note on Cleanup:** developed and tested on macOS (⚠️ = implemented and unit-tested, not yet tried on real machines). "Find App Leftovers" is macOS-only.
 > - **Note on Resource Usage:** CPU, RAM, network, and disk work everywhere. GPU and VRAM are best effort: macOS reads the system accelerator statistics, Linux reads AMD/Intel counters and `nvidia-smi`, and Windows reads `nvidia-smi` (⚠️ = implemented and unit-tested, not yet tried on real machines).
+> - **Note on Battery:** reads the time estimate your system already provides. Windows does not report a time until full while charging (⚠️ = implemented and unit-tested, not yet tried on real machines).
 > - **Note on Linux Wayland:** Global input-heavy features like Snippets do **not** work on Wayland (e.g., default Ubuntu 22.04+, Fedora 25+, KDE Plasma 6).
 
 ### Detailed Platform Compatibility

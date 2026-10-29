@@ -388,6 +388,7 @@ macro_rules! system_commands {
                 $crate::commands::cleanup::cleanup_full_disk_access,
                 $crate::commands::cleanup::cleanup_open_full_disk_access,
                 $crate::commands::resource_usage::resource_usage_snapshot,
+                $crate::commands::battery::battery_estimate,
                 $crate::commands::system_actions_supported,
                 $crate::commands::system_action_run,
                 $crate::commands::open_settings_pane,

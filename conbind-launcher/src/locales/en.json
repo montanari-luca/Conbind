@@ -1311,6 +1311,24 @@
         "most_used": "Most used"
       }
     },
+    "battery": {
+      "ui": {
+        "title": "Battery",
+        "remaining": "Time remaining",
+        "charging": "Charging",
+        "left": "{time} left",
+        "to_full": "{time} until full",
+        "hours_minutes": "{hours} h {minutes} min",
+        "minutes": "{minutes} min",
+        "calculating": "Calculating… your device is still working out an estimate",
+        "charging_no_estimate": "Charging, no estimate yet",
+        "charged": "Fully charged",
+        "plugged": "Plugged in, not discharging",
+        "percent": "{percent}% charged",
+        "no_battery": "No battery detected",
+        "error": "Couldn't read the battery"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "Resource Usage",

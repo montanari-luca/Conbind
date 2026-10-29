@@ -46,3 +46,4 @@ export * from './ocrCommands';
 export * from './calculatorCommands';
 export * from './cleanupCommands';
 export * from './resourceUsageCommands';
+export * from './batteryCommands';

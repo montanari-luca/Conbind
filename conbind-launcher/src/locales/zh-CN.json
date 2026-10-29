@@ -1311,6 +1311,24 @@
         "most_used": "最常用"
       }
     },
+    "battery": {
+      "ui": {
+        "title": "电池",
+        "remaining": "剩余时间",
+        "charging": "充电中",
+        "left": "剩余 {time}",
+        "to_full": "还需 {time} 充满",
+        "hours_minutes": "{hours} 小时 {minutes} 分钟",
+        "minutes": "{minutes} 分钟",
+        "calculating": "正在计算… 设备仍在估算剩余时间",
+        "charging_no_estimate": "充电中，暂无估算",
+        "charged": "已充满",
+        "plugged": "已接通电源，未放电",
+        "percent": "电量 {percent}%",
+        "no_battery": "未检测到电池",
+        "error": "无法读取电池信息"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "资源使用情况",

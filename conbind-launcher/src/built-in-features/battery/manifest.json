@@ -1,0 +1,21 @@
+{
+  "id": "battery",
+  "name": "Battery",
+  "icon": "icon:power",
+  "version": "1.0.0",
+  "lifecycle": { "disableable": true },
+  "description": "See how much longer your battery will last",
+  "type": "extension",
+  "searchable": true,
+  "commands": [
+    {
+      "id": "estimate-battery",
+      "name": "Estimate battery",
+      "description": "Charge level and how long your battery will last",
+      "trigger": "battery estimate remaining time left charge charging power laptop",
+      "icon": "icon:power",
+      "mode": "view",
+      "component": "BatteryView"
+    }
+  ]
+}

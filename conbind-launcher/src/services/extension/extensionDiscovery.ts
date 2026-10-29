@@ -8,6 +8,7 @@ import type { ExtensionManifest } from 'conbind-sdk/contracts';
 export const BUILT_IN_FEATURE_IDS = new Set<string>([
   'agents',
   'aliases',
+  'battery',
   'calculator',
   'cleanup',
   'clipboard-history',

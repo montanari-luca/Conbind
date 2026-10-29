@@ -5,6 +5,7 @@ pub mod app_updater;
 pub mod application_index;
 pub mod applications;
 pub mod argument_model;
+pub mod battery;
 pub mod browser;
 pub mod calculator;
 pub mod cleanup;

@@ -169,6 +169,7 @@ mod aliases;
 pub mod app_events;
 pub mod app_updater;
 pub mod application;
+pub mod battery;
 pub mod bootstrap;
 pub mod browser;
 

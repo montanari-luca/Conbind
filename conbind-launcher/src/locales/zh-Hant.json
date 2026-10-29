@@ -1311,6 +1311,24 @@
         "most_used": "最常用"
       }
     },
+    "battery": {
+      "ui": {
+        "title": "電池",
+        "remaining": "剩餘時間",
+        "charging": "充電中",
+        "left": "剩餘 {time}",
+        "to_full": "還需 {time} 充滿",
+        "hours_minutes": "{hours} 小時 {minutes} 分鐘",
+        "minutes": "{minutes} 分鐘",
+        "calculating": "計算中… 裝置仍在估算剩餘時間",
+        "charging_no_estimate": "充電中，尚無估算",
+        "charged": "已充飽",
+        "plugged": "已接上電源，未放電",
+        "percent": "電量 {percent}%",
+        "no_battery": "未偵測到電池",
+        "error": "無法讀取電池資訊"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "資源使用情況",

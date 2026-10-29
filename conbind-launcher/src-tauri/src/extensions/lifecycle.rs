@@ -1113,6 +1113,7 @@ mod tests {
             ("window-management", "Window Management"),
             ("raycast-import", "Raycast Import"),
             ("resource-usage", "Resource Usage"),
+            ("battery", "Battery"),
         ] {
             let mut record = make_record(id, name, true);
             record.disableable = true;
@@ -1160,6 +1161,7 @@ mod tests {
             "window-management",
             "raycast-import",
             "resource-usage",
+            "battery",
         ];
 
         let mut inst_record = make_record("com.example.ext", "Example", false);
