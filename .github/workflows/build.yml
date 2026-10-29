@@ -1,0 +1,130 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Pinned to 22.04 so the AppImage links against an older glibc.
+          - arch: amd64
+            runner: ubuntu-22.04
+            rust-target: x86_64-unknown-linux-gnu
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            rust-target: aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev xdg-utils
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10.26.0
+      - uses: dtolnay/rust-toolchain@1.97.0
+        with:
+          targets: ${{ matrix.rust-target }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: conbind-launcher/src-tauri -> target
+          key: linux-${{ matrix.arch }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build Linux ${{ matrix.arch }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: scripts/build-linux.sh --release
+
+      - name: Verify Debian package dependencies
+        run: |
+          deb_path="$(find conbind-launcher/src-tauri/target/release/bundle/deb -maxdepth 1 -name '*.deb' -print -quit)"
+          test -n "$deb_path" || { echo "No .deb package found" >&2; exit 1; }
+          dpkg-deb -I "$deb_path" | grep -E '^ Depends:' | grep -q libxdo3 \
+            || { echo "The .deb does not depend on libxdo3" >&2; exit 1; }
+
+      - name: Stage summon helper
+        run: |
+          install -m 0755 \
+            "conbind-launcher/src-tauri/binaries/conbind-summon-${{ matrix.rust-target }}" \
+            "conbind-launcher/src-tauri/target/release/conbind-summon_${{ matrix.arch }}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            conbind-launcher/src-tauri/target/release/bundle/appimage/*.AppImage
+            conbind-launcher/src-tauri/target/release/bundle/deb/*.deb
+            conbind-launcher/src-tauri/target/release/conbind-summon_${{ matrix.arch }}
+
+  build-windows:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+            rust-target: x86_64-pc-windows-msvc
+          - arch: arm64
+            runner: windows-11-arm
+            rust-target: aarch64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10.26.0
+      - uses: dtolnay/rust-toolchain@1.97.0
+        with:
+          targets: ${{ matrix.rust-target }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: conbind-launcher/src-tauri -> target
+          key: windows-${{ matrix.arch }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build Windows ${{ matrix.arch }}
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: ./scripts/build-windows.ps1 -Release
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            conbind-launcher/src-tauri/target/release/bundle/msi/*.msi
+            conbind-launcher/src-tauri/target/release/bundle/nsis/*.exe
+            conbind-launcher/src-tauri/target/release/*.zip

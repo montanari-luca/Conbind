@@ -9,7 +9,7 @@
  */
 import { execSync, execFileSync } from 'child_process';
 import { rmSync, existsSync, readdirSync } from 'fs';
-import { resolve, dirname, join } from 'path';
+import { resolve, dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,8 +25,8 @@ if (buildArgs.length > 0 && !isLocalBuild) {
   process.exit(64);
 }
 
-function run(cmd, cwd = root) {
-  execSync(cmd, { cwd, stdio: 'inherit' });
+function run(cmd, cwd = root, env = {}) {
+  execSync(cmd, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
 }
 
 /**
@@ -65,7 +65,7 @@ const toClean = [
 for (const dir of toClean) {
   if (existsSync(dir)) {
     rmSync(dir, { recursive: true, force: true });
-    console.log(`  removed ${dir.replace(root + '/', '')}`);
+    console.log(`  removed ${relative(root, dir)}`);
   }
 }
 
@@ -105,10 +105,18 @@ step('Building conbind-launcher (pnpm tauri build)');
 try {
   // Local benchmark builds use the isolated dev bundle ID and keychain entry,
   // but retain release optimizations and skip updater artifacts/signing.
+  // The env var and the JSON config are passed in a way that also works under cmd.exe.
+  const noUpdaterConfig = JSON.stringify(
+    JSON.stringify({ bundle: { createUpdaterArtifacts: false } }),
+  );
   const buildCommand = isLocalBuild
-    ? 'CONBIND_KEYCHAIN_SERVICE=org.conbind.dev pnpm tauri build --config src-tauri/tauri.dev.conf.json --config \'{"bundle":{"createUpdaterArtifacts":false}}\''
+    ? `pnpm tauri build --config src-tauri/tauri.dev.conf.json --config ${noUpdaterConfig}`
     : 'pnpm tauri build';
-  run(buildCommand, launcherDir);
+  run(
+    buildCommand,
+    launcherDir,
+    isLocalBuild ? { CONBIND_KEYCHAIN_SERVICE: 'org.conbind.dev' } : {},
+  );
   console.log('\n✓ Build complete');
 } catch {
   console.error('✗ Tauri build failed');

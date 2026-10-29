@@ -11,52 +11,29 @@ _Developed and maintained by **MintFlow Technologies, Luca Montanari**._
 
 _Independent fork of Xoshbin's Asyar. The original core owner is **Khoshbin Ali ([Xoshbin](https://github.com/Xoshbin))**._
 
-I took the core, stripped down some features many won't need, and... coming soon 😉.
+# Current differences from upstream
+
+## New features
+
+- Battery estimation
+- Resource usage view
+- Full window management suite expanded from [SplitShadow](https://github.com/montanari-luca/SplitShadow)
+
+## Other changes
+
+- New settings design
+- Launch at login enabled by default
+
+---
 
 ## Tiny Footprint. Native Performance.
 
-Conbind is built with **Tauri + Rust** instead of Electron. That means:
+Conbind is built with **Tauri + Rust**. That means:
 
 - **Significantly less RAM** — no bundled Chromium, no V8 runtime sitting idle
 - **Instant startup** — the Rust backend initializes in milliseconds
 - **Real OS integration** — native APIs for app indexing, clipboard, global hotkeys, and accessibility
 - **Secure by default** — extensions run in isolated iframes; a broken extension can't crash the launcher
-
-> _Native performance, web flexibility — Rust does the heavy lifting, Svelte 5 keeps the UI snappy._
-
-### Measured against Raycast
-
-<!-- benchmarks:start -->
-
-| Metric                                 | Conbind 0.1.1-49 | Raycast 2.6.2.0 |
-| -------------------------------------- | ---------------: | --------------: |
-| Hotkey → window visible (median of 15) |          13.9 ms |         22.2 ms |
-| Hotkey → window visible (p95)          |          17.3 ms |         32.0 ms |
-| Hotkey → window visible (p99)          |          20.5 ms |         32.5 ms |
-| Keystroke → results painted (p50)      |              n/a |             n/a |
-| Keystroke → results painted (p95)      |              n/a |             n/a |
-| Cold start → usable                    |           585 ms |         2129 ms |
-| Memory footprint, idle (all processes) |         419.2 MB |        451.5 MB |
-| CPU while idle (30s average)           |           0.64 % |          1.44 % |
-| CPU deep idle (60s, after 120s quiet)  |           0.10 % |          1.41 % |
-| Memory deep idle                       |         664.4 MB |        680.4 MB |
-| CPU ms/s (powermetrics, deep idle)     |             1.02 |           13.92 |
-| Idle wakeups/s (deep idle)             |            11.82 |           46.33 |
-| Idle disk write ops (60s)              |                0 |              96 |
-| App size on disk                       |            68 MB |          223 MB |
-
-<sub>Measured 2026-10-04 on a Apple M4 Max (36 GB RAM), macOS 27.0.1, each app
-as installed, summoned by its own registered global hotkey, one at a time on a
-quiet machine. Black-box measurement: synthetic hotkey press → launcher window
-on screen. Reproduce with [`benchmarks/bench.sh`](benchmarks/README.md).</sub>
-
-<!-- benchmarks:end -->
-
-Don't take my word for it: [`benchmarks/bench.sh`](benchmarks/README.md) measures Conbind against Raycast black-box on your own machine — hotkey-to-window latency, cold start, full-process-group memory, idle CPU and wakeups, idle disk writes, and app size — and regenerates this table with `--update-readme`. Raycast Beta is included automatically when it is installed; the run above was made on a machine without it. The three privileged rows (CPU ms/s, idle wakeups, idle disk writes) need passwordless `sudo` for `powermetrics` and `fs_usage` and report `n/a` without it — see [`benchmarks/README.md`](benchmarks/README.md#optional-passwordless-measurement-tools).
-
----
-
-![Conbind launcher](docs/images/getting-started-hero.png)
 
 ---
 
@@ -111,8 +88,6 @@ The Linux installer places the AppImage at `~/.local/bin/conbind` and a lightwei
 
 ### Switching from Raycast?
 
-If you are moving over from Raycast, you don't have to rebuild your configuration from scratch. I built an instant importer directly into Conbind so you can carry over your setup in seconds:
-
 - **1-Click Migration:** Export your data from Raycast (**Export Settings & Data** ➔ `.rayconfig`), summon Conbind, and search **Import from Raycast** (or click the button on the Welcome onboarding screen).
 - **What Carries Over:** Snippets (with keywords and dynamic expansions), Quicklinks (mapped directly to Portals with `{query}` support), and App Hotkeys/Aliases.
 - **Privacy & Safety First:** Duplicate items are skipped cleanly, your Raycast setup is never altered, and imported data is protected locally with AES-256-GCM encryption backed by your OS Keychain.
@@ -144,6 +119,9 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 | **Deep Link Integration**                                     |           ✅           |                 ✅                  |         ✅          |
 | **Background Scheduling** (native Rust daemon)                |           ✅           |                 ❌                  |         ❌          |
 | **Reactive Live Subtitles** (real-time root list updates)     |           ✅           |                 ❌                  |         ❌          |
+| **Full window management suite**                              |           ✅           |                 ❌                  |         ❌          |
+| **Resource usage viewer**                                     |           ✅           |                 ❌                  |         ❌          |
+| **Battery Intelligence**                                      |           ✅           |                 ❌                  |         ❌          |
 
 ---
 
@@ -218,8 +196,6 @@ Want Conbind in your language? See [Contributing a Localization](CONTRIBUTING.md
 ---
 
 ## Privacy Defenses
-
-Conbind's privacy work is layered — each layer protects a different boundary, and the layers compose.
 
 ### Layer 1 — Capture-time exclusion
 
@@ -305,21 +281,7 @@ See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy
 
 _(Conbind is fully tested and verified on **macOS**, **Windows 11**, and **Debian**)_
 
-- **macOS:** Fully supported and tested. Global features like Snippets require Accessibility permissions.
-- **Windows:** Fully tested on Windows 11. Supported on Windows 10 out-of-the-box.
-- **Linux (X11):** Fully tested on Debian. Supported on all other X11 sessions (Mint, MATE, Xfce, Ubuntu on Xorg).
 - **Linux (Wayland):** ❌ Not supported for global hooks. _Workaround: Log out and select an "Xorg" or "X11" session at your login screen._
-
----
-
-## Tech Stack
-
-| Layer           | Technology                     | Why It Matters                                                      |
-| --------------- | ------------------------------ | ------------------------------------------------------------------- |
-| Backend         | Rust (Tauri v2)                | Native OS integration, memory safety, no Electron overhead          |
-| Frontend        | Svelte 5                       | Fine-grained reactivity, minimal bundle size, instant renders       |
-| Extensions      | TypeScript + any web framework | Build with Svelte, React, Vue, or vanilla JS — sandboxed in iframes |
-| Extension Store | [asyar.org](https://asyar.org) | Browse, publish, and install community extensions                   |
 
 ---
 
