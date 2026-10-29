@@ -1654,6 +1654,70 @@
       "copy_url_desc": "将网址复制到剪贴板",
       "copied": "已复制网址",
       "open_failed": "无法打开 {url}"
+    },
+    "cleanup": {
+      "act": {
+        "trash": "将所选项移到废纸篓",
+        "rescan": "重新扫描",
+        "reveal": "在文件管理器中显示",
+        "up": "转到上级文件夹",
+        "trash_entry": "移到废纸篓"
+      },
+      "category": {
+        "userCaches": "应用缓存",
+        "logs": "日志",
+        "tempFiles": "临时文件",
+        "packageCaches": "包管理器缓存",
+        "xcodeDerivedData": "Xcode DerivedData",
+        "xcodeDeviceSupport": "Xcode 设备支持文件",
+        "appLeftovers": "应用残留"
+      },
+      "confirm": {
+        "title": "移到废纸篓？",
+        "message": "将 {count} 个项目（{size}）移到废纸篓？在清倒废纸篓之前，您可以从中还原。",
+        "confirm": "移到废纸篓",
+        "cancel": "取消"
+      },
+      "hud": {
+        "done": "已将 {size} 移到废纸篓",
+        "partial": "已将 {size} 移到废纸篓，{failed} 个项目无法移动"
+      },
+      "ui": {
+        "title": "清理",
+        "title_developer": "开发者清理",
+        "disk_free": "{total} 中可用 {free}",
+        "items": "{count} 个项目",
+        "partly_selected": "部分选中",
+        "scanning": "正在扫描…",
+        "nothing": "没有可清理的内容",
+        "nothing_description": "在这些位置未发现缓存或残留文件。",
+        "selected": "已选择 {size} · {count} 个项目",
+        "trash": "移到废纸篓",
+        "analyzer_title": "磁盘空间分析器",
+        "folder_empty": "此文件夹为空",
+        "title_leftovers": "应用残留",
+        "leftovers_note": "这些项目看起来未被使用，但请在移到废纸篓前逐一检查。不会自动选中任何项目。"
+      },
+      "entry_confirm": {
+        "title": "将“{name}”移到废纸篓？",
+        "message": "清倒废纸篓后将释放 {size}。在此之前，您可以从废纸篓中还原。"
+      },
+      "network": {
+        "title": "清除网络缓存？",
+        "message": "这将清除 DNS 缓存和网络地址缓存。系统可能会要求输入管理员密码。",
+        "confirm": "清除缓存",
+        "done": "网络缓存已清除"
+      },
+      "empty_trash": {
+        "title": "清倒废纸篓？",
+        "message": "废纸篓中的所有内容将被永久删除，此操作无法撤销。",
+        "confirm": "清倒废纸篓",
+        "done": "废纸篓已清倒"
+      },
+      "fda": {
+        "message": "Conbind 没有“完全磁盘访问权限”，部分文件夹无法读取，显示的大小可能偏小。",
+        "open": "打开设置"
+      }
     }
   },
   "common": {
@@ -1779,7 +1843,8 @@
     "scripts": "脚本",
     "portals": "门户",
     "ai_builder": "AI 构建器",
-    "usage_stats": "使用统计"
+    "usage_stats": "使用统计",
+    "cleanup": "清理"
   },
   "core_actions": {
     "settings": "设置",

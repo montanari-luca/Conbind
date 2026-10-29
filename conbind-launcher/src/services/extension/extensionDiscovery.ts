@@ -9,6 +9,7 @@ export const BUILT_IN_FEATURE_IDS = new Set<string>([
   'agents',
   'aliases',
   'calculator',
+  'cleanup',
   'clipboard-history',
   'create-extension',
   'file-search',

@@ -44,3 +44,4 @@ export * from './usageCommands';
 export * from './systemActionCommands';
 export * from './ocrCommands';
 export * from './calculatorCommands';
+export * from './cleanupCommands';

@@ -178,6 +178,7 @@ pub use bootstrap::windows::{
     read_show_dock_icon, read_show_tray_icon, ThemePreference,
 };
 pub mod calculator;
+pub mod cleanup;
 pub mod clipboard_cache;
 pub mod clipboard_capture;
 pub mod clipboard_markup;
@@ -432,6 +433,7 @@ pub fn run() {
         .manage(std::sync::Arc::new(
             system_actions::SystemActionsState::new(system_actions::default_backend()),
         ))
+        .manage(std::sync::Arc::new(cleanup::ScanRegistry::new()))
         .manage(std::sync::Arc::new(system_events::SystemEventsHub::new()))
         .manage(std::sync::Arc::new(app_events::AppEventsHub::new()))
         .manage(std::sync::Arc::new(index_events::IndexEventsHub::new()))

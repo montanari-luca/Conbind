@@ -1654,6 +1654,70 @@
       "copy_url_desc": "Copiar o endereço para a área de transferência",
       "copied": "URL copiada",
       "open_failed": "Não foi possível abrir {url}"
+    },
+    "cleanup": {
+      "act": {
+        "trash": "Mover selecionados para a Lixeira",
+        "rescan": "Verificar novamente",
+        "reveal": "Mostrar no gerenciador de arquivos",
+        "up": "Ir para a pasta superior",
+        "trash_entry": "Mover para a Lixeira"
+      },
+      "category": {
+        "userCaches": "Caches de apps",
+        "logs": "Logs",
+        "tempFiles": "Arquivos temporários",
+        "packageCaches": "Caches de gerenciadores de pacotes",
+        "xcodeDerivedData": "DerivedData do Xcode",
+        "xcodeDeviceSupport": "Suporte a dispositivos do Xcode",
+        "appLeftovers": "Resíduos de apps"
+      },
+      "confirm": {
+        "title": "Mover para a Lixeira?",
+        "message": "Mover {count} itens ({size}) para a Lixeira? Você pode restaurá-los da Lixeira até esvaziá-la.",
+        "confirm": "Mover para a Lixeira",
+        "cancel": "Cancelar"
+      },
+      "hud": {
+        "done": "{size} movidos para a Lixeira",
+        "partial": "{size} movidos para a Lixeira, {failed} não puderam ser movidos"
+      },
+      "ui": {
+        "title": "Limpeza",
+        "title_developer": "Limpeza para desenvolvedores",
+        "disk_free": "{free} livres de {total}",
+        "items": "{count} itens",
+        "partly_selected": "parcialmente selecionado",
+        "scanning": "Verificando…",
+        "nothing": "Nada para limpar",
+        "nothing_description": "Nenhum cache ou resíduo foi encontrado nesses locais.",
+        "selected": "{size} selecionados · {count} itens",
+        "trash": "Mover para a Lixeira",
+        "analyzer_title": "Analisador de espaço em disco",
+        "folder_empty": "Esta pasta está vazia",
+        "title_leftovers": "Resíduos de apps",
+        "leftovers_note": "Estes itens parecem não estar em uso, mas confira cada um antes de movê-lo para a Lixeira. Nada é selecionado automaticamente."
+      },
+      "entry_confirm": {
+        "title": "Mover “{name}” para a Lixeira?",
+        "message": "Isso libera {size} depois que você esvaziar a Lixeira. Você pode restaurá-lo da Lixeira até lá."
+      },
+      "network": {
+        "title": "Limpar os caches de rede?",
+        "message": "Isso limpa o cache de DNS e o cache de endereços de rede. O sistema pode pedir a senha de administrador.",
+        "confirm": "Limpar caches",
+        "done": "Caches de rede limpos"
+      },
+      "empty_trash": {
+        "title": "Esvaziar a Lixeira?",
+        "message": "Tudo na Lixeira será excluído permanentemente. Esta ação não pode ser desfeita.",
+        "confirm": "Esvaziar Lixeira",
+        "done": "Lixeira esvaziada"
+      },
+      "fda": {
+        "message": "O Conbind não tem Acesso Total ao Disco, então algumas pastas não podem ser lidas e os tamanhos podem estar menores.",
+        "open": "Abrir Ajustes"
+      }
     }
   },
   "common": {
@@ -1779,7 +1843,8 @@
     "scripts": "Scripts",
     "portals": "Portais",
     "ai_builder": "AI Builder",
-    "usage_stats": "Estatísticas de uso"
+    "usage_stats": "Estatísticas de uso",
+    "cleanup": "Limpeza"
   },
   "core_actions": {
     "settings": "Configurações",

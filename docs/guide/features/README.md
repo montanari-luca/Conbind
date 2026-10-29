@@ -6,6 +6,7 @@ does, how to use it, shortcuts, tips, and related pages.
 - [Calculator](./calculator.md) — Math, units, currency & crypto, percentages, dates, world clocks, colors, and more, inline.
 - [Clipboard History](./clipboard-history.md) — Browse, filter, favorite, and paste past copies.
 - [File Search](./file-search.md) — Find any file by name, instantly, with a rich preview.
+- [Cleanup](./cleanup.md) — Free up disk space: caches, developer leftovers, app remnants, a space analyzer, and network cache cleanup.
 - [Notes](./notes.md) — Instant Markdown notes, daily logs, and desktop stickies.
 - [Snippets](./snippets.md) — Text expansion: type a keyword, paste the full text.
 - [Window Management](./window-management.md) — Resize and arrange windows with layout presets.

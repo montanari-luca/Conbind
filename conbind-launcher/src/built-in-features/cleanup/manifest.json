@@ -1,0 +1,66 @@
+{
+  "id": "cleanup",
+  "name": "Cleanup",
+  "icon": "icon:sparkles",
+  "version": "1.0.0",
+  "lifecycle": {
+    "disableable": true
+  },
+  "description": "Free up disk space by moving caches, logs and developer leftovers to the Trash",
+  "type": "extension",
+  "searchable": true,
+  "commands": [
+    {
+      "id": "clean-up",
+      "name": "Clean Up",
+      "description": "Find caches, logs and temp files you can move to the Trash",
+      "trigger": "clean up cleanup cache caches temp logs free space disk storage",
+      "icon": "icon:sparkles",
+      "mode": "view",
+      "component": "CleanupView"
+    },
+    {
+      "id": "developer-cleanup",
+      "name": "Developer Cleanup",
+      "description": "Clear Xcode DerivedData and package-manager caches",
+      "trigger": "developer cleanup xcode deriveddata npm pnpm cargo gradle cache dev",
+      "icon": "icon:terminal",
+      "mode": "view",
+      "component": "CleanupView"
+    },
+    {
+      "id": "app-leftovers",
+      "name": "Find App Leftovers",
+      "description": "Review data left behind by apps you've uninstalled",
+      "trigger": "app leftovers uninstalled remnants orphaned data support files cleanup",
+      "icon": "icon:search",
+      "mode": "view",
+      "component": "CleanupView"
+    },
+    {
+      "id": "space-analyzer",
+      "name": "Disk Space Analyzer",
+      "description": "See which folders in your home directory use the most space",
+      "trigger": "disk space analyzer usage storage large files folders size what is using",
+      "icon": "icon:layers",
+      "mode": "view",
+      "component": "AnalyzerView"
+    },
+    {
+      "id": "network-cleanup",
+      "name": "Network Cleanup",
+      "description": "Flush the DNS and network address caches",
+      "trigger": "network cleanup flush dns cache arp reset connection",
+      "icon": "icon:globe",
+      "mode": "background"
+    },
+    {
+      "id": "empty-trash",
+      "name": "Empty Trash",
+      "description": "Permanently delete everything in the Trash to free up space",
+      "trigger": "empty trash recycle bin bin delete permanently free space",
+      "icon": "icon:trash",
+      "mode": "background"
+    }
+  ]
+}

@@ -34,7 +34,10 @@ fn validate_show_path(path_str: &str) -> Result<(), AppError> {
 /// different spelling. The final component is not followed, so a symlink is
 /// trashed as a link and never takes its target with it. The returned path is
 /// what the OS acts on, so what was validated is what gets trashed.
-fn validate_trash_path(path_str: &str, home_dir: &Path) -> Result<std::path::PathBuf, AppError> {
+pub(crate) fn validate_trash_path(
+    path_str: &str,
+    home_dir: &Path,
+) -> Result<std::path::PathBuf, AppError> {
     let path = Path::new(path_str);
     if !path.is_absolute() {
         return Err(AppError::Other(format!(

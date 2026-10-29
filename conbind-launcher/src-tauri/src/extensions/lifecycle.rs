@@ -1109,6 +1109,7 @@ mod tests {
             ("system-settings", "System Settings"),
             ("url-opener", "URL Opener"),
             ("usage-stats", "Usage Stats"),
+            ("cleanup", "Cleanup"),
             ("window-management", "Window Management"),
             ("raycast-import", "Raycast Import"),
         ] {
@@ -1154,6 +1155,7 @@ mod tests {
             "system-settings",
             "url-opener",
             "usage-stats",
+            "cleanup",
             "window-management",
             "raycast-import",
         ];

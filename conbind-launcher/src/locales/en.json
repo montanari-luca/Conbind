@@ -1654,6 +1654,70 @@
       "copy_url_desc": "Copy the address to the clipboard",
       "copied": "Copied URL",
       "open_failed": "Couldn't open {url}"
+    },
+    "cleanup": {
+      "act": {
+        "trash": "Move selected to Trash",
+        "rescan": "Scan again",
+        "reveal": "Reveal in File Manager",
+        "up": "Go to parent folder",
+        "trash_entry": "Move to Trash"
+      },
+      "category": {
+        "userCaches": "App caches",
+        "logs": "Logs",
+        "tempFiles": "Temporary files",
+        "packageCaches": "Package manager caches",
+        "xcodeDerivedData": "Xcode DerivedData",
+        "xcodeDeviceSupport": "Xcode device support",
+        "appLeftovers": "App leftovers"
+      },
+      "confirm": {
+        "title": "Move to Trash?",
+        "message": "Move {count} items ({size}) to the Trash? You can restore them from the Trash until you empty it.",
+        "confirm": "Move to Trash",
+        "cancel": "Cancel"
+      },
+      "hud": {
+        "done": "Moved {size} to the Trash",
+        "partial": "Moved {size} to the Trash, {failed} could not be moved"
+      },
+      "ui": {
+        "title": "Clean Up",
+        "title_developer": "Developer Cleanup",
+        "disk_free": "{free} free of {total}",
+        "items": "{count} items",
+        "partly_selected": "partly selected",
+        "scanning": "Scanning…",
+        "nothing": "Nothing to clean",
+        "nothing_description": "No caches or leftovers were found in these locations.",
+        "selected": "{size} selected · {count} items",
+        "trash": "Move to Trash",
+        "analyzer_title": "Disk Space Analyzer",
+        "folder_empty": "This folder is empty",
+        "title_leftovers": "App Leftovers",
+        "leftovers_note": "These look unused, but check each one before moving it to the Trash. Nothing is selected for you."
+      },
+      "entry_confirm": {
+        "title": "Move “{name}” to Trash?",
+        "message": "This frees {size} once you empty the Trash. You can restore it from the Trash until then."
+      },
+      "network": {
+        "title": "Clear network caches?",
+        "message": "This flushes the DNS cache and the network address cache. Your system may ask for your administrator password.",
+        "confirm": "Clear caches",
+        "done": "Network caches cleared"
+      },
+      "empty_trash": {
+        "title": "Empty the Trash?",
+        "message": "Everything in the Trash will be permanently deleted. This can’t be undone.",
+        "confirm": "Empty Trash",
+        "done": "Trash emptied"
+      },
+      "fda": {
+        "message": "Conbind doesn’t have Full Disk Access, so some folders can’t be read and sizes may be too small.",
+        "open": "Open Settings"
+      }
     }
   },
   "common": {
@@ -1779,7 +1843,8 @@
     "scripts": "Scripts",
     "portals": "Portals",
     "ai_builder": "AI Builder",
-    "usage_stats": "Usage Stats"
+    "usage_stats": "Usage Stats",
+    "cleanup": "Cleanup"
   },
   "core_actions": {
     "settings": "Settings",

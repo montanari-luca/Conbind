@@ -1654,6 +1654,70 @@
       "copy_url_desc": "將網址複製到剪貼簿",
       "copied": "已複製網址",
       "open_failed": "無法開啟 {url}"
+    },
+    "cleanup": {
+      "act": {
+        "trash": "將所選項目移到垃圾桶",
+        "rescan": "重新掃描",
+        "reveal": "在檔案管理員中顯示",
+        "up": "前往上層資料夾",
+        "trash_entry": "移到垃圾桶"
+      },
+      "category": {
+        "userCaches": "App 快取",
+        "logs": "記錄檔",
+        "tempFiles": "暫存檔案",
+        "packageCaches": "套件管理員快取",
+        "xcodeDerivedData": "Xcode DerivedData",
+        "xcodeDeviceSupport": "Xcode 裝置支援檔案",
+        "appLeftovers": "App 殘留檔案"
+      },
+      "confirm": {
+        "title": "移到垃圾桶？",
+        "message": "要將 {count} 個項目（{size}）移到垃圾桶嗎？在清空垃圾桶之前，您可以從中還原。",
+        "confirm": "移到垃圾桶",
+        "cancel": "取消"
+      },
+      "hud": {
+        "done": "已將 {size} 移到垃圾桶",
+        "partial": "已將 {size} 移到垃圾桶，{failed} 個項目無法移動"
+      },
+      "ui": {
+        "title": "清理",
+        "title_developer": "開發者清理",
+        "disk_free": "{total} 中可用 {free}",
+        "items": "{count} 個項目",
+        "partly_selected": "部分選取",
+        "scanning": "正在掃描…",
+        "nothing": "沒有可清理的內容",
+        "nothing_description": "在這些位置未發現快取或殘留檔案。",
+        "selected": "已選取 {size} · {count} 個項目",
+        "trash": "移到垃圾桶",
+        "analyzer_title": "磁碟空間分析器",
+        "folder_empty": "此資料夾是空的",
+        "title_leftovers": "App 殘留檔案",
+        "leftovers_note": "這些項目看起來未被使用，但請在移到垃圾桶前逐一檢查。不會自動選取任何項目。"
+      },
+      "entry_confirm": {
+        "title": "要將「{name}」移到垃圾桶嗎？",
+        "message": "清空垃圾桶後將釋放 {size}。在此之前，您可以從垃圾桶中還原。"
+      },
+      "network": {
+        "title": "要清除網路快取嗎？",
+        "message": "這會清除 DNS 快取與網路位址快取。系統可能會要求輸入管理員密碼。",
+        "confirm": "清除快取",
+        "done": "網路快取已清除"
+      },
+      "empty_trash": {
+        "title": "要清空垃圾桶嗎？",
+        "message": "垃圾桶中的所有項目將被永久刪除，此動作無法復原。",
+        "confirm": "清空垃圾桶",
+        "done": "垃圾桶已清空"
+      },
+      "fda": {
+        "message": "Conbind 沒有「完整磁碟取用權限」，部分資料夾無法讀取，顯示的大小可能偏小。",
+        "open": "打開設定"
+      }
     }
   },
   "common": {
@@ -1779,7 +1843,8 @@
     "scripts": "指令碼",
     "portals": "傳送門",
     "ai_builder": "AI 建置器",
-    "usage_stats": "使用統計"
+    "usage_stats": "使用統計",
+    "cleanup": "清理"
   },
   "core_actions": {
     "settings": "設定",

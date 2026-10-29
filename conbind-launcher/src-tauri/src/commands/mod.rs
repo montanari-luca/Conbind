@@ -7,6 +7,7 @@ pub mod applications;
 pub mod argument_model;
 pub mod browser;
 pub mod calculator;
+pub mod cleanup;
 pub mod clipboard_capture;
 pub mod clipboard_markup;
 pub mod clipboard_privacy;

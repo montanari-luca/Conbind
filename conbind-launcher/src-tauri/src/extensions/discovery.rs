@@ -307,6 +307,10 @@ pub fn get_builtin_records() -> Vec<ExtensionRecord> {
                     include_str!("../../../src/built-in-features/calculator/manifest.json"),
                 ),
                 (
+                    "cleanup",
+                    include_str!("../../../src/built-in-features/cleanup/manifest.json"),
+                ),
+                (
                     "clipboard-history",
                     include_str!("../../../src/built-in-features/clipboard-history/manifest.json"),
                 ),
@@ -2249,7 +2253,7 @@ mod manifest_schema_tests {
     #[test]
     fn test_get_builtin_records_statically_compiled() {
         let records = get_builtin_records();
-        assert_eq!(records.len(), 24, "expected 24 built-in feature records");
+        assert_eq!(records.len(), 25, "expected 25 built-in feature records");
         for record in &records {
             assert!(
                 record.is_built_in,
