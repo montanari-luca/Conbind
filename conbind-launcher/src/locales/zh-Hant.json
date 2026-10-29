@@ -1311,6 +1311,26 @@
         "most_used": "最常用"
       }
     },
+    "resource_usage": {
+      "ui": {
+        "title": "資源使用情況",
+        "cpu": "CPU",
+        "ram": "記憶體",
+        "gpu": "GPU",
+        "vram": "顯示記憶體",
+        "network": "網路",
+        "disk": "磁碟",
+        "download": "下載",
+        "upload": "上傳",
+        "cores_one": "{count} 個核心",
+        "cores_other": "{count} 個核心",
+        "used_of": "{used} / {total}",
+        "swap": "交換空間：{used} / {total}",
+        "session_totals": "自開機以來：下載 {rx}，上傳 {tx}",
+        "not_available": "無法使用",
+        "error": "無法讀取系統使用情況"
+      }
+    },
     "raycast_import": {
       "import_title": "從 Raycast 匯入",
       "import_description": "選擇 Raycast「匯出設定與資料」產生的 .rayconfig 檔案，或「匯出片段」/「匯出快速連結」產生的 JSON 檔案。",

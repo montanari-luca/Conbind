@@ -1311,6 +1311,26 @@
         "most_used": "Mais usados"
       }
     },
+    "resource_usage": {
+      "ui": {
+        "title": "Uso de recursos",
+        "cpu": "CPU",
+        "ram": "RAM",
+        "gpu": "GPU",
+        "vram": "VRAM",
+        "network": "Rede",
+        "disk": "Disco",
+        "download": "Download",
+        "upload": "Upload",
+        "cores_one": "{count} núcleo",
+        "cores_other": "{count} núcleos",
+        "used_of": "{used} de {total}",
+        "swap": "Swap: {used} de {total}",
+        "session_totals": "Desde a inicialização: {rx} recebidos, {tx} enviados",
+        "not_available": "Indisponível",
+        "error": "Não foi possível ler o uso do sistema"
+      }
+    },
     "raycast_import": {
       "import_title": "Importar do Raycast",
       "import_description": "Escolha um arquivo .rayconfig em “Export Settings & Data” do Raycast, ou um arquivo JSON de “Export Snippets” / “Export Quicklinks”.",

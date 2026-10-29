@@ -218,6 +218,7 @@ pub mod process_manager;
 pub mod profile;
 pub mod query_history;
 pub mod raycast_import;
+pub mod resource_usage;
 pub mod runs;
 pub mod runtimes;
 mod scheduler;
@@ -434,6 +435,7 @@ pub fn run() {
             system_actions::SystemActionsState::new(system_actions::default_backend()),
         ))
         .manage(std::sync::Arc::new(cleanup::ScanRegistry::new()))
+        .manage(std::sync::Arc::new(resource_usage::ResourceSampler::new()))
         .manage(std::sync::Arc::new(system_events::SystemEventsHub::new()))
         .manage(std::sync::Arc::new(app_events::AppEventsHub::new()))
         .manage(std::sync::Arc::new(index_events::IndexEventsHub::new()))

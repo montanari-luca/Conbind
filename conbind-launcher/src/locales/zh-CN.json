@@ -1311,6 +1311,26 @@
         "most_used": "最常用"
       }
     },
+    "resource_usage": {
+      "ui": {
+        "title": "资源使用情况",
+        "cpu": "CPU",
+        "ram": "内存",
+        "gpu": "GPU",
+        "vram": "显存",
+        "network": "网络",
+        "disk": "磁盘",
+        "download": "下载",
+        "upload": "上传",
+        "cores_one": "{count} 个核心",
+        "cores_other": "{count} 个核心",
+        "used_of": "{used} / {total}",
+        "swap": "交换空间：{used} / {total}",
+        "session_totals": "自开机以来：下载 {rx}，上传 {tx}",
+        "not_available": "不可用",
+        "error": "无法读取系统使用情况"
+      }
+    },
     "raycast_import": {
       "import_title": "从 Raycast 导入",
       "import_description": "选择 Raycast“导出设置与数据”生成的 .rayconfig 文件，或“导出片段”/“导出快捷链接”生成的 JSON 文件。",

@@ -1,0 +1,21 @@
+{
+  "id": "resource-usage",
+  "name": "Resource Usage",
+  "icon": "icon:activity",
+  "version": "1.0.0",
+  "lifecycle": { "disableable": true },
+  "description": "See live CPU, GPU, RAM, VRAM, network and disk usage",
+  "type": "extension",
+  "searchable": true,
+  "commands": [
+    {
+      "id": "view-resource-usage",
+      "name": "View resource usage",
+      "description": "Live CPU, GPU, RAM, VRAM, network and disk usage",
+      "trigger": "resource usage system monitor performance cpu gpu ram vram memory network disk activity",
+      "icon": "icon:activity",
+      "mode": "view",
+      "component": "ResourceUsageView"
+    }
+  ]
+}

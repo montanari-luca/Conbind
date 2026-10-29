@@ -37,6 +37,7 @@ pub mod process;
 pub mod profile;
 pub mod query_history;
 pub mod raycast_import;
+pub mod resource_usage;
 pub mod runs;
 pub mod runtimes;
 pub mod screen;

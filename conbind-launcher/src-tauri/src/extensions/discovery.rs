@@ -347,6 +347,10 @@ pub fn get_builtin_records() -> Vec<ExtensionRecord> {
                     include_str!("../../../src/built-in-features/raycast-import/manifest.json"),
                 ),
                 (
+                    "resource-usage",
+                    include_str!("../../../src/built-in-features/resource-usage/manifest.json"),
+                ),
+                (
                     "runs",
                     include_str!("../../../src/built-in-features/runs/manifest.json"),
                 ),
@@ -2253,7 +2257,7 @@ mod manifest_schema_tests {
     #[test]
     fn test_get_builtin_records_statically_compiled() {
         let records = get_builtin_records();
-        assert_eq!(records.len(), 25, "expected 25 built-in feature records");
+        assert_eq!(records.len(), 26, "expected 26 built-in feature records");
         for record in &records {
             assert!(
                 record.is_built_in,

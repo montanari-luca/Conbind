@@ -19,6 +19,7 @@ export const BUILT_IN_FEATURE_IDS = new Set<string>([
   'portals',
   'quit',
   'raycast-import',
+  'resource-usage',
   'runs',
   'screen-ocr',
   'scripts',
