@@ -14,6 +14,7 @@
   import { looksLikeAIIntent } from './aiHintIntensity';
   import { createWindowDragController } from '../../services/launcher/windowDragController';
   import { t } from '../../services/i18n';
+  import logoUrl from '../../resources/images/Square142x142Logo.png';
 
   // Public handle exposed via `bind:accessoryRef={...}` so the global
   // keyboard chain (⌘P) can call togglePopover() from outside this component.
@@ -303,16 +304,7 @@
           <KeyboardHint keys="←" />
         </button>
       {:else}
-        <svg class="conbind-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 3.5 5.4 18.8h13.2L12 3.5Z" fill="currentColor" opacity="0.28" />
-          <path
-            d="M12 3.5 5.4 18.8M12 3.5l6.6 15.3"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-          />
-          <ellipse cx="12" cy="18.8" rx="6.6" ry="2" fill="currentColor" />
-        </svg>
+        <img src={logoUrl} alt="" class="conbind-mark" draggable="false" />
       {/if}
     </span>
 
@@ -534,6 +526,8 @@
   .conbind-mark {
     width: 100%;
     height: 100%;
+    border-radius: var(--radius-sm);
+    object-fit: contain;
   }
   .back-button-new {
     display: inline-flex;
