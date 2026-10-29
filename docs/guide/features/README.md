@@ -11,7 +11,7 @@ does, how to use it, shortcuts, tips, and related pages.
 - [Resource Usage](./resource-usage.md) — Live CPU, GPU, RAM, VRAM, network, and disk usage.
 - [Notes](./notes.md) — Instant Markdown notes, daily logs, and desktop stickies.
 - [Snippets](./snippets.md) — Text expansion: type a keyword, paste the full text.
-- [Window Management](./window-management.md) — Resize and arrange windows with layout presets.
+- [Window Management](./window-management.md) — Snap, resize, link, and save arrangements of windows.
 - [Aliases & Shortcuts](./aliases-and-shortcuts.md) — Custom triggers and global hotkeys for any command.
 - [Portals](./portals.md) — Save URLs as named launchers you can find by name.
 - [Scripts](./scripts.md) — Run shell scripts from watched folders.

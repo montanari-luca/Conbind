@@ -9,10 +9,20 @@ import { feedbackService } from '../../services/feedback/feedbackService.svelte'
 import { actionService } from '../../services/action/actionService.svelte';
 import { windowManagementState } from './state.svelte';
 import { DISPLAY_COMMAND_IDS, PRESET_IDS } from './presets';
+import { extractErrorMessage } from '../../lib/errors';
 import { applyCustomLayout, syncLayoutToIndex, removeLayoutFromIndex } from './layoutLifecycle';
+import {
+  describeWorkspace,
+  openWorkspace,
+  saveCurrentWorkspace,
+  syncWorkspaceToIndex,
+  updateWorkspace,
+} from './workspaceLifecycle';
 import { isAnyModalOpen } from '../../components/base/Modal.logic';
 import ManageView from './ManageView.svelte';
 import SwitchWindowsView from './SwitchWindowsView.svelte';
+import SplitPickerView from './SplitPickerView.svelte';
+import WorkspacesView from './WorkspacesView.svelte';
 import {
   type Extension,
   type ExtensionContext,
@@ -20,6 +30,8 @@ import {
   type IExtensionManager,
   ActionContext,
 } from 'conbind-sdk/contracts';
+
+const RESIZE_STEP = 0.1;
 
 class WindowManagementExtension implements Extension {
   onUnload: any;
@@ -34,17 +46,62 @@ class WindowManagementExtension implements Extension {
     if (this.store) {
       windowManagementState.setStore(this.store);
       await windowManagementState.loadFromStorage(this.store);
-      for (const layout of windowManagementState.customLayouts) {
-        await syncLayoutToIndex(layout, this.store);
-      }
+      await this.syncIndex();
     }
     logService.info('[WindowManagement] Initialized');
+  }
+
+  /** Makes every saved layout and workspace searchable and bindable to a hotkey. */
+  private async syncIndex(): Promise<void> {
+    if (!this.store) return;
+    for (const layout of windowManagementState.customLayouts) {
+      await syncLayoutToIndex(layout, this.store);
+    }
+    for (const workspace of windowManagementState.workspaces) {
+      await syncWorkspaceToIndex(workspace, this.store);
+    }
   }
 
   async executeCommand(commandId: string, _args?: Record<string, any>): Promise<any> {
     if (commandId === 'restore') {
       await this.restorePreviousBounds();
       return { type: 'no-view' };
+    }
+
+    if (commandId === 'larger' || commandId === 'smaller') {
+      await this.resize(commandId === 'larger' ? 1 + RESIZE_STEP : 1 - RESIZE_STEP, commandId);
+      return { type: 'no-view' };
+    }
+
+    if (commandId === 'minimize') {
+      await this.minimize();
+      return { type: 'no-view' };
+    }
+
+    if (commandId === 'split-with-window' || commandId === 'split-stacked') {
+      windowManagementState.splitAxis = commandId === 'split-stacked' ? 'stack' : 'side';
+      this.extensionManager?.navigateToView('window-management/SplitPickerView');
+      return { type: 'view', viewPath: 'window-management/SplitPickerView' };
+    }
+
+    if (commandId === 'unlink-split') {
+      await this.unlinkSplit();
+      return { type: 'no-view' };
+    }
+
+    if (commandId === 'save-workspace') {
+      await saveCurrentWorkspace(this.store);
+      return { type: 'no-view' };
+    }
+
+    if (commandId === 'open-workspace' || commandId === 'update-workspace') {
+      await this.runWorkspaceCommand(commandId, _args);
+      return { type: 'no-view' };
+    }
+
+    if (commandId === 'manage-workspaces') {
+      this.extensionManager?.navigateToView('window-management/WorkspacesView');
+      return { type: 'view', viewPath: 'window-management/WorkspacesView' };
     }
 
     if (commandId === 'manage-layouts') {
@@ -77,6 +134,57 @@ class WindowManagementExtension implements Extension {
 
     logService.warn(`[WindowManagement] Unknown command: ${commandId}`);
     return { type: 'no-view' };
+  }
+
+  /** `open-workspace` needs a name or id; `update-workspace` falls back to the active workspace. */
+  private async runWorkspaceCommand(
+    commandId: 'open-workspace' | 'update-workspace',
+    args?: Record<string, any>,
+  ): Promise<void> {
+    const rawName = typeof args?.name === 'string' ? args.name.trim() : undefined;
+    const rawId = typeof args?.id === 'string' ? args.id.trim() : undefined;
+
+    if (!rawName && !rawId && commandId === 'open-workspace') {
+      await feedbackService.report({
+        source: 'frontend',
+        kind: 'manual',
+        severity: 'error',
+        retryable: false,
+        context: { message: t('features.window_management.err_no_workspace') },
+      });
+      return;
+    }
+
+    const workspace =
+      rawName || rawId
+        ? windowManagementState.workspaces.find(
+            (w) =>
+              (rawId && w.id === rawId) ||
+              (rawName && w.name.toLowerCase() === rawName.toLowerCase()),
+          )
+        : windowManagementState.activeWorkspace;
+
+    if (!workspace) {
+      const missing = rawName || rawId;
+      await feedbackService.report({
+        source: 'frontend',
+        kind: 'manual',
+        severity: 'error',
+        retryable: false,
+        context: {
+          message: missing
+            ? t('features.window_management.err_workspace_not_found', { name: missing })
+            : t('features.window_management.err_no_active_workspace'),
+        },
+      });
+      return;
+    }
+
+    if (commandId === 'open-workspace') {
+      await openWorkspace(workspace, this.store);
+    } else {
+      await updateWorkspace(workspace, this.store);
+    }
   }
 
   private async applyLayoutByArgs(args?: Record<string, any>): Promise<void> {
@@ -117,11 +225,6 @@ class WindowManagementExtension implements Extension {
 
   private async applyPreset(presetId: string): Promise<void> {
     try {
-      const current = await windowManagementService.getWindowBounds();
-      if (this.store) {
-        await windowManagementState.savePreviousBounds(current, this.store);
-      }
-
       await windowManagementService.applyPreset(presetId);
 
       const label = presetId
@@ -145,60 +248,133 @@ class WindowManagementExtension implements Extension {
     }
   }
 
-  private async restorePreviousBounds(): Promise<void> {
-    const prev = windowManagementState.previousBounds;
-    if (!prev) {
-      await feedbackService.report({
-        source: 'frontend',
-        kind: 'manual',
-        severity: 'error',
-        retryable: false,
-        context: { message: t('features.window_management.nothing_restore') },
-      });
-      return;
-    }
+  private async resize(factor: number, commandId: 'larger' | 'smaller'): Promise<void> {
     try {
-      await windowManagementService.setWindowBounds(prev);
-      await feedbackService.showHUD('Restored');
+      await windowManagementService.resize(factor);
+      await feedbackService.showHUD(
+        t(
+          commandId === 'larger'
+            ? 'features.window_management.hud_larger'
+            : 'features.window_management.hud_smaller',
+        ),
+      );
     } catch (err: any) {
-      await feedbackService.report({
-        source: 'frontend',
-        kind: 'manual',
-        severity: 'error',
-        retryable: false,
-        context: {
-          message: err.message
-            ? t('features.window_management.err_restore_detail', { detail: err.message })
-            : t('features.window_management.err_restore'),
-        },
-      });
+      logService.error(`[WindowManagement] resize failed: ${err}`);
+      await this.reportFailure(
+        err,
+        'features.window_management.err_resize',
+        'features.window_management.err_resize_detail',
+      );
     }
+  }
+
+  private async minimize(): Promise<void> {
+    try {
+      await windowManagementService.minimize();
+    } catch (err: any) {
+      logService.error(`[WindowManagement] minimize failed: ${err}`);
+      await this.reportFailure(
+        err,
+        'features.window_management.err_minimize',
+        'features.window_management.err_minimize_detail',
+      );
+    }
+  }
+
+  private async unlinkSplit(): Promise<void> {
+    try {
+      const wasLinked = await windowManagementService.unsplit();
+      await feedbackService.showHUD(
+        t(
+          wasLinked
+            ? 'features.window_management.hud_unlinked'
+            : 'features.window_management.hud_no_split',
+        ),
+      );
+    } catch (err: any) {
+      logService.error(`[WindowManagement] unsplit failed: ${err}`);
+      await this.reportFailure(
+        err,
+        'features.window_management.err_unsplit',
+        'features.window_management.err_unsplit_detail',
+      );
+    }
+  }
+
+  private async restorePreviousBounds(): Promise<void> {
+    try {
+      await windowManagementService.restore();
+      await feedbackService.showHUD(t('features.window_management.hud_restored'));
+    } catch (err: any) {
+      const detail = extractErrorMessage(err);
+      if (detail.includes('Nothing to restore')) {
+        await this.reportFailure(null, 'features.window_management.nothing_restore');
+        return;
+      }
+      await this.reportFailure(
+        err,
+        'features.window_management.err_restore',
+        'features.window_management.err_restore_detail',
+      );
+    }
+  }
+
+  private async reportFailure(err: any, fallbackKey: string, detailKey?: string): Promise<void> {
+    await feedbackService.report({
+      source: 'frontend',
+      kind: 'manual',
+      severity: 'error',
+      retryable: false,
+      context: {
+        message: err?.message && detailKey ? t(detailKey, { detail: err.message }) : t(fallbackKey),
+      },
+    });
   }
 
   async searchRows(query: string): Promise<BuiltinSearchRow[]> {
-    const { customLayouts } = windowManagementState;
-    if (!customLayouts.length) return [];
-
+    const { customLayouts, workspaces } = windowManagementState;
     const q = query.toLowerCase();
-    const matched = customLayouts.filter((l) => l.name.toLowerCase().includes(q));
 
-    return matched.map((layout) => ({
-      id: `cmd_window-management_layout_${layout.id}`,
-      title: layout.name,
-      subtitle: t('features.window_management.layout_subtitle', {
-        w: Math.round(layout.bounds.width),
-        h: Math.round(layout.bounds.height),
-        x: Math.round(layout.bounds.x),
-        y: Math.round(layout.bounds.y),
-      }),
-      score: 0.7,
-      icon: 'icon:store',
-      actionPayload: { layoutId: layout.id },
-    }));
+    const layoutRows: BuiltinSearchRow[] = customLayouts
+      .filter((l) => l.name.toLowerCase().includes(q))
+      .map((layout) => ({
+        id: `cmd_window-management_layout_${layout.id}`,
+        title: layout.name,
+        subtitle: t('features.window_management.layout_subtitle', {
+          w: Math.round(layout.bounds.width),
+          h: Math.round(layout.bounds.height),
+          x: Math.round(layout.bounds.x),
+          y: Math.round(layout.bounds.y),
+        }),
+        score: 0.7,
+        icon: 'icon:store',
+        actionPayload: { layoutId: layout.id },
+      }));
+
+    const workspaceRows: BuiltinSearchRow[] = workspaces
+      .filter((w) => w.name.toLowerCase().includes(q))
+      .map((workspace) => ({
+        id: `cmd_window-management_workspace_${workspace.id}`,
+        title: workspace.name,
+        subtitle: describeWorkspace(workspace),
+        score: 0.7,
+        icon: 'icon:window',
+        actionPayload: { workspaceId: workspace.id },
+      }));
+
+    return [...layoutRows, ...workspaceRows];
   }
 
   async executeSearchResult(_id: string, payload?: unknown): Promise<void> {
-    const layoutId = (payload as { layoutId?: unknown } | undefined)?.layoutId;
+    const { layoutId, workspaceId } = (payload ?? {}) as {
+      layoutId?: unknown;
+      workspaceId?: unknown;
+    };
+    if (workspaceId !== undefined) {
+      const workspace = windowManagementState.workspaces.find((w) => w.id === workspaceId);
+      if (workspace) await openWorkspace(workspace, this.store);
+      return;
+    }
     const layout = windowManagementState.customLayouts.find((layout) => layout.id === layoutId);
     if (layout) await applyCustomLayout(layout, this.store);
   }
@@ -296,9 +472,7 @@ class WindowManagementExtension implements Extension {
   async activate(): Promise<void> {
     if (this.store) {
       await windowManagementState.loadFromStorage(this.store);
-      for (const layout of windowManagementState.customLayouts) {
-        await syncLayoutToIndex(layout, this.store);
-      }
+      await this.syncIndex();
     }
   }
 
@@ -319,4 +493,4 @@ registerBuiltinSearchProvider({
   execute: (id, payload) => extension.executeSearchResult(id, payload),
 });
 export default extension;
-export { ManageView, SwitchWindowsView };
+export { ManageView, SwitchWindowsView, SplitPickerView, WorkspacesView };

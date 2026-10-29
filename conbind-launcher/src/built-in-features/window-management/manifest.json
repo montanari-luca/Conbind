@@ -172,6 +172,87 @@
       "mode": "background"
     },
     {
+      "id": "larger",
+      "name": "Make Window Larger",
+      "description": "Grow the frontmost window 10% about its center",
+      "trigger": "larger bigger grow window",
+      "icon": "icon:store",
+      "mode": "background"
+    },
+    {
+      "id": "smaller",
+      "name": "Make Window Smaller",
+      "description": "Shrink the frontmost window 10% about its center",
+      "trigger": "smaller shrink window",
+      "icon": "icon:store",
+      "mode": "background"
+    },
+    {
+      "id": "minimize",
+      "name": "Minimize Window",
+      "description": "Minimize the frontmost window",
+      "trigger": "minimize hide window",
+      "icon": "icon:store",
+      "mode": "background"
+    },
+    {
+      "id": "split-with-window",
+      "name": "Split With Window",
+      "description": "Tile the frontmost window and another side by side, linked so resizing one resizes the other",
+      "trigger": "split with window side by side link pair tile",
+      "icon": "icon:window",
+      "mode": "background"
+    },
+    {
+      "id": "split-stacked",
+      "name": "Split Stacked With Window",
+      "description": "Tile the frontmost window and another top and bottom, linked so resizing one resizes the other",
+      "trigger": "split stacked top bottom link pair tile window",
+      "icon": "icon:window",
+      "mode": "background"
+    },
+    {
+      "id": "unlink-split",
+      "name": "Unlink Split",
+      "description": "Stop resizing the linked split pair together",
+      "trigger": "unlink unsplit split window",
+      "icon": "icon:window",
+      "mode": "background"
+    },
+    {
+      "id": "save-workspace",
+      "name": "Save Workspace",
+      "description": "Save up to 4 windows on this display, with their positions and any linked split",
+      "trigger": "save workspace capture windows arrangement",
+      "icon": "icon:window",
+      "mode": "background"
+    },
+    {
+      "id": "open-workspace",
+      "name": "Open Workspace",
+      "description": "Arrange a saved workspace, launching any missing apps (pass a name or id)",
+      "trigger": "open workspace restore arrangement",
+      "icon": "icon:window",
+      "mode": "background"
+    },
+    {
+      "id": "update-workspace",
+      "name": "Update Workspace",
+      "description": "Overwrite the active workspace with the windows on screen now (pass a name or id for another)",
+      "trigger": "update workspace overwrite resave",
+      "icon": "icon:window",
+      "mode": "background"
+    },
+    {
+      "id": "manage-workspaces",
+      "name": "Manage Workspaces",
+      "description": "Open, update, rename or delete saved workspaces",
+      "trigger": "manage workspaces list",
+      "icon": "icon:window",
+      "mode": "view",
+      "component": "WorkspacesView"
+    },
+    {
       "id": "restore",
       "name": "Restore Previous Bounds",
       "description": "Undo the last applied window layout",

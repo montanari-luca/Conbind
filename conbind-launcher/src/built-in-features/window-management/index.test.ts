@@ -12,6 +12,11 @@ vi.mock('../../services/windowManagement/windowManagementService', () => ({
     setFullscreen: vi.fn(),
     getMonitors: vi.fn(),
     applyPreset: vi.fn(),
+    resize: vi.fn(),
+    minimize: vi.fn(),
+    restore: vi.fn(),
+    split: vi.fn(),
+    unsplit: vi.fn(),
   },
 }));
 vi.mock('../../services/feedback/feedbackService.svelte', () => ({
@@ -29,12 +34,13 @@ vi.mock('../../services/action/actionService.svelte', () => ({
 vi.mock('./state.svelte', () => ({
   windowManagementState: {
     customLayouts: [],
-    previousBounds: null,
+    workspaces: [],
+    activeWorkspace: null,
+    splitAxis: 'side',
     selectedIndex: 0,
     selectedLayout: null,
     setStore: vi.fn(),
     loadFromStorage: vi.fn(),
-    savePreviousBounds: vi.fn(),
     addCustomLayout: vi.fn(),
     deleteCustomLayout: vi.fn(),
     renameCustomLayout: vi.fn(),
@@ -48,8 +54,17 @@ vi.mock('./layoutLifecycle', () => ({
   syncLayoutToIndex: vi.fn(),
   removeLayoutFromIndex: vi.fn(),
 }));
+vi.mock('./workspaceLifecycle', () => ({
+  openWorkspace: vi.fn(),
+  saveCurrentWorkspace: vi.fn(),
+  updateWorkspace: vi.fn(),
+  syncWorkspaceToIndex: vi.fn(),
+  describeWorkspace: vi.fn(() => '2 windows · A, B'),
+}));
 vi.mock('./ManageView.svelte', () => ({ default: {} }));
+vi.mock('./WorkspacesView.svelte', () => ({ default: {} }));
 vi.mock('./SwitchWindowsView.svelte', () => ({ default: {} }));
+vi.mock('./SplitPickerView.svelte', () => ({ default: {} }));
 
 import extension from './index';
 import { windowManagementService } from '../../services/windowManagement/windowManagementService';
@@ -57,6 +72,12 @@ import { feedbackService } from '../../services/feedback/feedbackService.svelte'
 import { actionService } from '../../services/action/actionService.svelte';
 import { windowManagementState } from './state.svelte';
 import { applyCustomLayout, syncLayoutToIndex } from './layoutLifecycle';
+import {
+  openWorkspace,
+  saveCurrentWorkspace,
+  updateWorkspace,
+  syncWorkspaceToIndex,
+} from './workspaceLifecycle';
 import type { ExtensionContext } from 'conbind-sdk/contracts';
 
 function makeContext(): ExtensionContext {
@@ -86,58 +107,47 @@ describe('WindowManagementExtension', () => {
   describe('executeCommand — layout presets', () => {
     beforeEach(async () => {
       await extension.initialize(makeContext());
-      vi.mocked(windowManagementService.getWindowBounds).mockResolvedValue({
-        x: 0,
-        y: 0,
-        width: 1440,
-        height: 900,
-      });
       vi.mocked(windowManagementService.applyPreset).mockResolvedValue();
       vi.mocked(feedbackService.showHUD).mockResolvedValue();
     });
 
-    it('left-half saves previous bounds then calls applyPreset and returns no-view', async () => {
+    it('left-half calls applyPreset and returns no-view', async () => {
       const result = await extension.executeCommand('left-half');
-      expect(windowManagementState.savePreviousBounds).toHaveBeenCalled();
       expect(windowManagementService.applyPreset).toHaveBeenCalledWith('left-half');
       expect(feedbackService.showHUD).toHaveBeenCalledWith('Left Half');
       expect(result).toEqual({ type: 'no-view' });
     });
 
-    it('first-fourth saves previous bounds then calls applyPreset and returns no-view', async () => {
+    it('first-fourth calls applyPreset and returns no-view', async () => {
       const result = await extension.executeCommand('first-fourth');
-      expect(windowManagementState.savePreviousBounds).toHaveBeenCalled();
       expect(windowManagementService.applyPreset).toHaveBeenCalledWith('first-fourth');
       expect(feedbackService.showHUD).toHaveBeenCalledWith('First Fourth');
       expect(result).toEqual({ type: 'no-view' });
     });
 
-    it('last-fourth saves previous bounds then calls applyPreset and returns no-view', async () => {
+    it('last-fourth calls applyPreset and returns no-view', async () => {
       const result = await extension.executeCommand('last-fourth');
-      expect(windowManagementState.savePreviousBounds).toHaveBeenCalled();
       expect(windowManagementService.applyPreset).toHaveBeenCalledWith('last-fourth');
       expect(feedbackService.showHUD).toHaveBeenCalledWith('Last Fourth');
       expect(result).toEqual({ type: 'no-view' });
     });
 
-    it('next-display saves previous bounds then calls applyPreset and returns no-view', async () => {
+    it('next-display calls applyPreset and returns no-view', async () => {
       const result = await extension.executeCommand('next-display');
-      expect(windowManagementState.savePreviousBounds).toHaveBeenCalled();
       expect(windowManagementService.applyPreset).toHaveBeenCalledWith('next-display');
       expect(feedbackService.showHUD).toHaveBeenCalledWith('Next Display');
       expect(result).toEqual({ type: 'no-view' });
     });
 
-    it('previous-display saves previous bounds then calls applyPreset and returns no-view', async () => {
+    it('previous-display calls applyPreset and returns no-view', async () => {
       const result = await extension.executeCommand('previous-display');
-      expect(windowManagementState.savePreviousBounds).toHaveBeenCalled();
       expect(windowManagementService.applyPreset).toHaveBeenCalledWith('previous-display');
       expect(feedbackService.showHUD).toHaveBeenCalledWith('Previous Display');
       expect(result).toEqual({ type: 'no-view' });
     });
 
-    it('reports error diagnostic when getWindowBounds throws', async () => {
-      vi.mocked(windowManagementService.getWindowBounds).mockRejectedValue(
+    it('reports error diagnostic when applyPreset throws', async () => {
+      vi.mocked(windowManagementService.applyPreset).mockRejectedValue(
         new Error('Accessibility permission required'),
       );
       vi.mocked(feedbackService.report).mockResolvedValue();
@@ -185,24 +195,19 @@ describe('WindowManagementExtension', () => {
       await extension.initialize(makeContext());
     });
 
-    it('calls setWindowBounds with previousBounds when available and returns no-view', async () => {
-      const prev = { x: 100, y: 100, width: 800, height: 600 };
-      Object.defineProperty(windowManagementState, 'previousBounds', {
-        value: prev,
-        configurable: true,
-      });
-      vi.mocked(windowManagementService.setWindowBounds).mockResolvedValue();
+    it('asks the backend to restore and returns no-view', async () => {
+      vi.mocked(windowManagementService.restore).mockResolvedValue();
       vi.mocked(feedbackService.showHUD).mockResolvedValue();
       const result = await extension.executeCommand('restore');
-      expect(windowManagementService.setWindowBounds).toHaveBeenCalledWith(prev);
+      expect(windowManagementService.restore).toHaveBeenCalled();
+      expect(feedbackService.showHUD).toHaveBeenCalledWith('Restored');
       expect(result).toEqual({ type: 'no-view' });
     });
 
-    it('reports error diagnostic when nothing to restore and returns no-view', async () => {
-      Object.defineProperty(windowManagementState, 'previousBounds', {
-        value: null,
-        configurable: true,
-      });
+    it('reports a friendly message when there is nothing to restore', async () => {
+      vi.mocked(windowManagementService.restore).mockRejectedValue(
+        new Error('window_management_restore: Not found: Nothing to restore'),
+      );
       vi.mocked(feedbackService.report).mockResolvedValue();
       const result = await extension.executeCommand('restore');
       expect(feedbackService.report).toHaveBeenCalledWith(
@@ -215,6 +220,241 @@ describe('WindowManagementExtension', () => {
         }),
       );
       expect(result).toEqual({ type: 'no-view' });
+    });
+
+    it('reports other restore failures with their detail', async () => {
+      vi.mocked(windowManagementService.restore).mockRejectedValue(new Error('AX denied'));
+      vi.mocked(feedbackService.report).mockResolvedValue();
+      await extension.executeCommand('restore');
+      expect(feedbackService.report).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({ message: expect.stringContaining('AX denied') }),
+        }),
+      );
+    });
+  });
+
+  describe('executeCommand — larger / smaller / minimize', () => {
+    beforeEach(async () => {
+      await extension.initialize(makeContext());
+      vi.mocked(feedbackService.showHUD).mockResolvedValue();
+      vi.mocked(feedbackService.report).mockResolvedValue();
+    });
+
+    it('larger grows the window by 10%', async () => {
+      vi.mocked(windowManagementService.resize).mockResolvedValue();
+      const result = await extension.executeCommand('larger');
+      expect(windowManagementService.resize).toHaveBeenCalledWith(1.1);
+      expect(feedbackService.showHUD).toHaveBeenCalledWith('Larger');
+      expect(result).toEqual({ type: 'no-view' });
+    });
+
+    it('smaller shrinks the window by 10%', async () => {
+      vi.mocked(windowManagementService.resize).mockResolvedValue();
+      await extension.executeCommand('smaller');
+      expect(windowManagementService.resize).toHaveBeenCalledWith(0.9);
+      expect(feedbackService.showHUD).toHaveBeenCalledWith('Smaller');
+    });
+
+    it('reports resize failures', async () => {
+      vi.mocked(windowManagementService.resize).mockRejectedValue(new Error('no window'));
+      await extension.executeCommand('larger');
+      expect(feedbackService.report).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            message: expect.stringContaining('Could not resize window'),
+          }),
+        }),
+      );
+    });
+
+    it('minimize minimizes the frontmost window', async () => {
+      vi.mocked(windowManagementService.minimize).mockResolvedValue();
+      const result = await extension.executeCommand('minimize');
+      expect(windowManagementService.minimize).toHaveBeenCalled();
+      expect(result).toEqual({ type: 'no-view' });
+    });
+
+    it('reports minimize failures', async () => {
+      vi.mocked(windowManagementService.minimize).mockRejectedValue(new Error('no window'));
+      await extension.executeCommand('minimize');
+      expect(feedbackService.report).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            message: expect.stringContaining('Could not minimize window'),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('executeCommand — linked split', () => {
+    let navigateToView: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+      navigateToView = vi.fn();
+      await extension.initialize({
+        getService: vi.fn().mockImplementation((name: string) => {
+          if (name === 'storage')
+            return { get: vi.fn(async () => null), set: vi.fn(), delete: vi.fn() };
+          if (name === 'extensions') return { navigateToView, setActiveViewActionLabel: vi.fn() };
+          return null;
+        }),
+      } as unknown as ExtensionContext);
+      vi.mocked(feedbackService.showHUD).mockResolvedValue();
+      vi.mocked(feedbackService.report).mockResolvedValue();
+    });
+
+    it('split-with-window opens the picker for a side-by-side split', async () => {
+      const result = await extension.executeCommand('split-with-window');
+      expect(windowManagementState.splitAxis).toBe('side');
+      expect(navigateToView).toHaveBeenCalledWith('window-management/SplitPickerView');
+      expect(result).toMatchObject({ type: 'view', viewPath: 'window-management/SplitPickerView' });
+    });
+
+    it('split-stacked opens the picker for a stacked split', async () => {
+      await extension.executeCommand('split-stacked');
+      expect(windowManagementState.splitAxis).toBe('stack');
+      expect(navigateToView).toHaveBeenCalledWith('window-management/SplitPickerView');
+    });
+
+    it('unlink-split reports when a split was ended', async () => {
+      vi.mocked(windowManagementService.unsplit).mockResolvedValue(true);
+      const result = await extension.executeCommand('unlink-split');
+      expect(feedbackService.showHUD).toHaveBeenCalledWith('Split unlinked');
+      expect(result).toEqual({ type: 'no-view' });
+    });
+
+    it('unlink-split says so when nothing was linked', async () => {
+      vi.mocked(windowManagementService.unsplit).mockResolvedValue(false);
+      await extension.executeCommand('unlink-split');
+      expect(feedbackService.showHUD).toHaveBeenCalledWith('No linked split');
+    });
+
+    it('unlink-split reports failures', async () => {
+      vi.mocked(windowManagementService.unsplit).mockRejectedValue(new Error('boom'));
+      await extension.executeCommand('unlink-split');
+      expect(feedbackService.report).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            message: expect.stringContaining('Could not unlink split'),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('executeCommand — workspaces', () => {
+    let navigateToView: ReturnType<typeof vi.fn>;
+    const workspace = {
+      id: 'ws-1',
+      name: 'Dev',
+      windows: [],
+      link: null,
+      created: 1,
+      updated: 1,
+    };
+
+    beforeEach(async () => {
+      navigateToView = vi.fn();
+      await extension.initialize({
+        getService: vi.fn().mockImplementation((name: string) => {
+          if (name === 'storage')
+            return { get: vi.fn(async () => null), set: vi.fn(), delete: vi.fn() };
+          if (name === 'extensions') return { navigateToView, setActiveViewActionLabel: vi.fn() };
+          return null;
+        }),
+      } as unknown as ExtensionContext);
+      vi.mocked(feedbackService.report).mockResolvedValue();
+      Object.assign(windowManagementState, { workspaces: [workspace], activeWorkspace: null });
+    });
+
+    it('save-workspace saves the current windows', async () => {
+      const result = await extension.executeCommand('save-workspace');
+      expect(saveCurrentWorkspace).toHaveBeenCalled();
+      expect(result).toEqual({ type: 'no-view' });
+    });
+
+    it('open-workspace opens by name, ignoring case', async () => {
+      await extension.executeCommand('open-workspace', { name: 'dev' });
+      expect(openWorkspace).toHaveBeenCalledWith(workspace, expect.anything());
+    });
+
+    it('open-workspace opens by id', async () => {
+      await extension.executeCommand('open-workspace', { id: 'ws-1' });
+      expect(openWorkspace).toHaveBeenCalledWith(workspace, expect.anything());
+    });
+
+    it('open-workspace without a name or id reports an error', async () => {
+      await extension.executeCommand('open-workspace');
+      expect(openWorkspace).not.toHaveBeenCalled();
+      expect(feedbackService.report).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            message: expect.stringContaining('No workspace name or ID'),
+          }),
+        }),
+      );
+    });
+
+    it('open-workspace for an unknown name reports it', async () => {
+      await extension.executeCommand('open-workspace', { name: 'Nope' });
+      expect(openWorkspace).not.toHaveBeenCalled();
+      expect(feedbackService.report).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({ message: expect.stringContaining('"Nope"') }),
+        }),
+      );
+    });
+
+    it('update-workspace defaults to the active workspace', async () => {
+      Object.assign(windowManagementState, { activeWorkspace: workspace });
+      await extension.executeCommand('update-workspace');
+      expect(updateWorkspace).toHaveBeenCalledWith(workspace, expect.anything());
+    });
+
+    it('update-workspace with no name and no active workspace reports an error', async () => {
+      await extension.executeCommand('update-workspace');
+      expect(updateWorkspace).not.toHaveBeenCalled();
+      expect(feedbackService.report).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            message: expect.stringContaining('No workspace to update'),
+          }),
+        }),
+      );
+    });
+
+    it('update-workspace by name updates that workspace', async () => {
+      await extension.executeCommand('update-workspace', { name: 'Dev' });
+      expect(updateWorkspace).toHaveBeenCalledWith(workspace, expect.anything());
+    });
+
+    it('manage-workspaces opens the workspaces view', async () => {
+      const result = await extension.executeCommand('manage-workspaces');
+      expect(navigateToView).toHaveBeenCalledWith('window-management/WorkspacesView');
+      expect(result).toMatchObject({ type: 'view', viewPath: 'window-management/WorkspacesView' });
+    });
+
+    it('indexes saved workspaces on initialize', async () => {
+      expect(syncWorkspaceToIndex).toHaveBeenCalledWith(workspace, expect.anything());
+    });
+
+    it('lists matching workspaces as search rows that open them', async () => {
+      const rows = await extension.searchRows('de');
+      expect(rows).toEqual([
+        expect.objectContaining({
+          id: 'cmd_window-management_workspace_ws-1',
+          title: 'Dev',
+          actionPayload: { workspaceId: 'ws-1' },
+        }),
+      ]);
+      expect(await extension.searchRows('zzz')).toEqual([]);
+
+      await extension.executeSearchResult('cmd_window-management_workspace_ws-1', {
+        workspaceId: 'ws-1',
+      });
+      expect(openWorkspace).toHaveBeenCalledWith(workspace, expect.anything());
     });
   });
 

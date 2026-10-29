@@ -45,7 +45,7 @@ export interface IWindowManagementService {
   setFullscreen(enable: boolean): Promise<void>;
 
   /**
-   * Returns a list of all available monitors and their logical bounds.
+   * Returns the usable area of every display: its bounds minus the menu bar, Dock, taskbar, and panels.
    *
    * Requires `window:manage` permission.
    */

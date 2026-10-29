@@ -229,7 +229,7 @@ gdkx11 = "0.18"
 gio = "0.18"
 zbus = { version = "4", features = ["blocking"] }
 procfs = "0.16"
-x11rb = "0.13"
+x11rb = { version = "0.13", features = ["randr"] }
 # Drives freedesktop actions + `wait_for_action` directly — the Tauri plugin
 # wraps this but doesn't expose per-notification `.action()` on desktop.
 notify-rust = "4"

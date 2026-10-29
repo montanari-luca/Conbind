@@ -10,13 +10,9 @@ import type { IStorageService } from 'conbind-sdk/contracts';
 
 export async function applyCustomLayout(
   layout: CustomLayout,
-  store?: IStorageService,
+  _store?: IStorageService,
 ): Promise<void> {
   try {
-    const current = await windowManagementService.getWindowBounds();
-    if (store) {
-      await windowManagementState.savePreviousBounds(current, store);
-    }
     await windowManagementService.setWindowBounds(layout.bounds);
     await feedbackService.showHUD(layout.name);
   } catch (err: any) {

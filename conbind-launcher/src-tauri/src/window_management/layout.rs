@@ -191,6 +191,298 @@ pub fn calculate_preset_action(
     }))
 }
 
+const MIN_RESIZE_WIDTH: f64 = 120.0;
+const MIN_RESIZE_HEIGHT: f64 = 80.0;
+
+/// Scales `window` by `factor` about its center, keeping it inside `work_area`.
+/// The result is never smaller than 120x80 (unless the work area itself is) nor larger than the work area.
+pub fn resize_about_center(
+    window: &WindowBounds,
+    factor: f64,
+    work_area: &WindowBounds,
+) -> WindowBounds {
+    let width = (window.width * factor)
+        .max(MIN_RESIZE_WIDTH)
+        .min(work_area.width);
+    let height = (window.height * factor)
+        .max(MIN_RESIZE_HEIGHT)
+        .min(work_area.height);
+    let center_x = window.x + window.width / 2.0;
+    let center_y = window.y + window.height / 2.0;
+    let max_x = (work_area.x + work_area.width - width).max(work_area.x);
+    let max_y = (work_area.y + work_area.height - height).max(work_area.y);
+    WindowBounds {
+        x: (center_x - width / 2.0).clamp(work_area.x, max_x),
+        y: (center_y - height / 2.0).clamp(work_area.y, max_y),
+        width,
+        height,
+    }
+}
+
+/// Converts the `target` *visible* rect into the outer rect to hand to the OS, for windows
+/// whose frame has invisible borders (`visible` is inside `outer`). Windows 10/11 draw an
+/// invisible resize border, so placing the outer rect directly leaves visible gaps.
+pub fn visible_to_outer(
+    target: &WindowBounds,
+    visible: &WindowBounds,
+    outer: &WindowBounds,
+) -> WindowBounds {
+    let left = visible.x - outer.x;
+    let top = visible.y - outer.y;
+    let right = (outer.x + outer.width) - (visible.x + visible.width);
+    let bottom = (outer.y + outer.height) - (visible.y + visible.height);
+    WindowBounds {
+        x: target.x - left,
+        y: target.y - top,
+        width: target.width + left + right,
+        height: target.height + top + bottom,
+    }
+}
+
+/// Screen space reserved by a panel or dock (EWMH `_NET_WM_STRUT_PARTIAL`): the width of each
+/// reserved strip, measured from the edge of the whole screen, and the span of that edge it covers.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Strut {
+    pub left: f64,
+    pub right: f64,
+    pub top: f64,
+    pub bottom: f64,
+    pub left_span: (f64, f64),
+    pub right_span: (f64, f64),
+    pub top_span: (f64, f64),
+    pub bottom_span: (f64, f64),
+}
+
+impl Strut {
+    /// A strut that covers the whole edge (the 4-value `_NET_WM_STRUT` form).
+    pub fn full_edges(left: f64, right: f64, top: f64, bottom: f64) -> Self {
+        let whole = (0.0, f64::MAX);
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+            left_span: whole,
+            right_span: whole,
+            top_span: whole,
+            bottom_span: whole,
+        }
+    }
+}
+
+fn spans_overlap(span: (f64, f64), start: f64, len: f64) -> bool {
+    span.0 < start + len && span.1 >= start
+}
+
+/// The part of `monitor` left after removing strips reserved by `struts`. `screen` is the
+/// bounding box of all displays, which is what strut distances are measured against.
+pub fn work_area_from_struts(
+    monitor: &WindowBounds,
+    screen: &WindowBounds,
+    struts: &[Strut],
+) -> WindowBounds {
+    let mut left = monitor.x;
+    let mut top = monitor.y;
+    let mut right = monitor.x + monitor.width;
+    let mut bottom = monitor.y + monitor.height;
+
+    for s in struts {
+        if s.left > 0.0 {
+            let edge = screen.x + s.left;
+            if edge > monitor.x && spans_overlap(s.left_span, monitor.y, monitor.height) {
+                left = left.max(edge);
+            }
+        }
+        if s.right > 0.0 {
+            let edge = screen.x + screen.width - s.right;
+            if edge < monitor.x + monitor.width
+                && spans_overlap(s.right_span, monitor.y, monitor.height)
+            {
+                right = right.min(edge);
+            }
+        }
+        if s.top > 0.0 {
+            let edge = screen.y + s.top;
+            if edge > monitor.y && spans_overlap(s.top_span, monitor.x, monitor.width) {
+                top = top.max(edge);
+            }
+        }
+        if s.bottom > 0.0 {
+            let edge = screen.y + screen.height - s.bottom;
+            if edge < monitor.y + monitor.height
+                && spans_overlap(s.bottom_span, monitor.x, monitor.width)
+            {
+                bottom = bottom.min(edge);
+            }
+        }
+    }
+
+    WindowBounds {
+        x: left,
+        y: top,
+        width: (right - left).max(0.0),
+        height: (bottom - top).max(0.0),
+    }
+}
+
+#[cfg(test)]
+mod strut_tests {
+    use super::*;
+
+    fn mon(x: f64, y: f64, w: f64, h: f64) -> WindowBounds {
+        WindowBounds {
+            x,
+            y,
+            width: w,
+            height: h,
+        }
+    }
+
+    #[test]
+    fn top_panel_shrinks_the_monitor_it_sits_on() {
+        let screen = mon(0.0, 0.0, 1920.0, 1080.0);
+        let panel = Strut::full_edges(0.0, 0.0, 28.0, 0.0);
+        let out = work_area_from_struts(&screen, &screen, &[panel]);
+        assert_eq!(out, mon(0.0, 28.0, 1920.0, 1052.0));
+    }
+
+    #[test]
+    fn partial_strut_only_affects_the_monitor_it_spans() {
+        let screen = mon(0.0, 0.0, 3840.0, 1080.0);
+        let mut panel = Strut::full_edges(0.0, 0.0, 30.0, 0.0);
+        panel.top_span = (0.0, 1919.0);
+        let first =
+            work_area_from_struts(&mon(0.0, 0.0, 1920.0, 1080.0), &screen, &[panel.clone()]);
+        let second = work_area_from_struts(&mon(1920.0, 0.0, 1920.0, 1080.0), &screen, &[panel]);
+        assert_eq!(first, mon(0.0, 30.0, 1920.0, 1050.0));
+        assert_eq!(second, mon(1920.0, 0.0, 1920.0, 1080.0));
+    }
+
+    #[test]
+    fn bottom_dock_and_left_panel_combine() {
+        let screen = mon(0.0, 0.0, 1920.0, 1080.0);
+        let dock = Strut::full_edges(0.0, 0.0, 0.0, 48.0);
+        let side = Strut::full_edges(60.0, 0.0, 0.0, 0.0);
+        let out = work_area_from_struts(&screen, &screen, &[dock, side]);
+        assert_eq!(out, mon(60.0, 0.0, 1860.0, 1032.0));
+    }
+
+    #[test]
+    fn bottom_strut_does_not_touch_a_monitor_above_it() {
+        // Two stacked displays; the dock hugs the bottom edge of the whole screen.
+        let screen = mon(0.0, 0.0, 1920.0, 2160.0);
+        let dock = Strut::full_edges(0.0, 0.0, 0.0, 48.0);
+        let top_monitor = work_area_from_struts(&mon(0.0, 0.0, 1920.0, 1080.0), &screen, &[dock]);
+        assert_eq!(top_monitor, mon(0.0, 0.0, 1920.0, 1080.0));
+    }
+
+    #[test]
+    fn no_struts_returns_the_monitor() {
+        let m = mon(10.0, 20.0, 800.0, 600.0);
+        assert_eq!(work_area_from_struts(&m, &m, &[]), m);
+    }
+}
+
+#[cfg(test)]
+mod frame_tests {
+    use super::*;
+
+    #[test]
+    fn invisible_borders_are_added_around_the_target() {
+        let outer = WindowBounds {
+            x: 92.0,
+            y: 100.0,
+            width: 816.0,
+            height: 607.0,
+        };
+        // 8px invisible border left/right/bottom, none on top.
+        let visible = WindowBounds {
+            x: 100.0,
+            y: 100.0,
+            width: 800.0,
+            height: 599.0,
+        };
+        let target = WindowBounds {
+            x: 0.0,
+            y: 25.0,
+            width: 960.0,
+            height: 1055.0,
+        };
+        let out = visible_to_outer(&target, &visible, &outer);
+        assert_eq!(
+            out,
+            WindowBounds {
+                x: -8.0,
+                y: 25.0,
+                width: 976.0,
+                height: 1063.0,
+            }
+        );
+    }
+
+    #[test]
+    fn borderless_window_is_unchanged() {
+        let r = WindowBounds {
+            x: 10.0,
+            y: 10.0,
+            width: 300.0,
+            height: 200.0,
+        };
+        assert_eq!(visible_to_outer(&r, &r, &r), r);
+    }
+}
+
+#[cfg(test)]
+mod resize_tests {
+    use super::*;
+
+    fn area() -> WindowBounds {
+        WindowBounds {
+            x: 0.0,
+            y: 25.0,
+            width: 1000.0,
+            height: 700.0,
+        }
+    }
+
+    #[test]
+    fn growing_past_the_work_area_is_clamped() {
+        let win = WindowBounds {
+            x: 50.0,
+            y: 100.0,
+            width: 950.0,
+            height: 650.0,
+        };
+        let out = resize_about_center(&win, 1.5, &area());
+        assert_eq!(out, area());
+    }
+
+    #[test]
+    fn shrinking_stops_at_minimum_size() {
+        let win = WindowBounds {
+            x: 400.0,
+            y: 300.0,
+            width: 130.0,
+            height: 90.0,
+        };
+        let out = resize_about_center(&win, 0.1, &area());
+        assert_eq!((out.width, out.height), (120.0, 80.0));
+    }
+
+    #[test]
+    fn grown_window_near_an_edge_is_shifted_back_inside() {
+        let win = WindowBounds {
+            x: 800.0,
+            y: 100.0,
+            width: 200.0,
+            height: 200.0,
+        };
+        let out = resize_about_center(&win, 2.0, &area());
+        assert!(out.x + out.width <= 1000.0 + 1e-9);
+        assert_eq!(out.width, 400.0);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,7 +697,7 @@ mod tests {
         assert!(matches!(next_act, PresetAction::Bounds(_)));
 
         // Next-display on single monitor is Noop
-        let single = vec![monitors[0].clone()];
+        let single = vec![monitors[0]];
         assert_eq!(
             calculate_preset_action("next-display", &win, &single).unwrap(),
             PresetAction::Noop

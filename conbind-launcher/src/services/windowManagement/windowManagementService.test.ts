@@ -7,6 +7,13 @@ vi.mock('../../lib/ipc/commands', () => ({
   windowSetFullscreen: vi.fn(),
   windowGetMonitors: vi.fn(),
   windowApplyPreset: vi.fn(),
+  windowResize: vi.fn(),
+  windowMinimize: vi.fn(),
+  windowRestore: vi.fn(),
+  windowSplit: vi.fn(),
+  windowUnsplit: vi.fn(),
+  windowCaptureWorkspace: vi.fn(),
+  windowOpenWorkspace: vi.fn(),
   windowListWindows: vi.fn(),
   windowFocusWindow: vi.fn(),
   windowCloseWindow: vi.fn(),
@@ -90,6 +97,79 @@ describe('WindowManagementService', () => {
       await service.applyPreset('left-half');
 
       expect(commands.windowApplyPreset).toHaveBeenCalledWith('left-half');
+    });
+  });
+
+  describe('resize', () => {
+    it('calls windowResize with the scale factor', async () => {
+      vi.mocked(commands.windowResize).mockResolvedValueOnce(undefined);
+
+      await service.resize(1.1);
+
+      expect(commands.windowResize).toHaveBeenCalledWith(1.1);
+    });
+  });
+
+  describe('minimize', () => {
+    it('calls windowMinimize', async () => {
+      vi.mocked(commands.windowMinimize).mockResolvedValueOnce(undefined);
+
+      await service.minimize();
+
+      expect(commands.windowMinimize).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('restore', () => {
+    it('calls windowRestore and propagates failures', async () => {
+      vi.mocked(commands.windowRestore).mockRejectedValueOnce(new Error('Nothing to restore'));
+
+      await expect(service.restore()).rejects.toThrow('Nothing to restore');
+    });
+  });
+
+  describe('split', () => {
+    it('calls windowSplit with the partner and axis', async () => {
+      vi.mocked(commands.windowSplit).mockResolvedValueOnce(undefined);
+
+      await service.split('win:42', 'stack');
+
+      expect(commands.windowSplit).toHaveBeenCalledWith('win:42', 'stack');
+    });
+  });
+
+  describe('unsplit', () => {
+    it('returns whether a split was active', async () => {
+      vi.mocked(commands.windowUnsplit).mockResolvedValueOnce(true);
+
+      expect(await service.unsplit()).toBe(true);
+    });
+  });
+
+  describe('workspaces', () => {
+    it('captureWorkspace passes the optional window ids through', async () => {
+      const captured = { windows: [], link: null };
+      vi.mocked(commands.windowCaptureWorkspace).mockResolvedValueOnce(captured);
+
+      expect(await service.captureWorkspace(['win:1'])).toEqual(captured);
+      expect(commands.windowCaptureWorkspace).toHaveBeenCalledWith(['win:1']);
+    });
+
+    it('openWorkspace passes windows and link and returns the report', async () => {
+      const report = { placed: 1, launched: 0, missing: [], ids: ['win:1'] };
+      vi.mocked(commands.windowOpenWorkspace).mockResolvedValueOnce(report);
+      const windows = [
+        {
+          appId: 'app',
+          appName: 'App',
+          titleHint: '',
+          monitor: 0,
+          rect: { x: 0, y: 0, width: 1, height: 1 },
+        },
+      ];
+
+      expect(await service.openWorkspace(windows, null)).toEqual(report);
+      expect(commands.windowOpenWorkspace).toHaveBeenCalledWith(windows, null);
     });
   });
 

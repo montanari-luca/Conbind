@@ -197,6 +197,75 @@ export async function windowApplyPreset(presetId: string): Promise<void> {
   await invokeSafe('window_management_apply_preset', { presetId });
 }
 
+/** Scale the frontmost window about its center (1.1 = 10% larger). */
+export async function windowResize(factor: number): Promise<void> {
+  await invokeSafe('window_management_resize', { factor });
+}
+
+export async function windowMinimize(): Promise<void> {
+  await invokeSafe('window_management_minimize');
+}
+
+/** Undo the last layout, resize or bounds change of the frontmost window. */
+export async function windowRestore(): Promise<void> {
+  await invokeSafe('window_management_restore', undefined, { silent: true });
+}
+
+export type WindowSplitAxis = 'side' | 'stack';
+
+/**
+ * Tile the frontmost window and `partnerId` side by side (or stacked) on its display and link
+ * them, so resizing the shared edge of one resizes the other.
+ */
+export async function windowSplit(partnerId: string, axis: WindowSplitAxis): Promise<void> {
+  await invokeSafe('window_management_split', { partnerId, axis });
+}
+
+/** End the linked split. Resolves `false` when none was active. */
+export async function windowUnsplit(): Promise<boolean> {
+  return invokeSafe<boolean>('window_management_unsplit');
+}
+
+/** One window of a workspace; `rect` holds fractions (0-1) of the display's usable area. */
+export interface WorkspaceWindow {
+  appId: string;
+  appName: string;
+  titleHint: string;
+  /** Display index, ordered left to right then top to bottom. */
+  monitor: number;
+  rect: WindowBounds;
+}
+
+export interface CapturedWorkspace {
+  windows: WorkspaceWindow[];
+  /** Indices into `windows` of a pair that was linked when captured. */
+  link: [number, number] | null;
+}
+
+export interface WorkspaceOpenReport {
+  placed: number;
+  launched: number;
+  /** Apps whose window never appeared. */
+  missing: string[];
+  /** Window ids in workspace order; `null` where the window was not found. */
+  ids: (string | null)[];
+}
+
+/** Snapshot the frontmost window and others on its display (at most 4), or just `windowIds`. */
+export async function windowCaptureWorkspace(windowIds?: string[]): Promise<CapturedWorkspace> {
+  return invokeSafe<CapturedWorkspace>('window_management_workspace_capture', {
+    windowIds: windowIds ?? null,
+  });
+}
+
+/** Arrange the windows, launching missing apps (can take several seconds). */
+export async function windowOpenWorkspace(
+  windows: WorkspaceWindow[],
+  link: [number, number] | null,
+): Promise<WorkspaceOpenReport> {
+  return invokeSafe<WorkspaceOpenReport>('window_management_workspace_open', { windows, link });
+}
+
 export async function windowListWindows(): Promise<AppWindowInfo[]> {
   return invokeSafe<AppWindowInfo[]>('window_management_list_windows');
 }

@@ -136,7 +136,7 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 | **1-Click Raycast Migration** (instant `.rayconfig` import)   |           ✅           |                 N/A                 |         ❌          |
 | **Active Window Switcher** (fast fuzzy window search)         |           ✅           |                 ✅                  |         ❌          |
 | **Screen OCR** (local Apple Vision text recognition)          |           ✅           |                 ✅                  |         ❌          |
-| **Window Management** (17 presets, display cycling, custom)   |           ✅           |                 ✅                  |         ❌          |
+| **Window Management** (presets, linked split, workspaces)     |           ✅           |                 ✅                  |         ❌          |
 | **Root-Search Extension Actions** (stacked ⌘K items)          |           ✅           |                 ❌                  |         ❌          |
 | **Cross-Platform**                                            | ✅ (macOS, Win, Linux) |      ❌ (macOS / Windows beta)      |   ❌ (macOS only)   |
 | **Native Rust Backend**                                       |           ✅           |                 ❌                  |         ❌          |
@@ -165,7 +165,7 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 - **Snippets** — Text snippet expansion, including background text expansion without opening the launcher
 - **Shortcuts** — Define and run custom keyboard-triggered commands
 - **Portals** — Open URLs and web tools directly from the launcher
-- **Window Management** — 17 built-in layout presets (halves, quarters, thirds, maximize, center) plus custom saved layouts; undo the last move with "Restore Previous"; works on macOS, Windows, and Linux
+- **Window Management** — 20 built-in layout presets (halves, quarters, thirds, fourths, maximize, center) that respect the menu bar, Dock, and taskbar; make a window larger, smaller, or minimize it; link two windows into a split whose shared edge resizes both; save and reopen workspaces of up to four windows; custom saved layouts; undo the last move per window with "Restore Previous"; works on macOS, Windows, and Linux
 - **Context Modes** — Type prefixes (`ask ai`, a URL, etc.) to switch the launcher into a specialized mode; visual chips indicate the active context
 - **Create Extension** — Scaffold a new extension from a template without leaving the launcher
 - **AI Extension Builder** — Describe an extension in plain language (_"build an extension for Notion"_) and an AI agent scaffolds, codes, builds, and verifies it for you — gating feasibility up front, asking clarifying questions via notifications, and dropping a working extension into `~/ConbindExtensions`. Uses your own Anthropic key (BYOK, no Conbind account). Browse and one-click-publish everything you've built from the **My Extensions** view.
@@ -298,6 +298,7 @@ See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy
 > - **Note on Cleanup:** developed and tested on macOS (⚠️ = implemented and unit-tested, not yet tried on real machines). "Find App Leftovers" is macOS-only.
 > - **Note on Resource Usage:** CPU, RAM, network, and disk work everywhere. GPU and VRAM are best effort: macOS reads the system accelerator statistics, Linux reads AMD/Intel counters and `nvidia-smi`, and Windows reads `nvidia-smi` (⚠️ = implemented and unit-tested, not yet tried on real machines).
 > - **Note on Battery:** reads the time estimate your system already provides. Windows does not report a time until full while charging (⚠️ = implemented and unit-tested, not yet tried on real machines).
+> - **Note on Window Management:** layout presets, custom layouts, and the window switcher are established. Linked split, workspaces, larger/smaller, minimize, work-area-aware snapping, and per-window restore are new on every platform (implemented and unit-tested against a simulated window backend, not yet tried on real machines). On Linux they need an X11 session and a window manager that supports EWMH; `xdotool` is no longer required.
 > - **Note on Linux Wayland:** Global input-heavy features like Snippets do **not** work on Wayland (e.g., default Ubuntu 22.04+, Fedora 25+, KDE Plasma 6).
 
 ### Detailed Platform Compatibility
@@ -433,10 +434,13 @@ See the [File Search guide](docs/guide/features/file-search.md) for the full wal
 
 Conbind includes a built-in window management extension that lets you snap and resize any window without leaving the keyboard.
 
-- **17 layout presets** — left/right halves, top/bottom halves, all four corners, thirds (left, center, right), two-thirds, maximize, and center
+- **20 layout presets** — left/right halves, top/bottom halves, all four corners, thirds (left, center, right), two-thirds, fourths, maximize, almost maximize, and center — placed inside the usable area, so they never overlap the menu bar, Dock, or taskbar
+- **Resize and minimize** — make the frontmost window 10% larger or smaller about its center, or minimize it
+- **Linked split** — tile two windows side by side or stacked; dragging their shared edge resizes the other window, and moving a window away or closing it ends the link
+- **Workspaces** — save up to four windows with their positions and any linked split, then reopen the arrangement later; missing apps are launched
 - **Custom layouts** — save the current window position and size as a named preset, then recall it any time
-- **Restore Previous** — one command undoes the last layout change so you can quickly toggle between two positions
-- **Cross-platform** — uses native accessibility APIs on macOS, HWND positioning on Windows, and X11 window IDs on Linux
+- **Restore Previous** — one command undoes the last layout change of each window so you can quickly toggle between two positions
+- **Cross-platform** — uses native accessibility APIs on macOS, Win32 on Windows, and EWMH over X11 on Linux (no `xdotool` needed)
 
 Invoke any layout preset by name from the launcher — no mouse required.
 
