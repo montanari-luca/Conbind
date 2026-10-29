@@ -16,6 +16,7 @@ _Independent fork of Xoshbin's Asyar. The original core owner is **Khoshbin Ali 
 ## New features
 
 - Battery estimation
+- `>` terminal and `$` web search prefixes in the search bar
 - Resource usage view
 - Full window management suite expanded from [SplitShadow](https://github.com/montanari-luca/SplitShadow)
 
@@ -137,6 +138,8 @@ The Linux installer places the AppImage at `~/.local/bin/conbind` and a lightwei
 - **Cleanup** — Free up disk space from the launcher: clear app caches, logs and temp files, developer leftovers (Xcode DerivedData, npm/pnpm/Cargo/Gradle caches), find data left behind by uninstalled apps, explore what's using your space with a drill-down analyzer, flush DNS and network caches, and empty the Trash. Everything is moved to the Trash first and only inside your home folder, with a review and confirm step.
 - **Resource Usage** — Type `resource usage` to open a live view of CPU, GPU, RAM, VRAM, network, and disk usage, refreshed every second while it's open. Nothing is recorded or sent anywhere.
 - **Battery** — Type `battery` to see your charge level and how long your battery will last, using the estimate your system already calculates. Nothing is recorded or sent anywhere.
+- **Terminal** — Start a search with `>` (for example `> ls -la`) to run a shell command and see its output in the launcher. The folder and environment carry over between commands until you quit. Nothing is recorded or sent anywhere.
+- **Web Search** — Start a search with `$` (for example `$Learn java`) to open the results in your default browser. Google by default; DuckDuckGo, Bing and Brave Search in Settings → Advanced.
 - **Calculator** — Instant math evaluation with currency conversion, directly in the search bar
 - **Clipboard History** — Search and reuse anything you've copied, with rich markdown, syntax highlighting, and LaTeX rendering for text items. Cmd/Ctrl-click (or Cmd/Ctrl+↑/↓) to select several items, then Enter merges them into a single paste
 - **File Search** — Find any file across your home folder instantly; a Rust-native index keeps per-keystroke search fast regardless of how much is indexed, with real image thumbnails and (on macOS) Quick Look-style previews for documents, videos, and archives
@@ -256,6 +259,8 @@ See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy
 | Cleanup               |  ✅   |   ⚠️    |      ⚠️      |
 | Resource Usage        |  ✅   |   ⚠️    |      ⚠️      |
 | Battery               |  ✅   |   ⚠️    |      ⚠️      |
+| Terminal prefix `>`   |  ✅   |   ⚠️    |      ⚠️      |
+| Web Search prefix `$` |  ✅   |   ⚠️    |      ⚠️      |
 | Clipboard History     |  ✅   |   ✅    |      ✅      |
 | File Search           |  ✅   |   ✅    |      ✅      |
 | Context Modes         |  ✅   |   ✅    |      ✅      |

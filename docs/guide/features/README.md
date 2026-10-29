@@ -8,6 +8,8 @@ does, how to use it, shortcuts, tips, and related pages.
 - [File Search](./file-search.md) — Find any file by name, instantly, with a rich preview.
 - [Cleanup](./cleanup.md) — Free up disk space: caches, developer leftovers, app remnants, a space analyzer, and network cache cleanup.
 - [Battery](./battery.md) — Charge level and how long your battery will last.
+- [Terminal](./terminal.md) — Start with `>` to run shell commands in the launcher; the folder and environment carry over.
+- [Web Search](./web-search.md) — Start with `$` to search the web in your browser.
 - [Resource Usage](./resource-usage.md) — Live CPU, GPU, RAM, VRAM, network, and disk usage.
 - [Notes](./notes.md) — Instant Markdown notes, daily logs, and desktop stickies.
 - [Snippets](./snippets.md) — Text expansion: type a keyword, paste the full text.

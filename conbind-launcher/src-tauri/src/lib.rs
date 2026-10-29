@@ -235,6 +235,7 @@ pub mod storage;
 pub mod system_actions;
 pub mod system_events;
 pub mod templating;
+pub mod terminal;
 pub mod thumbnail;
 pub mod timers;
 pub mod tray;
@@ -423,6 +424,7 @@ pub fn run() {
         .manage(hud_window::HudState::default())
         .manage(snap_guides::SnapGuidesState::default())
         .manage(shell::ShellProcessRegistry::new())
+        .manage(terminal::TerminalSession::new())
         .manage(extensions::scheduler::SchedulerState::new())
         .manage(scripts::InlineSchedulerState::new())
         .manage(std::sync::Arc::new(ExtensionRuntimeManager::new(

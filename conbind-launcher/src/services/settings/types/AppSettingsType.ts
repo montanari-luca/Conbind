@@ -24,6 +24,8 @@ export interface AppSettings {
     enableExtensionSearch: boolean;
     additionalScanPaths: string[];
     applicationEnabled: Record<string, boolean>;
+    /** Engine used by the `$` prefix in root search. Google when unset. */
+    webSearchEngine?: LauncherSearchEngine;
   };
   shortcut: {
     modifier: string;
@@ -98,6 +100,8 @@ export interface DeveloperSettings {
   /** Allow sideloading extensions from local files */
   allowSideloading: boolean;
 }
+
+export type LauncherSearchEngine = 'google' | 'duckduckgo' | 'bing' | 'brave';
 
 export type WebSearchEngine = 'duckduckgo' | 'brave' | 'tavily' | 'serply' | 'searxng';
 

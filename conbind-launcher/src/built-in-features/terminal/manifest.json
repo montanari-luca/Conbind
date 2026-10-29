@@ -1,0 +1,21 @@
+{
+  "id": "terminal",
+  "name": "Terminal",
+  "icon": "icon:terminal",
+  "version": "1.0.0",
+  "lifecycle": { "disableable": true },
+  "description": "Start a search bar query with > to run a shell command.",
+  "type": "extension",
+  "searchable": true,
+  "commands": [
+    {
+      "id": "open-terminal",
+      "name": "Terminal",
+      "description": "Run shell commands without leaving the launcher",
+      "trigger": "terminal shell command line console bash zsh run",
+      "icon": "icon:terminal",
+      "mode": "view",
+      "component": "TerminalView"
+    }
+  ]
+}

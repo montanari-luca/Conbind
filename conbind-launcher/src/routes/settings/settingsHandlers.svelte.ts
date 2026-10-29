@@ -13,7 +13,11 @@ import { extensionStateManager } from '../../services/extension/extensionStateMa
 import { extensionPreferencesService } from '../../services/extension/extensionPreferencesService.svelte';
 import { feedbackService } from '../../services/feedback/feedbackService.svelte';
 import { permissionConsentService } from '../../services/extension/permissionConsentService.svelte';
-import type { AppSettings, PopToRootDelay } from '../../services/settings/types/AppSettingsType';
+import type {
+  AppSettings,
+  LauncherSearchEngine,
+  PopToRootDelay,
+} from '../../services/settings/types/AppSettingsType';
 import type { EscapeBehavior } from '../../lib/keyboard/escapeBehavior';
 import { logService } from '../../services/log/logService';
 import { DEFAULT_PALETTE, type Palette } from '../../services/theme/themeMode';
@@ -520,6 +524,26 @@ export class SettingsHandler {
       await emit('conbind:pop-to-root-changed', { value });
     } catch (error) {
       logService.error(`Failed to update pop-to-root delay: ${error}`);
+      this.saveError = true;
+      this.saveMessage = 'Failed to update setting';
+
+      setTimeout(() => {
+        this.saveMessage = '';
+        this.saveError = false;
+      }, 3000);
+    }
+  }
+
+  async updateWebSearchEngine(value: LauncherSearchEngine) {
+    try {
+      const success = await settingsService.updateSettings('search', {
+        webSearchEngine: value,
+      });
+      if (!success) {
+        throw new Error('Failed to update web search engine');
+      }
+    } catch (error) {
+      logService.error(`Failed to update web search engine: ${error}`);
       this.saveError = true;
       this.saveMessage = 'Failed to update setting';
 

@@ -395,8 +395,16 @@ pub fn get_builtin_records() -> Vec<ExtensionRecord> {
                     include_str!("../../../src/built-in-features/url-opener/manifest.json"),
                 ),
                 (
+                    "terminal",
+                    include_str!("../../../src/built-in-features/terminal/manifest.json"),
+                ),
+                (
                     "usage-stats",
                     include_str!("../../../src/built-in-features/usage-stats/manifest.json"),
+                ),
+                (
+                    "web-search",
+                    include_str!("../../../src/built-in-features/web-search/manifest.json"),
                 ),
                 (
                     "walkthrough",
@@ -2261,7 +2269,7 @@ mod manifest_schema_tests {
     #[test]
     fn test_get_builtin_records_statically_compiled() {
         let records = get_builtin_records();
-        assert_eq!(records.len(), 27, "expected 27 built-in feature records");
+        assert_eq!(records.len(), 29, "expected 29 built-in feature records");
         for record in &records {
             assert!(
                 record.is_built_in,

@@ -195,6 +195,12 @@
       "escape_key_description": "What Escape does inside the launcher.",
       "escape_reset": "Close window and pop to root",
       "escape_back": "Navigate back or close window",
+      "web_search_engine": "Web search engine",
+      "web_search_engine_description": "Search engine used when a search starts with $",
+      "web_search_engine_google": "Google",
+      "web_search_engine_duckduckgo": "DuckDuckGo",
+      "web_search_engine_bing": "Bing",
+      "web_search_engine_brave": "Brave Search",
       "text_expansion": "Text expansion",
       "text_expansion_description": "Expand snippets as you type. Requires Accessibility permission on macOS.",
       "developer_mode": "Developer mode",
@@ -1734,6 +1740,26 @@
       "copy_url_desc": "Copy the address to the clipboard",
       "copied": "Copied URL",
       "open_failed": "Couldn't open {url}"
+    },
+    "web_search": {
+      "search_for": "Search the web for “{query}”",
+      "search": "Search",
+      "open_failed": "Couldn't open your browser"
+    },
+    "terminal": {
+      "run": "Run “{command}” in the terminal",
+      "run_action": "Run",
+      "ui": {
+        "title": "Terminal",
+        "hint": "Type a command and press Enter. The folder and environment carry over between commands until you quit Conbind.",
+        "placeholder": "Type a command",
+        "input_label": "Terminal command",
+        "running": "Running… Ctrl+C to stop",
+        "cancelled": "Stopped",
+        "failed": "Could not run the command",
+        "exit_code": "Exited with code {code}",
+        "truncated": "Output cut off after 5000 lines"
+      }
     },
     "cleanup": {
       "act": {

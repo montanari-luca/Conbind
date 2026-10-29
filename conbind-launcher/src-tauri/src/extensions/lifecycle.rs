@@ -1114,6 +1114,8 @@ mod tests {
             ("raycast-import", "Raycast Import"),
             ("resource-usage", "Resource Usage"),
             ("battery", "Battery"),
+            ("terminal", "Terminal"),
+            ("web-search", "Web Search"),
         ] {
             let mut record = make_record(id, name, true);
             record.disableable = true;
@@ -1162,6 +1164,8 @@ mod tests {
             "raycast-import",
             "resource-usage",
             "battery",
+            "terminal",
+            "web-search",
         ];
 
         let mut inst_record = make_record("com.example.ext", "Example", false);

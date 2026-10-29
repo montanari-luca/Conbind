@@ -55,6 +55,7 @@ pub mod system;
 pub mod system_actions;
 pub mod system_events;
 pub mod templating;
+pub mod terminal;
 pub mod timers;
 pub mod usage;
 pub mod walkthrough;
