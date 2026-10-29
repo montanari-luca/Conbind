@@ -448,6 +448,9 @@ pub fn set_panel_appearance(app_handle: AppHandle, pref: String) -> Result<(), A
             if let Some(window) = handle_clone.get_webview_window(crate::SPOTLIGHT_LABEL) {
                 crate::platform::macos::apply_panel_appearance(&window, theme_pref);
             }
+            if let Some(window) = handle_clone.get_webview_window(crate::SETTINGS_LABEL) {
+                crate::platform::macos::apply_panel_appearance(&window, theme_pref);
+            }
         });
     }
     #[cfg(not(target_os = "macos"))]

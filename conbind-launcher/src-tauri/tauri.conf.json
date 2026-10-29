@@ -30,6 +30,7 @@
         "title": "Conbind Settings",
         "width": 1000,
         "height": 700,
+        "transparent": true,
         "visible": false
       },
       {

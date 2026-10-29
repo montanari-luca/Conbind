@@ -495,23 +495,6 @@ html[data-platform='macos'] .app-root {
 
     background-color: var(--bg-primary);
   }
-
-  /* Settings window: opaque surfaces. The launcher composites translucent
-     vibrancy over the desktop; the settings window sits on the platform's
-     own backdrop and needs solid elevation to read. */
-  :root:not([data-theme]):not([data-custom-theme]) .settings-page {
-    --bg-primary: rgb(30, 30, 32);
-    --bg-secondary: rgb(37, 37, 40);
-    --bg-tertiary: rgb(47, 47, 50);
-    --bg-hover: rgb(54, 54, 58);
-    --bg-selected: rgb(61, 61, 66);
-    --bg-secondary-full-opacity: rgb(37, 37, 40);
-
-    --border-color: rgba(255, 255, 255, 0.09);
-    --separator: rgba(255, 255, 255, 0.07);
-    --divider-soft: rgba(255, 255, 255, 0.04);
-    --shadow-color: rgba(0, 0, 0, 0.45);
-  }
 }
 
 :root[data-theme='dark'] {
@@ -563,20 +546,6 @@ html[data-platform='macos'] .app-root {
 
   background-color: var(--bg-primary);
   color-scheme: dark;
-}
-
-:root[data-theme='dark']:not([data-custom-theme]) .settings-page {
-  --bg-primary: rgb(30, 30, 32);
-  --bg-secondary: rgb(37, 37, 40);
-  --bg-tertiary: rgb(47, 47, 50);
-  --bg-hover: rgb(54, 54, 58);
-  --bg-selected: rgb(61, 61, 66);
-  --bg-secondary-full-opacity: rgb(37, 37, 40);
-
-  --border-color: rgba(255, 255, 255, 0.09);
-  --separator: rgba(255, 255, 255, 0.07);
-  --divider-soft: rgba(255, 255, 255, 0.04);
-  --shadow-color: rgba(0, 0, 0, 0.45);
 }
 
 /* ═══ LIGHT ══════════════════════════════════════════════════════════════ */
@@ -633,20 +602,6 @@ html[data-platform='macos'] .app-root {
 
     background-color: var(--bg-primary);
   }
-
-  :root:not([data-theme]):not([data-custom-theme]) .settings-page {
-    --bg-primary: rgb(240, 240, 245);
-    --bg-secondary: rgb(230, 230, 235);
-    --bg-tertiary: rgb(245, 245, 247);
-    --bg-hover: rgb(220, 220, 225);
-    --bg-selected: rgba(140, 140, 148, 0.22);
-    --bg-secondary-full-opacity: rgb(230, 230, 235);
-
-    --border-color: rgba(60, 60, 67, 0.15);
-    --separator: rgba(60, 60, 67, 0.12);
-    --divider-soft: rgba(60, 60, 67, 0.06);
-    --shadow-color: rgba(0, 0, 0, 0.1);
-  }
 }
 
 :root[data-theme='light'] {
@@ -698,20 +653,6 @@ html[data-platform='macos'] .app-root {
 
   background-color: var(--bg-primary);
   color-scheme: light;
-}
-
-:root[data-theme='light']:not([data-custom-theme]) .settings-page {
-  --bg-primary: rgb(240, 240, 245);
-  --bg-secondary: rgb(230, 230, 235);
-  --bg-tertiary: rgb(245, 245, 247);
-  --bg-hover: rgb(220, 220, 225);
-  --bg-selected: rgba(140, 140, 148, 0.22);
-  --bg-secondary-full-opacity: rgb(230, 230, 235);
-
-  --border-color: rgba(60, 60, 67, 0.15);
-  --separator: rgba(60, 60, 67, 0.12);
-  --divider-soft: rgba(60, 60, 67, 0.06);
-  --shadow-color: rgba(0, 0, 0, 0.1);
 }
 
 /* ── Surfaces that used to be hand-coloured per theme ─────

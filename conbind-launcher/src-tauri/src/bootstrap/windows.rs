@@ -484,7 +484,22 @@ pub fn init_window_listeners(app: &tauri::AppHandle) -> Result<(), Box<dyn std::
             }
         });
         #[cfg(target_os = "macos")]
-        crate::platform::macos::track_app_window(&settings_window);
+        {
+            crate::platform::macos::track_app_window(&settings_window);
+            let pref = handle
+                .try_state::<Mutex<ThemePreference>>()
+                .map(|s| *s.lock().unwrap_or_else(|p| p.into_inner()))
+                .unwrap_or(ThemePreference::System);
+            crate::platform::macos::setup_settings_vibrancy(&settings_window, pref);
+        }
+        // Same Acrylic (Mica fallback) backdrop as the launcher.
+        #[cfg(target_os = "windows")]
+        {
+            use window_vibrancy::{apply_acrylic, apply_mica};
+            if apply_acrylic(&settings_window, Some((0, 0, 0, 0))).is_err() {
+                let _ = apply_mica(&settings_window, None);
+            }
+        }
     }
 
     setup_global_shortcut(handle);

@@ -152,7 +152,16 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-    background: var(--bg-primary);
+    /* No fill of its own: the window is transparent and the root element's
+       tint sits over the native vibrancy, exactly as in the launcher. */
+    background: transparent;
+  }
+
+  /* Windows: the root is transparent and DWM paints Acrylic, so the theme
+     tint lives on the page, as it does for the launcher. */
+  :global(html[data-platform='windows']) .settings-page,
+  :global(html[data-platform='win32']) .settings-page {
+    background: var(--win-acrylic-tint);
   }
 
   .settings-header {

@@ -64,6 +64,19 @@ pub fn setup_spotlight_window<R: Runtime>(
     Ok(panel)
 }
 
+/// Gives the settings window the launcher's frosted-glass backdrop: the same
+/// vibrancy material, with the window appearance following `theme_pref`.
+/// The window stays a regular titled window; only its backdrop changes.
+pub fn setup_settings_vibrancy<R: Runtime>(
+    window: &WebviewWindow<R>,
+    theme_pref: crate::ThemePreference,
+) {
+    let resolved = conbind_platform::macos::resolve_theme_preference(theme_pref);
+    let material = conbind_platform::macos::material_for_resolved_theme(resolved);
+    let _ = apply_vibrancy(window, material, None, None);
+    crate::platform::macos::apply_panel_appearance(window, theme_pref);
+}
+
 pub fn setup_hud_window<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<Panel> {
     let panel = window
         .to_panel()
