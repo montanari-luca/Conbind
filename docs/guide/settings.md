@@ -1,34 +1,36 @@
 # Settings
 
-> A tour of every settings tab.
+> A tour of every settings page.
 
 ![The General settings tab](../images/settings-general.png)
 _Figure: the General settings tab._
 
-Open Settings with `⌘,` from anywhere inside the launcher, or search for "Settings" and press `Enter`. The window is divided into tabs along the top.
+Open Settings with `⌘,` from anywhere inside the launcher, or search for "Settings" and press `Enter`. A sidebar on the left groups the pages: **Basics** (General, Appearance), **Search** (Extensions, Applications, Browsers, File Search, Scripts), **Data & AI** (AI, Backup, Privacy) and **System** (Advanced, About, plus Developer while developer mode is on).
+
+### Searching settings
+
+The search box at the top of the sidebar finds individual settings across every page. Press `⌘F` (`Ctrl+F` on Windows and Linux) or `/` to jump to it, type a few words, use `↑`/`↓` and `Enter` (or click) to open a result, and `Esc` to clear. Selecting a result opens its page, scrolls to the setting and briefly highlights it.
 
 ## General
 
-The General tab covers core appearance, window placement, and system integration:
+The General page covers startup and system integration:
 
 - **Startup** — Toggle "Launch Conbind at login" to have Conbind start automatically when you log in to your computer.
+- **Hotkey** — Change the global show/hide shortcut. Click inside the recorder, press your new combination (including standalone `F1`–`F24` keys or Hyper key combinations), and click Save.
 - **Menu Bar Icon** — Toggle "Show icon in menu bar" to control whether Conbind appears in the system menu bar / system tray.
 - **Dock Icon** (macOS) — Toggle "Show icon in Dock" to control whether Conbind appears in the macOS Dock and ⌘Tab application switcher.
-- **Placement & Drag to Snap** — Toggle "Drag to Snap" to control whether alignment snap guide lines and haptic feedback appear when you reposition the launcher window. Note: launcher window placement is stored locally per machine and is deliberately excluded from cloud sync so multi-monitor differences don't clash across machines.
-- **Hotkey** — Change the global show/hide shortcut. Click inside the recorder, press your new combination (including standalone `F1`–`F24` keys or Hyper key combinations), and click Save.
-- **Appearance** — Switch between Light, Dark, or System (follows your operating system) colour scheme.
-- **Window Mode** — Choose between Default (search bar + results list visible immediately) and Compact (search bar only; results expand when you type).
-- **Custom Themes** — If you have installed community themes, a theme picker appears here. Select a theme to apply it instantly.
-- **Language** — Choose your preferred language (including English and Brazilian Portuguese `pt-BR`).
 - **Onboarding** — Click "Re-run onboarding" to walk through the welcome flow again — useful if you skipped any steps the first time.
 
 ## Appearance
 
-The Appearance tab gives you a larger visual picker for the same settings:
+The Appearance page controls how Conbind looks and where the launcher appears:
 
-- **App Theme** — Three large swatches for System, Light, and Dark. Click one to apply it.
-- **Launch View** — Visual preview cards for Default and Compact window modes. Click one to switch immediately.
-- **Custom Themes** — If you have installed custom themes from the store, they appear here as selectable tiles alongside the built-in Default theme.
+- **Theme** — Switch between Light, Dark, or System (follows your operating system).
+- **Color palette** — Choose **Blue Mint** (the default: ocean-blue surfaces with a mint accent) or **Classic** (the neutral grey-and-blue look). Both have light and dark variants and follow the Theme setting.
+- **Window Mode** — Choose between Default (search bar + results list visible immediately) and Compact (search bar only; results expand when you type).
+- **Interface Size** — Scale the launcher's text and controls.
+- **Placement & Drag to Snap** — Choose which display the launcher opens on, its vertical position, and whether alignment snap guides appear when you reposition it. Placement is stored locally per machine so multi-monitor differences don't clash between machines.
+- **Custom Themes** — If you have installed community themes, a theme picker appears here alongside the built-in Default. Select a theme to apply it instantly.
 
 ## Shortcuts
 

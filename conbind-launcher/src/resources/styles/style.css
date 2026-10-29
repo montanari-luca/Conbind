@@ -273,6 +273,17 @@
      thing whenever the keyboard is driving. */
   --shadow-focus: 0 0 0 2px var(--conbind-brand-muted);
 
+  /* Accent light. Neutral here, so the Classic palette is unchanged; the
+     Blue Mint palette redefines all three. --gradient-accent is for strokes,
+     indicators and decorative washes only — never behind text, since the fill
+     ramp (not a gradient) is what carries --text-on-accent. */
+  --gradient-accent: linear-gradient(135deg, var(--accent-primary), var(--accent-primary));
+  --glow-accent: 0 0 0 0 transparent;
+  --glow-accent-soft: 0 0 0 0 transparent;
+
+  /* Settings window sidebar column. */
+  --settings-sidebar-width: 240px;
+
   /* Corner and hairline of those surfaces. The radius matches the launcher
      shell above, so a popup reads as the same material. */
   --radius-popup: 20px;
@@ -653,6 +664,205 @@ html[data-platform='macos'] .app-root {
 
   background-color: var(--bg-primary);
   color-scheme: light;
+}
+
+/* ═══ BLUE MINT ══════════════════════════════════════════════════════════
+   The default palette. It restates the surface, line, accent and brand
+   tokens above — cool ocean-blue ground, mint accent — and nothing else, so
+   components need no palette awareness. Classic (the palette above) is
+   selected with <html data-palette="classic"> by services/theme/themeMode.ts;
+   a missing attribute means Blue Mint, so there is no flash before JS runs.
+
+   Same rules as the palettes above: dark and light, each written for
+   OS-tracking and for a forced choice, and the pairs must stay identical
+   (themePalettes.test.ts). The extra :not([data-palette]) keeps these ahead
+   of the Classic blocks on specificity without !important. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]):not([data-palette='classic']) {
+    --bg-primary: rgba(12, 20, 34, 0.66);
+    --bg-secondary: rgba(18, 30, 48, 0.62);
+    --bg-tertiary: rgba(24, 40, 62, 0.6);
+    --bg-hover: rgba(40, 66, 96, 0.5);
+    --bg-selected: rgba(94, 234, 212, 0.16);
+    --bg-secondary-full-opacity: rgb(18, 30, 48);
+    --bg-popup: rgb(12, 20, 34);
+
+    --text-primary: rgba(240, 250, 255, 0.95);
+    --text-secondary: rgba(205, 225, 245, 0.68);
+    --text-tertiary: rgba(205, 225, 245, 0.42);
+
+    --border-color: rgba(110, 150, 190, 0.28);
+    --separator: rgba(110, 150, 190, 0.28);
+    --divider-soft: rgba(180, 230, 255, 0.05);
+
+    --accent-primary: #5eead4;
+    --accent-primary-rgb: 94, 234, 212;
+    --accent-primary-fill: #0b7f77;
+
+    --conbind-brand: #4de3c5;
+    --conbind-brand-hover: #7af0dc;
+    --conbind-brand-muted: rgba(94, 234, 212, 0.16);
+    --conbind-brand-subtle: rgba(94, 234, 212, 0.08);
+
+    --rim-light: rgba(180, 230, 255, 0.06);
+    --rim-shade: rgba(0, 6, 16, 0.45);
+
+    --shadow-color: rgba(0, 8, 20, 0.35);
+    --shadow-launcher-popup:
+      inset 0 0 0 1px rgba(150, 220, 255, 0.06), -28px 20px 80px -20px rgba(2, 8, 20, 0.7),
+      -14px 10px 40px -16px rgba(2, 8, 20, 0.5), -4px 3px 12px -6px rgba(2, 8, 20, 0.35);
+
+    --popup-border-color: rgba(150, 220, 255, 0.2);
+    --popup-divider: rgba(150, 220, 255, 0.08);
+    --scrollbar-thumb: rgba(130, 170, 210, 0.45);
+    --kbd-rim: rgba(150, 220, 255, 0.04);
+    --kbd-border: rgba(150, 220, 255, 0.24);
+
+    --gradient-accent: linear-gradient(135deg, #5b9cff 0%, #5eead4 100%);
+    --glow-accent: 0 0 20px -4px rgba(94, 234, 212, 0.5);
+    --glow-accent-soft:
+      0 0 0 1px rgba(94, 234, 212, 0.18), 0 6px 24px -10px rgba(94, 234, 212, 0.35);
+  }
+}
+
+:root[data-theme='dark']:not([data-palette='classic']) {
+  --bg-primary: rgba(12, 20, 34, 0.66);
+  --bg-secondary: rgba(18, 30, 48, 0.62);
+  --bg-tertiary: rgba(24, 40, 62, 0.6);
+  --bg-hover: rgba(40, 66, 96, 0.5);
+  --bg-selected: rgba(94, 234, 212, 0.16);
+  --bg-secondary-full-opacity: rgb(18, 30, 48);
+  --bg-popup: rgb(12, 20, 34);
+
+  --text-primary: rgba(240, 250, 255, 0.95);
+  --text-secondary: rgba(205, 225, 245, 0.68);
+  --text-tertiary: rgba(205, 225, 245, 0.42);
+
+  --border-color: rgba(110, 150, 190, 0.28);
+  --separator: rgba(110, 150, 190, 0.28);
+  --divider-soft: rgba(180, 230, 255, 0.05);
+
+  --accent-primary: #5eead4;
+  --accent-primary-rgb: 94, 234, 212;
+  --accent-primary-fill: #0b7f77;
+
+  --conbind-brand: #4de3c5;
+  --conbind-brand-hover: #7af0dc;
+  --conbind-brand-muted: rgba(94, 234, 212, 0.16);
+  --conbind-brand-subtle: rgba(94, 234, 212, 0.08);
+
+  --rim-light: rgba(180, 230, 255, 0.06);
+  --rim-shade: rgba(0, 6, 16, 0.45);
+
+  --shadow-color: rgba(0, 8, 20, 0.35);
+  --shadow-launcher-popup:
+    inset 0 0 0 1px rgba(150, 220, 255, 0.06), -28px 20px 80px -20px rgba(2, 8, 20, 0.7),
+    -14px 10px 40px -16px rgba(2, 8, 20, 0.5), -4px 3px 12px -6px rgba(2, 8, 20, 0.35);
+
+  --popup-border-color: rgba(150, 220, 255, 0.2);
+  --popup-divider: rgba(150, 220, 255, 0.08);
+  --scrollbar-thumb: rgba(130, 170, 210, 0.45);
+  --kbd-rim: rgba(150, 220, 255, 0.04);
+  --kbd-border: rgba(150, 220, 255, 0.24);
+
+  --gradient-accent: linear-gradient(135deg, #5b9cff 0%, #5eead4 100%);
+  --glow-accent: 0 0 20px -4px rgba(94, 234, 212, 0.5);
+  --glow-accent-soft: 0 0 0 1px rgba(94, 234, 212, 0.18), 0 6px 24px -10px rgba(94, 234, 212, 0.35);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]):not([data-palette='classic']) {
+    --bg-primary: rgba(238, 246, 252, 0.68);
+    --bg-secondary: rgba(226, 238, 248, 0.68);
+    --bg-tertiary: rgba(246, 251, 255, 0.7);
+    --bg-hover: rgba(205, 225, 240, 0.55);
+    --bg-selected: rgba(14, 150, 140, 0.14);
+    --bg-secondary-full-opacity: rgb(226, 238, 248);
+    --bg-popup: rgb(238, 246, 252);
+
+    --text-primary: rgba(10, 28, 48, 0.92);
+    --text-secondary: rgba(30, 60, 90, 0.72);
+    --text-tertiary: rgba(30, 60, 90, 0.4);
+
+    --border-color: rgba(40, 90, 130, 0.18);
+    --separator: rgba(40, 90, 130, 0.14);
+    --divider-soft: rgba(40, 90, 130, 0.07);
+
+    /* Voice and fill converge in light mode, as in Classic. */
+    --accent-primary: #0a7a73;
+    --accent-primary-rgb: 10, 122, 115;
+    --accent-primary-fill: #0a7a73;
+
+    --conbind-brand: #12a89a;
+    --conbind-brand-hover: #0d9488;
+    --conbind-brand-muted: rgba(18, 168, 154, 0.15);
+    --conbind-brand-subtle: rgba(18, 168, 154, 0.08);
+
+    --rim-light: rgba(255, 255, 255, 0.85);
+    --rim-shade: rgba(10, 50, 90, 0.07);
+
+    --shadow-color: rgba(10, 50, 90, 0.1);
+    --shadow-launcher-popup:
+      -28px 20px 80px -20px rgba(10, 50, 90, 0.3), -14px 10px 40px -16px rgba(10, 50, 90, 0.18),
+      -4px 3px 12px -6px rgba(10, 50, 90, 0.1);
+
+    --popup-border-color: rgba(40, 90, 130, 0.2);
+    --popup-divider: rgba(40, 90, 130, 0.12);
+    --scrollbar-thumb: rgba(60, 110, 150, 0.32);
+    --kbd-rim: rgba(10, 50, 90, 0.03);
+    --kbd-border: rgba(10, 50, 90, 0.22);
+
+    --gradient-accent: linear-gradient(135deg, #2f7be0 0%, #0fb5a0 100%);
+    --glow-accent: 0 0 18px -4px rgba(15, 181, 160, 0.45);
+    --glow-accent-soft:
+      0 0 0 1px rgba(10, 122, 115, 0.16), 0 6px 20px -10px rgba(10, 122, 115, 0.3);
+  }
+}
+
+:root[data-theme='light']:not([data-palette='classic']) {
+  --bg-primary: rgba(238, 246, 252, 0.68);
+  --bg-secondary: rgba(226, 238, 248, 0.68);
+  --bg-tertiary: rgba(246, 251, 255, 0.7);
+  --bg-hover: rgba(205, 225, 240, 0.55);
+  --bg-selected: rgba(14, 150, 140, 0.14);
+  --bg-secondary-full-opacity: rgb(226, 238, 248);
+  --bg-popup: rgb(238, 246, 252);
+
+  --text-primary: rgba(10, 28, 48, 0.92);
+  --text-secondary: rgba(30, 60, 90, 0.72);
+  --text-tertiary: rgba(30, 60, 90, 0.4);
+
+  --border-color: rgba(40, 90, 130, 0.18);
+  --separator: rgba(40, 90, 130, 0.14);
+  --divider-soft: rgba(40, 90, 130, 0.07);
+
+  --accent-primary: #0a7a73;
+  --accent-primary-rgb: 10, 122, 115;
+  --accent-primary-fill: #0a7a73;
+
+  --conbind-brand: #12a89a;
+  --conbind-brand-hover: #0d9488;
+  --conbind-brand-muted: rgba(18, 168, 154, 0.15);
+  --conbind-brand-subtle: rgba(18, 168, 154, 0.08);
+
+  --rim-light: rgba(255, 255, 255, 0.85);
+  --rim-shade: rgba(10, 50, 90, 0.07);
+
+  --shadow-color: rgba(10, 50, 90, 0.1);
+  --shadow-launcher-popup:
+    -28px 20px 80px -20px rgba(10, 50, 90, 0.3), -14px 10px 40px -16px rgba(10, 50, 90, 0.18),
+    -4px 3px 12px -6px rgba(10, 50, 90, 0.1);
+
+  --popup-border-color: rgba(40, 90, 130, 0.2);
+  --popup-divider: rgba(40, 90, 130, 0.12);
+  --scrollbar-thumb: rgba(60, 110, 150, 0.32);
+  --kbd-rim: rgba(10, 50, 90, 0.03);
+  --kbd-border: rgba(10, 50, 90, 0.22);
+
+  --gradient-accent: linear-gradient(135deg, #2f7be0 0%, #0fb5a0 100%);
+  --glow-accent: 0 0 18px -4px rgba(15, 181, 160, 0.45);
+  --glow-accent-soft: 0 0 0 1px rgba(10, 122, 115, 0.16), 0 6px 20px -10px rgba(10, 122, 115, 0.3);
 }
 
 /* ── Surfaces that used to be hand-coloured per theme ─────
@@ -1251,6 +1461,96 @@ html[data-platform='linux'][data-theme='dark'] {
 html[data-platform='linux'][data-theme='dark'] .macos-panel {
   backdrop-filter: none;
   background-color: var(--bg-primary);
+}
+
+/* ── Platform overrides for Blue Mint ───────────────────────
+   The Windows and Linux blocks above replace the surface tokens with their
+   acrylic / opaque equivalents and out-rank the palette blocks. These repeat
+   that treatment with the Blue Mint ground; the extra palette selector keeps
+   them ahead of both. */
+
+@media (prefers-color-scheme: light) {
+  html[data-platform='win32']:not([data-theme]):not([data-palette='classic']),
+  html[data-platform='windows']:not([data-theme]):not([data-palette='classic']) {
+    --bg-primary: rgba(238, 246, 252, 0.25);
+    --bg-secondary: rgba(226, 238, 248, 0.2);
+    --bg-tertiary: rgba(246, 251, 255, 0.2);
+    --bg-hover: rgba(205, 225, 240, 0.3);
+    --bg-selected: rgba(14, 150, 140, 0.18);
+    --win-acrylic-tint: rgba(236, 245, 251, 0.85);
+  }
+}
+
+html[data-platform='win32'][data-theme='light']:not([data-palette='classic']),
+html[data-platform='windows'][data-theme='light']:not([data-palette='classic']) {
+  --bg-primary: rgba(238, 246, 252, 0.25);
+  --bg-secondary: rgba(226, 238, 248, 0.2);
+  --bg-tertiary: rgba(246, 251, 255, 0.2);
+  --bg-hover: rgba(205, 225, 240, 0.3);
+  --bg-selected: rgba(14, 150, 140, 0.18);
+  --win-acrylic-tint: rgba(236, 245, 251, 0.85);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-platform='win32']:not([data-theme]):not([data-palette='classic']),
+  html[data-platform='windows']:not([data-theme]):not([data-palette='classic']) {
+    --bg-primary: rgba(10, 18, 32, 0.25);
+    --bg-secondary: rgba(16, 28, 46, 0.2);
+    --bg-tertiary: rgba(22, 38, 60, 0.2);
+    --bg-hover: rgba(36, 62, 92, 0.3);
+    --bg-selected: rgba(94, 234, 212, 0.22);
+    --win-acrylic-tint: rgba(10, 18, 32, 0.85);
+  }
+}
+
+html[data-platform='win32'][data-theme='dark']:not([data-palette='classic']),
+html[data-platform='windows'][data-theme='dark']:not([data-palette='classic']) {
+  --bg-primary: rgba(10, 18, 32, 0.25);
+  --bg-secondary: rgba(16, 28, 46, 0.2);
+  --bg-tertiary: rgba(22, 38, 60, 0.2);
+  --bg-hover: rgba(36, 62, 92, 0.3);
+  --bg-selected: rgba(94, 234, 212, 0.22);
+  --win-acrylic-tint: rgba(10, 18, 32, 0.85);
+}
+
+@media (prefers-color-scheme: light) {
+  html[data-platform='linux']:not([data-theme]):not([data-palette='classic']) {
+    --bg-primary: rgb(238, 246, 252);
+    --bg-secondary: rgb(226, 238, 248);
+    --bg-tertiary: rgb(246, 251, 255);
+    --bg-hover: rgba(205, 225, 240, 0.8);
+    --bg-selected: rgba(14, 150, 140, 0.16);
+    --shadow-color: rgba(10, 50, 90, 0.14);
+  }
+}
+
+html[data-platform='linux'][data-theme='light']:not([data-palette='classic']) {
+  --bg-primary: rgb(238, 246, 252);
+  --bg-secondary: rgb(226, 238, 248);
+  --bg-tertiary: rgb(246, 251, 255);
+  --bg-hover: rgba(205, 225, 240, 0.8);
+  --bg-selected: rgba(14, 150, 140, 0.16);
+  --shadow-color: rgba(10, 50, 90, 0.14);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-platform='linux']:not([data-theme]):not([data-palette='classic']) {
+    --bg-primary: rgb(10, 18, 32);
+    --bg-secondary: rgb(16, 28, 46);
+    --bg-tertiary: rgb(22, 38, 60);
+    --bg-hover: rgba(36, 62, 92, 0.8);
+    --bg-selected: rgba(94, 234, 212, 0.2);
+    --shadow-color: rgba(0, 8, 20, 0.45);
+  }
+}
+
+html[data-platform='linux'][data-theme='dark']:not([data-palette='classic']) {
+  --bg-primary: rgb(10, 18, 32);
+  --bg-secondary: rgb(16, 28, 46);
+  --bg-tertiary: rgb(22, 38, 60);
+  --bg-hover: rgba(36, 62, 92, 0.8);
+  --bg-selected: rgba(94, 234, 212, 0.2);
+  --shadow-color: rgba(0, 8, 20, 0.45);
 }
 
 /* ── Typography utilities ─────────────────────────────── */

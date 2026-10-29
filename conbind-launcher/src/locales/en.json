@@ -71,6 +71,33 @@
       "developer": "Developer",
       "about": "About"
     },
+    "groups": {
+      "basics": "Basics",
+      "search": "Search",
+      "data": "Data & AI",
+      "system": "System"
+    },
+    "subtitles": {
+      "general": "Startup, hotkey and menu bar.",
+      "appearance": "Theme, colors and where the launcher appears.",
+      "extensions": "Install, enable and configure extensions.",
+      "browsers": "Choose which browser profiles are searched.",
+      "applications": "Control which apps appear in search.",
+      "file_search": "Index and search files on this computer.",
+      "scripts": "Folders Conbind scans for scripts.",
+      "ai": "Providers, models and web search.",
+      "backup": "Export or import your settings.",
+      "privacy": "Clipboard history, encryption and redaction.",
+      "advanced": "Behavior, extensions and background tasks.",
+      "developer": "Tools for building and debugging extensions.",
+      "about": "Version, updates and credits."
+    },
+    "search": {
+      "placeholder": "Search settings",
+      "clear": "Clear search",
+      "results": "Search results",
+      "no_results": "No matching settings"
+    },
     "general": {
       "section_startup": "Startup",
       "section_appearance": "Appearance",
@@ -138,7 +165,11 @@
       "theme_aria": "Appearance theme",
       "window_mode_aria": "Window mode",
       "hide_show_more": "Hide Show More bar",
-      "hide_show_more_description": "Show only the search bar in compact mode. Press ↓ to expand."
+      "hide_show_more_description": "Show only the search bar in compact mode. Press ↓ to expand.",
+      "palette": "Color palette",
+      "palette_description": "Pick the colors Conbind uses. Works with light and dark.",
+      "palette_blue_mint": "Blue Mint",
+      "palette_classic": "Classic"
     },
     "advanced": {
       "section_extension_surface": "Extension surface",

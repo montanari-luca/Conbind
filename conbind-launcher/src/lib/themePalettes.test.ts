@@ -81,6 +81,22 @@ const PALETTES = [
     forced: /^:root\[data-theme='light'\]\s*(?=\{)/m,
     selected: 'rgba(42, 85, 214, 0.13)',
   },
+  // Blue Mint, the default palette. Its blocks carry an extra
+  // :not([data-palette='classic']) and restate only the tokens that differ.
+  {
+    mode: 'blue-mint dark',
+    tracking:
+      /@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme\]\):not\(\[data-palette='classic'\]\)/,
+    forced: /^:root\[data-theme='dark'\]:not\(\[data-palette='classic'\]\)\s*(?=\{)/m,
+    selected: 'rgba(94, 234, 212, 0.16)',
+  },
+  {
+    mode: 'blue-mint light',
+    tracking:
+      /@media \(prefers-color-scheme: light\)\s*\{\s*:root:not\(\[data-theme\]\):not\(\[data-palette='classic'\]\)/,
+    forced: /^:root\[data-theme='light'\]:not\(\[data-palette='classic'\]\)\s*(?=\{)/m,
+    selected: 'rgba(14, 150, 140, 0.14)',
+  },
 ] as const;
 
 describe.each(PALETTES)('$mode palette', ({ tracking, forced, selected }) => {
@@ -175,8 +191,11 @@ describe('the fill ramp carries --text-on-accent', () => {
       .map(([name, value]) => ({ mode, name, value })),
   );
 
-  it('has a fill for every state, in both palettes', () => {
-    expect(fills).toHaveLength(8);
+  it('has a fill for every state in Classic, and the primary fill in Blue Mint', () => {
+    // Blue Mint restates only --accent-primary-fill; success, warning and
+    // danger fills are inherited from the Classic blocks.
+    expect(fills.filter(({ mode }) => !mode.startsWith('blue-mint'))).toHaveLength(8);
+    expect(fills.filter(({ mode }) => mode.startsWith('blue-mint'))).toHaveLength(2);
   });
 
   it.each(fills)('$mode $name is an opaque hex', ({ value }) => {
@@ -187,6 +206,25 @@ describe('the fill ramp carries --text-on-accent', () => {
 
   it.each(fills)('$mode $name reaches 4.5:1 against --text-on-accent', ({ value }) => {
     expect(contrast(value, ON_ACCENT)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('the Blue Mint accent stays legible', () => {
+  const dark = tokens(block(PALETTES[2].forced));
+  const light = tokens(block(PALETTES[3].forced));
+
+  it('reads as text on the dark ground', () => {
+    expect(contrast(dark['--accent-primary'], '#0c1422')).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('reads as text on the light ground', () => {
+    expect(contrast(light['--accent-primary'], '#eef6fc')).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the rgb triplet in step with the accent', () => {
+    const toTriplet = (hex: string) => rgb(hex).join(', ');
+    expect(dark['--accent-primary-rgb']).toBe(toTriplet(dark['--accent-primary']));
+    expect(light['--accent-primary-rgb']).toBe(toTriplet(light['--accent-primary']));
   });
 });
 

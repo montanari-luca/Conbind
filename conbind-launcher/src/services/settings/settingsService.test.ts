@@ -42,6 +42,7 @@ const DEFAULT: AppSettings = {
   shortcut: { modifier: 'Alt', key: 'Space' },
   appearance: {
     theme: 'system',
+    palette: 'blue-mint',
     launchView: 'default',
     windowWidth: 800,
     windowHeight: 600,
@@ -137,6 +138,15 @@ describe('mergeWithDefaults', () => {
     const result = merge({ appearance: { theme: 'dark' } });
     expect(result.appearance.theme).toBe('dark');
     expect(result.appearance.windowWidth).toBe(DEFAULT.appearance.windowWidth);
+  });
+
+  it('gives settings saved before palettes existed the Blue Mint default', () => {
+    const result = merge({ appearance: { theme: 'dark', windowWidth: 640 } });
+    expect(result.appearance.palette).toBe('blue-mint');
+  });
+
+  it('preserves a stored palette choice', () => {
+    expect(merge({ appearance: { palette: 'classic' } }).appearance.palette).toBe('classic');
   });
 
   it('defaults popToRootDelay to one minute', () => {

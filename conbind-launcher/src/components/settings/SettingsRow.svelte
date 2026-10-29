@@ -46,6 +46,29 @@
     background: var(--border-color);
   }
 
+  /* Played on arrival from a settings search result. */
+  .settings-row:global(.pulse) {
+    animation: row-pulse 1.4s var(--ease-travel);
+  }
+
+  @keyframes row-pulse {
+    0%,
+    45% {
+      background: var(--bg-selected);
+      box-shadow: inset 0 0 0 1px var(--accent-primary);
+    }
+    100% {
+      background: transparent;
+      box-shadow: inset 0 0 0 1px transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .settings-row:global(.pulse) {
+      animation-duration: 0.01ms;
+    }
+  }
+
   .settings-row-text {
     flex: 1;
     min-width: 0;

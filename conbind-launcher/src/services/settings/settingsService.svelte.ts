@@ -44,6 +44,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   appearance: {
     theme: 'system',
+    palette: 'blue-mint',
     launchView: 'default',
     windowWidth: 800,
     windowHeight: 600,

@@ -30,6 +30,8 @@
         "title": "Conbind Settings",
         "width": 1000,
         "height": 700,
+        "minWidth": 760,
+        "minHeight": 520,
         "transparent": true,
         "visible": false
       },

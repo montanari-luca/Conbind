@@ -28,6 +28,18 @@ function write(resolved: ResolvedTheme): void {
   });
 }
 
+export type Palette = 'blue-mint' | 'classic';
+export const DEFAULT_PALETTE: Palette = 'blue-mint';
+
+/** Sets <html data-palette>. The stylesheet treats a missing attribute as the
+ *  default palette, so unknown values are normalised rather than written. */
+export function applyPalette(palette: Palette | undefined): void {
+  if (typeof document === 'undefined') return;
+  const next: Palette = palette === 'classic' ? 'classic' : DEFAULT_PALETTE;
+  if (document.documentElement.dataset.palette === next) return;
+  document.documentElement.dataset.palette = next;
+}
+
 export function applyThemePreference(pref: ThemePreference): void {
   currentPreference = pref;
   write(resolve(pref));

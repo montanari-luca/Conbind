@@ -31,6 +31,9 @@ export interface AppSettings {
   };
   appearance: {
     theme: 'system' | 'light' | 'dark';
+    /** Colour palette layered over the light/dark theme. Absent in settings
+     *  saved before palettes existed, which resolves to the default. */
+    palette?: 'blue-mint' | 'classic';
     launchView: 'default' | 'compact';
     /** Compact mode only: hide the Show More bar below the search header. */
     hideCompactShowMore?: boolean;

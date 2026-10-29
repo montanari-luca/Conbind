@@ -13,7 +13,7 @@
   import type { HostFeedbackReport } from '../../services/feedback/feedbackService.svelte';
   import { logService } from '../../services/log/logService';
   import { settingsService } from '../../services/settings/settingsService.svelte';
-  import { applyThemePreference } from '../../services/theme/themeMode';
+  import { applyPalette, applyThemePreference } from '../../services/theme/themeMode';
   import PreferencesPromptHost from '../settings/PreferencesPromptHost.svelte';
   import DialogHost from '../feedback/DialogHost.svelte';
 
@@ -36,6 +36,7 @@
   $effect(() => {
     if (!settingsService.initialized) return;
     applyThemePreference(settingsService.currentSettings.appearance.theme);
+    applyPalette(settingsService.currentSettings.appearance.palette);
   });
 
   onMount(() => {

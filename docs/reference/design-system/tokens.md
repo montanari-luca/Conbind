@@ -220,6 +220,26 @@ Apple and the brand token was decorative.)
 }
 ```
 
+### Accent light
+
+Used by the Blue Mint palette for lit edges and indicators. They are neutral
+(empty) under Classic, so using them never changes a Classic surface. Never put
+text on `--gradient-accent`; text sits on the `-fill` ramp.
+
+| Token                | Use for                                        |
+| :------------------- | :--------------------------------------------- |
+| `--gradient-accent`  | Indicator strokes and decorative washes        |
+| `--glow-accent`      | A lit control, e.g. a switch that is on        |
+| `--glow-accent-soft` | A faint lit edge, e.g. a hovered settings card |
+
+### Palettes
+
+Colour tokens resolve per palette and per theme. **Blue Mint** is the default;
+**Classic** is the neutral palette, selected with `<html data-palette="classic">`.
+A missing `data-palette` means Blue Mint. Blue Mint restates only the surface,
+line, accent and brand tokens, so components never need to know which palette is
+active.
+
 ### Border Radius
 
 | Token           | Value    | Use for                  |

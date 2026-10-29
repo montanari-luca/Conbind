@@ -71,6 +71,33 @@
       "developer": "開發者",
       "about": "關於"
     },
+    "groups": {
+      "basics": "基本",
+      "search": "搜尋",
+      "data": "資料與 AI",
+      "system": "系統"
+    },
+    "subtitles": {
+      "general": "啟動、快速鍵與選單列。",
+      "appearance": "主題、配色以及啟動器的顯示位置。",
+      "extensions": "安裝、啟用並設定擴充功能。",
+      "browsers": "選擇要搜尋的瀏覽器設定檔。",
+      "applications": "控制哪些 App 會顯示在搜尋中。",
+      "file_search": "為這台電腦上的檔案建立索引並搜尋。",
+      "scripts": "Conbind 掃描腳本的資料夾。",
+      "ai": "供應商、模型與網頁搜尋。",
+      "backup": "匯出或匯入你的設定。",
+      "privacy": "剪貼簿記錄、加密與遮蔽。",
+      "advanced": "行為、擴充功能與背景工作。",
+      "developer": "用於建置與除錯擴充功能的工具。",
+      "about": "版本、更新與致謝。"
+    },
+    "search": {
+      "placeholder": "搜尋設定",
+      "clear": "清除搜尋",
+      "results": "搜尋結果",
+      "no_results": "找不到符合的設定"
+    },
     "general": {
       "section_startup": "啟動",
       "section_appearance": "外觀",
@@ -138,7 +165,11 @@
       "theme_aria": "外觀主題",
       "window_mode_aria": "視窗模式",
       "hide_show_more": "隱藏「顯示更多」列",
-      "hide_show_more_description": "緊湊模式下僅顯示搜尋列。按 ↓ 展開。"
+      "hide_show_more_description": "緊湊模式下僅顯示搜尋列。按 ↓ 展開。",
+      "palette": "配色方案",
+      "palette_description": "選擇 Conbind 使用的配色。適用於淺色與深色模式。",
+      "palette_blue_mint": "藍薄荷",
+      "palette_classic": "經典"
     },
     "advanced": {
       "section_extension_surface": "擴充套件展示範圍",

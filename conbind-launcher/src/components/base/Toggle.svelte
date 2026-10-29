@@ -30,7 +30,9 @@
     height: 1.5rem;
     background-color: var(--bg-hover);
     border-radius: var(--radius-full);
-    transition: background-color var(--transition-normal);
+    transition:
+      background-color var(--transition-normal),
+      box-shadow var(--transition-normal);
   }
 
   /* The knob. Sized off the track so the two stay in proportion. */
@@ -49,6 +51,7 @@
 
   :global(.peer:checked) ~ .toggle-track {
     background-color: var(--accent-primary-fill);
+    box-shadow: var(--glow-accent);
   }
   :global(.peer:checked) ~ .toggle-track::after {
     transform: translateX(100%);

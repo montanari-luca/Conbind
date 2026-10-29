@@ -71,6 +71,33 @@
       "developer": "开发者",
       "about": "关于"
     },
+    "groups": {
+      "basics": "基础",
+      "search": "搜索",
+      "data": "数据与 AI",
+      "system": "系统"
+    },
+    "subtitles": {
+      "general": "启动、快捷键和菜单栏。",
+      "appearance": "主题、配色以及启动器的显示位置。",
+      "extensions": "安装、启用并配置扩展。",
+      "browsers": "选择要搜索的浏览器配置文件。",
+      "applications": "控制哪些应用显示在搜索中。",
+      "file_search": "为此电脑上的文件建立索引并搜索。",
+      "scripts": "Conbind 扫描脚本的文件夹。",
+      "ai": "服务商、模型和网页搜索。",
+      "backup": "导出或导入你的设置。",
+      "privacy": "剪贴板历史、加密和脱敏。",
+      "advanced": "行为、扩展和后台任务。",
+      "developer": "用于构建和调试扩展的工具。",
+      "about": "版本、更新和致谢。"
+    },
+    "search": {
+      "placeholder": "搜索设置",
+      "clear": "清除搜索",
+      "results": "搜索结果",
+      "no_results": "没有匹配的设置"
+    },
     "general": {
       "section_startup": "启动",
       "section_appearance": "外观",
@@ -138,7 +165,11 @@
       "theme_aria": "外观主题",
       "window_mode_aria": "窗口模式",
       "hide_show_more": "隐藏“显示更多”栏",
-      "hide_show_more_description": "紧凑模式下仅显示搜索栏。按 ↓ 展开。"
+      "hide_show_more_description": "紧凑模式下仅显示搜索栏。按 ↓ 展开。",
+      "palette": "配色方案",
+      "palette_description": "选择 Conbind 使用的配色。适用于浅色和深色模式。",
+      "palette_blue_mint": "蓝薄荷",
+      "palette_classic": "经典"
     },
     "advanced": {
       "section_extension_surface": "扩展展示范围",

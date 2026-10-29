@@ -180,4 +180,36 @@ describe('themeMode', () => {
     mod.applyThemePreference('system'); // already dark — should be no-op
     expect(setPanelAppearance).toHaveBeenCalledTimes(callsAfterFirst);
   });
+
+  describe('applyPalette', () => {
+    beforeEach(() => {
+      document.documentElement.removeAttribute('data-palette');
+    });
+
+    it('writes the chosen palette to <html data-palette>', async () => {
+      installMatchMedia(false);
+      const { mod } = await loadModule();
+      mod.applyPalette('classic');
+      expect(document.documentElement.dataset.palette).toBe('classic');
+      mod.applyPalette('blue-mint');
+      expect(document.documentElement.dataset.palette).toBe('blue-mint');
+    });
+
+    it('treats a missing or unknown palette as the default', async () => {
+      installMatchMedia(false);
+      const { mod } = await loadModule();
+      mod.applyPalette(undefined);
+      expect(document.documentElement.dataset.palette).toBe(mod.DEFAULT_PALETTE);
+      mod.applyPalette('hot-pink' as never);
+      expect(document.documentElement.dataset.palette).toBe('blue-mint');
+    });
+
+    it('does not touch the light/dark theme or the native panel', async () => {
+      installMatchMedia(true);
+      const { mod, setPanelAppearance } = await loadModule();
+      mod.applyPalette('classic');
+      expect(document.documentElement.dataset.theme).toBeUndefined();
+      expect(setPanelAppearance).not.toHaveBeenCalled();
+    });
+  });
 });

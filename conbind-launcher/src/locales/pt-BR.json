@@ -71,6 +71,33 @@
       "developer": "Desenvolvedor",
       "about": "Sobre"
     },
+    "groups": {
+      "basics": "Básico",
+      "search": "Busca",
+      "data": "Dados e IA",
+      "system": "Sistema"
+    },
+    "subtitles": {
+      "general": "Inicialização, atalho e barra de menus.",
+      "appearance": "Tema, cores e onde o lançador aparece.",
+      "extensions": "Instale, ative e configure extensões.",
+      "browsers": "Escolha quais perfis de navegador são pesquisados.",
+      "applications": "Controle quais apps aparecem na busca.",
+      "file_search": "Indexe e pesquise arquivos neste computador.",
+      "scripts": "Pastas que o Conbind verifica em busca de scripts.",
+      "ai": "Provedores, modelos e busca na web.",
+      "backup": "Exporte ou importe suas configurações.",
+      "privacy": "Histórico da área de transferência, criptografia e ocultação.",
+      "advanced": "Comportamento, extensões e tarefas em segundo plano.",
+      "developer": "Ferramentas para criar e depurar extensões.",
+      "about": "Versão, atualizações e créditos."
+    },
+    "search": {
+      "placeholder": "Buscar nas configurações",
+      "clear": "Limpar busca",
+      "results": "Resultados da busca",
+      "no_results": "Nenhuma configuração encontrada"
+    },
     "general": {
       "section_startup": "Inicialização",
       "section_appearance": "Aparência",
@@ -138,7 +165,11 @@
       "theme_aria": "Tema de aparência",
       "window_mode_aria": "Modo de janela",
       "hide_show_more": "Ocultar barra Mostrar mais",
-      "hide_show_more_description": "Exibe apenas a barra de pesquisa no modo compacto. Pressione ↓ para expandir."
+      "hide_show_more_description": "Exibe apenas a barra de pesquisa no modo compacto. Pressione ↓ para expandir.",
+      "palette": "Paleta de cores",
+      "palette_description": "Escolha as cores usadas pelo Conbind. Funciona com claro e escuro.",
+      "palette_blue_mint": "Azul-menta",
+      "palette_classic": "Clássica"
     },
     "advanced": {
       "section_extension_surface": "Superfície de extensões",

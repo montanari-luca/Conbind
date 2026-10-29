@@ -166,7 +166,8 @@ If you are moving over from Raycast, you don't have to rebuild your configuratio
 - **Context Modes** — Type prefixes (`ask ai`, a URL, etc.) to switch the launcher into a specialized mode; visual chips indicate the active context
 - **Create Extension** — Scaffold a new extension from a template without leaving the launcher
 - **AI Extension Builder** — Describe an extension in plain language (_"build an extension for Notion"_) and an AI agent scaffolds, codes, builds, and verifies it for you — gating feasibility up front, asking clarifying questions via notifications, and dropping a working extension into `~/ConbindExtensions`. Uses your own Anthropic key (BYOK, no Conbind account). Browse and one-click-publish everything you've built from the **My Extensions** view.
-- **Themes** — Customize the launcher's appearance with built-in themes or create your own
+- **Themes** — Light, dark or system appearance, the default **Blue Mint** colour palette (or the neutral Classic one), and installable theme extensions of your own
+- **Settings** — A sidebar-organized settings window with instant search across every setting (`⌘F` or `/` to search)
 - **Backup & Restore** — Export and import your data locally; optional password encryption for sensitive fields
 - **Privacy by Default** — Clipboard items the OS or source app marks private (NSPasteboard concealed/transient/auto-generated, Windows clipboard-history opt-out) are never stored; password managers (1Password, Bitwarden, KeePassXC, Dashlane, Enpass, LastPass, Apple Keychain Access) are denylisted by default. Known secret formats (AWS keys, GitHub/GitLab/Stripe/Slack/OpenAI/Anthropic tokens, JWTs, PEM private keys, Luhn-validated credit cards) are redacted in place across clipboard, snippets, and AI conversations — including before the AI provider sees them.
 - **Extension Store** — Browse and install extensions from [asyar.org](https://asyar.org)

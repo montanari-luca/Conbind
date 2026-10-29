@@ -16,6 +16,7 @@ import { permissionConsentService } from '../../services/extension/permissionCon
 import type { AppSettings, PopToRootDelay } from '../../services/settings/types/AppSettingsType';
 import type { EscapeBehavior } from '../../lib/keyboard/escapeBehavior';
 import { logService } from '../../services/log/logService';
+import { DEFAULT_PALETTE, type Palette } from '../../services/theme/themeMode';
 import { initVerboseLoggingSync } from '../../services/log/verboseLoggingSync.svelte';
 import { agentService } from '../../built-in-features/agents/agentService.svelte';
 import type { CompatibilityStatus } from '../../types/CompatibilityStatus';
@@ -64,6 +65,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   appearance: {
     theme: 'system' as const,
+    palette: 'blue-mint' as const,
     launchView: 'default' as const,
     windowWidth: 800,
     windowHeight: 600,
@@ -125,6 +127,7 @@ export class SettingsHandler {
   saveError = $state(false);
   activeTab = $state('general');
   selectedTheme = $state('system');
+  selectedPalette = $state<Palette>('blue-mint');
   selectedLaunchView = $state<'default' | 'compact'>('default');
   isLoading = $state(true);
   initError = $state('');
@@ -164,6 +167,7 @@ export class SettingsHandler {
       this.selectedModifier = this.settings.shortcut.modifier;
       this.selectedKey = this.settings.shortcut.key;
       this.selectedTheme = this.settings.appearance.theme;
+      this.selectedPalette = this.settings.appearance.palette ?? DEFAULT_PALETTE;
       this.selectedLaunchView = this.settings.appearance.launchView;
 
       // Initialize settings service
@@ -181,6 +185,7 @@ export class SettingsHandler {
         this.selectedModifier = this.settings.shortcut.modifier;
         this.selectedKey = this.settings.shortcut.key;
         this.selectedTheme = this.settings.appearance.theme;
+        this.selectedPalette = this.settings.appearance.palette ?? DEFAULT_PALETTE;
         this.selectedLaunchView = this.settings.appearance.launchView;
       }
 
@@ -601,6 +606,22 @@ export class SettingsHandler {
       logService.error(`Failed to update escape behavior setting: ${error}`);
       this.saveError = true;
       this.saveMessage = 'Failed to update setting';
+
+      setTimeout(() => {
+        this.saveMessage = '';
+        this.saveError = false;
+      }, 3000);
+    }
+  }
+
+  async updatePaletteSetting(palette: Palette) {
+    try {
+      await settingsService.updateSettings('appearance', { palette });
+      this.selectedPalette = palette;
+    } catch (error) {
+      logService.error(`Failed to update palette: ${error}`);
+      this.saveError = true;
+      this.saveMessage = 'Failed to update palette';
 
       setTimeout(() => {
         this.saveMessage = '';

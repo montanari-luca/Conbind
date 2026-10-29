@@ -144,7 +144,10 @@ to mount your own.
 | `SettingsFormRow`          | The same, inside a `SettingsForm`             |
 | `SettingsRadioGroup`       | A set of radio choices                        |
 | `SettingsRangeSlider`      | A numeric slider                              |
-| `SettingsTopBar`           | The settings window's top bar                 |
+| `SettingsSidebar`          | The settings window's grouped sidebar nav     |
+| `SettingsSearch`           | The sidebar's settings search field           |
+| `SettingsPageHeader`       | A settings page's title, subtitle and rule    |
+| `PaletteSelector`          | The colour palette picker                     |
 | `AppearanceThemeSelector`  | The theme picker                              |
 | `WindowModeSelector`       | The window-mode picker                        |
 | `PermissionList`           | A list of granted permissions                 |
