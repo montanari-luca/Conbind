@@ -7,6 +7,7 @@
     Input,
     WarningBanner,
     Modal,
+    Select,
     SettingsCard,
     SettingsRow,
   } from '../../../components';
@@ -199,10 +200,16 @@
                   </div>
                 {/if}
               </div>
-              <select
+              <Select
+                fill={false}
                 value={catState.strategy}
                 disabled={!catState.enabled}
-                oninput={(e) => {
+                options={[
+                  { value: 'merge', label: t('settings.backup.strategy_merge') },
+                  { value: 'replace', label: t('settings.backup.strategy_replace') },
+                  { value: 'skip', label: t('settings.backup.strategy_skip') },
+                ]}
+                onchange={(value) => {
                   const current = backup.importCategories.get(cat.id);
                   if (current) {
                     backup.importCategories = new Map([
@@ -211,19 +218,14 @@
                         cat.id,
                         {
                           ...current,
-                          strategy: e.currentTarget
-                            .value as import('../../../services/profile/types').ConflictStrategy,
+                          strategy:
+                            value as import('../../../services/profile/types').ConflictStrategy,
                         },
                       ],
                     ]);
                   }
                 }}
-                class="strategy-select"
-              >
-                <option value="merge">{t('settings.backup.strategy_merge')}</option>
-                <option value="replace">{t('settings.backup.strategy_replace')}</option>
-                <option value="skip">{t('settings.backup.strategy_skip')}</option>
-              </select>
+              />
             </div>
           {/if}
         {/each}
@@ -317,22 +319,6 @@
 
   .conflict-text {
     color: var(--accent-warning);
-  }
-
-  .strategy-select {
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    font-family: var(--font-ui);
-    cursor: pointer;
-  }
-
-  .strategy-select:disabled {
-    color: var(--text-tertiary);
-    cursor: not-allowed;
   }
 
   .modal-error {

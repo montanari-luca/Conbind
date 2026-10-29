@@ -22,6 +22,7 @@
   import { extractErrorMessage } from '../../lib/errors';
   import ToolPickerTree from './ToolPickerTree.svelte';
   import Button from '../../components/base/Button.svelte';
+  import Select from '../../components/base/Select.svelte';
   import Input from '../../components/base/Input.svelte';
   import { fetchPlaceholders } from '../../lib/placeholders/placeholderResolver';
 
@@ -285,12 +286,14 @@
             {t('features.agents.edit.no_providers')}
           </p>
         {:else}
-          <select id="agent-provider" class="field-select" bind:value={activeForm.providerId}>
-            <option value="">{t('features.agents.edit.select')}</option>
-            {#each providers as p (p.id)}
-              <option value={p.id}>{p.name}</option>
-            {/each}
-          </select>
+          <Select
+            id="agent-provider"
+            bind:value={activeForm.providerId}
+            options={[
+              { value: '', label: t('features.agents.edit.select') },
+              ...providers.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
         {/if}
       </div>
 
@@ -362,18 +365,18 @@
         <label class="field-label" for="agent-input-source"
           >{t('features.agents.edit.input_from')}</label
         >
-        <select
+        <Select
           id="agent-input-source"
-          class="field-select"
           bind:value={activeForm.inputSource}
           disabled={!activeForm.silent}
-        >
-          <option value="argument">{t('features.agents.edit.input_argument')}</option>
-          <option value="selection">{t('features.agents.edit.input_selection')}</option>
-          <option value="clipboard">{t('features.agents.edit.input_clipboard')}</option>
-          <option value="none">{t('features.agents.edit.input_none')}</option>
-          <option value="shortcodeMiss">{t('features.agents.edit.input_shortcode')}</option>
-        </select>
+          options={[
+            { value: 'argument', label: t('features.agents.edit.input_argument') },
+            { value: 'selection', label: t('features.agents.edit.input_selection') },
+            { value: 'clipboard', label: t('features.agents.edit.input_clipboard') },
+            { value: 'none', label: t('features.agents.edit.input_none') },
+            { value: 'shortcodeMiss', label: t('features.agents.edit.input_shortcode') },
+          ]}
+        />
       </div>
 
       {#if activeForm.silent && activeForm.inputSource === 'shortcodeMiss'}
@@ -396,17 +399,17 @@
       <div class="form-field" class:disabled={!activeForm.silent}>
         <label class="field-label" for="agent-output-action">{t('features.agents.edit.then')}</label
         >
-        <select
+        <Select
           id="agent-output-action"
-          class="field-select"
           bind:value={activeForm.outputAction}
           disabled={!activeForm.silent}
-        >
-          <option value="replaceSelection">{t('features.agents.edit.out_replace')}</option>
-          <option value="paste">{t('features.agents.edit.out_paste')}</option>
-          <option value="copy">{t('features.agents.edit.out_copy')}</option>
-          <option value="hud">{t('features.agents.edit.out_hud')}</option>
-        </select>
+          options={[
+            { value: 'replaceSelection', label: t('features.agents.edit.out_replace') },
+            { value: 'paste', label: t('features.agents.edit.out_paste') },
+            { value: 'copy', label: t('features.agents.edit.out_copy') },
+            { value: 'hud', label: t('features.agents.edit.out_hud') },
+          ]}
+        />
       </div>
 
       {#if activeForm.silent}
@@ -523,18 +526,6 @@
     border-color: var(--accent-primary);
   }
 
-  .field-select {
-    padding: var(--space-2);
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    width: 100%;
-    box-sizing: border-box;
-    cursor: pointer;
-  }
-
   .field-error {
     font-size: var(--font-size-xs);
     color: var(--accent-danger);
@@ -583,10 +574,6 @@
   .form-field.disabled {
     opacity: 0.5;
     pointer-events: none;
-  }
-
-  .field-select:disabled {
-    cursor: not-allowed;
   }
 
   .cache-manager {

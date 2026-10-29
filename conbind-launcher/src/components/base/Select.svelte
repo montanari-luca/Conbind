@@ -3,22 +3,35 @@
     value = $bindable(''),
     options = [] as Array<{ value: string; label: string }>,
     disabled = false,
+    id,
+    placeholder,
+    fill = true,
     onchange,
   }: {
     value?: string;
     options?: Array<{ value: string; label: string }>;
     disabled?: boolean;
+    /** Lets a <label for> point at the control. */
+    id?: string;
+    /** Shown, unselectable, while `value` matches no option. */
+    placeholder?: string;
+    /** Stretch to the container; `false` sizes to the longest option. */
+    fill?: boolean;
     onchange?: (value: string) => void;
   } = $props();
 </script>
 
-<div class="select-wrap" class:disabled>
+<div class="select-wrap" class:disabled class:fit={!fill}>
   <select
     class="select-el"
+    {id}
     bind:value
     {disabled}
     onchange={(e) => onchange?.((e.target as HTMLSelectElement).value)}
   >
+    {#if placeholder}
+      <option value="" disabled>{placeholder}</option>
+    {/if}
     {#each options as opt (opt.value)}
       <option value={opt.value}>{opt.label}</option>
     {/each}
@@ -42,6 +55,10 @@
     width: 100%;
   }
 
+  .select-wrap.fit {
+    width: auto;
+  }
+
   .select-el {
     width: 100%;
     appearance: none;
@@ -61,9 +78,17 @@
       box-shadow var(--transition-fast);
   }
 
+  .select-el:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-color));
+  }
+
   .select-el:focus {
     border-color: var(--accent-primary);
     box-shadow: var(--shadow-focus);
+  }
+
+  .select-wrap:focus-within .select-caret {
+    color: var(--accent-primary);
   }
 
   .select-el:disabled {
@@ -78,6 +103,7 @@
     height: 6px;
     color: var(--text-secondary);
     pointer-events: none;
+    transition: color var(--transition-fast);
   }
 
   .select-wrap.disabled .select-caret {

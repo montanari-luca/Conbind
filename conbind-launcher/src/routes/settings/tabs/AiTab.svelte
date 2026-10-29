@@ -330,8 +330,8 @@
     draftPickedId = null;
   }
 
-  function onDraftProviderPick(e: Event) {
-    const val = (e.currentTarget as HTMLSelectElement).value as ProviderId;
+  function onDraftProviderPick(value: string) {
+    const val = value as ProviderId;
     if (!val) return;
     draftPickedId = val;
     const plugin = allPlugins.find((p) => p.id === val);
@@ -601,26 +601,26 @@
                       <label class="field-label" for="connection-mode-{providerId}"
                         >{t('settings.ai.connection_method')}</label
                       >
-                      <select
-                        class="card-select"
+                      <Select
                         id="connection-mode-{providerId}"
                         value={config.connectionMode ?? 'api_key'}
-                        onchange={(e) => {
-                          const mode = (e.currentTarget as HTMLSelectElement)
-                            .value as ConnectionMode;
+                        options={[
+                          { value: 'api_key', label: t('settings.ai.connection_api_key') },
+                          {
+                            value: 'cli',
+                            label: t('settings.ai.connection_cli', {
+                              name: plugin.cliName ?? 'CLI',
+                            }),
+                          },
+                        ]}
+                        onchange={(value) => {
+                          const mode = value as ConnectionMode;
                           updateProviderConfig(providerId, { connectionMode: mode });
                           if (mode === 'cli') {
                             checkCli(providerId, config.cliBinaryPath);
                           }
                         }}
-                      >
-                        <option value="api_key">{t('settings.ai.connection_api_key')}</option>
-                        <option value="cli"
-                          >{t('settings.ai.connection_cli', {
-                            name: plugin.cliName ?? 'CLI',
-                          })}</option
-                        >
-                      </select>
+                      />
                       <p class="field-description">
                         {#if config.connectionMode === 'cli'}
                           {t('settings.ai.connection_cli_desc', { name: plugin.cliName ?? 'CLI' })}
@@ -776,19 +776,18 @@
                       <label class="field-label" for="openai-api-mode-{providerId}"
                         >{t('settings.ai.api_format')}</label
                       >
-                      <select
-                        class="card-select"
+                      <Select
                         id="openai-api-mode-{providerId}"
                         value={openAIApiMode}
-                        onchange={(e) =>
+                        options={[
+                          { value: 'responses', label: t('settings.ai.api_format_responses') },
+                          { value: 'chat-completions', label: t('settings.ai.api_format_chat') },
+                        ]}
+                        onchange={(value) =>
                           updateProviderConfig(providerId, {
-                            openAIApiMode: (e.currentTarget as HTMLSelectElement)
-                              .value as OpenAIApiMode,
+                            openAIApiMode: value as OpenAIApiMode,
                           })}
-                      >
-                        <option value="responses">{t('settings.ai.api_format_responses')}</option>
-                        <option value="chat-completions">{t('settings.ai.api_format_chat')}</option>
-                      </select>
+                      />
                       <p class="field-description">
                         {t('settings.ai.api_format_desc_pre')} <code>/responses</code>{t(
                           'settings.ai.api_format_desc_post',
@@ -935,22 +934,21 @@
                       <label class="field-label" for="reasoning-effort-{providerId}"
                         >{t('settings.ai.reasoning')}</label
                       >
-                      <select
-                        class="card-select"
+                      <Select
                         id="reasoning-effort-{providerId}"
                         value={config.reasoningEffort ?? ''}
-                        onchange={(e) => {
-                          const value = (e.currentTarget as HTMLSelectElement).value;
+                        options={[
+                          { value: '', label: t('settings.ai.model_default') },
+                          ...reasoningEfforts.map((effort) => ({
+                            value: effort,
+                            label: reasoningEffortLabel(effort),
+                          })),
+                        ]}
+                        onchange={(value) =>
                           updateProviderConfig(providerId, {
                             reasoningEffort: value ? (value as ReasoningEffort) : undefined,
-                          });
-                        }}
-                      >
-                        <option value="">{t('settings.ai.model_default')}</option>
-                        {#each reasoningEfforts as effort (effort)}
-                          <option value={effort}>{reasoningEffortLabel(effort)}</option>
-                        {/each}
-                      </select>
+                          })}
+                      />
                       <p class="field-description">
                         {t('settings.ai.reasoning_desc')}
                       </p>
@@ -1129,12 +1127,14 @@
           {#if draftActive}
             <div class="provider-row draft-row">
               <div class="row-header">
-                <select class="card-select provider-picker" value="" onchange={onDraftProviderPick}>
-                  <option value="" disabled>{t('settings.ai.choose_provider')}</option>
-                  {#each availableForDraft as p (p.id)}
-                    <option value={p.id}>{p.name}</option>
-                  {/each}
-                </select>
+                <div class="provider-picker">
+                  <Select
+                    value=""
+                    placeholder={t('settings.ai.choose_provider')}
+                    options={availableForDraft.map((p) => ({ value: p.id, label: p.name }))}
+                    onchange={onDraftProviderPick}
+                  />
+                </div>
                 <button class="remove-btn" onclick={cancelDraft} aria-label={t('common.cancel')}
                   >×</button
                 >
@@ -1155,21 +1155,18 @@
             <label class="field-label" for="web-search-engine"
               >{t('settings.ai.search_engine')}</label
             >
-            <select
+            <Select
               id="web-search-engine"
-              class="card-select"
               value={webSearchSettings.engine}
-              onchange={(e) =>
-                updateWebSearch({
-                  engine: (e.currentTarget as HTMLSelectElement).value as WebSearchEngine,
-                })}
-            >
-              <option value="duckduckgo">{t('settings.ai.engine_duckduckgo')}</option>
-              <option value="brave">{t('settings.ai.engine_brave')}</option>
-              <option value="tavily">{t('settings.ai.engine_tavily')}</option>
-              <option value="serply">{t('settings.ai.engine_serply')}</option>
-              <option value="searxng">{t('settings.ai.engine_searxng')}</option>
-            </select>
+              options={[
+                { value: 'duckduckgo', label: t('settings.ai.engine_duckduckgo') },
+                { value: 'brave', label: t('settings.ai.engine_brave') },
+                { value: 'tavily', label: t('settings.ai.engine_tavily') },
+                { value: 'serply', label: t('settings.ai.engine_serply') },
+                { value: 'searxng', label: t('settings.ai.engine_searxng') },
+              ]}
+              onchange={(value) => updateWebSearch({ engine: value as WebSearchEngine })}
+            />
           </div>
 
           {#if webSearchSettings.engine === 'duckduckgo'}
@@ -1528,18 +1525,6 @@
   :global(.card-input):focus {
     outline: none;
     border-color: var(--accent-primary);
-  }
-
-  .card-select {
-    padding: var(--space-2);
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    width: 100%;
-    box-sizing: border-box;
-    cursor: pointer;
   }
 
   .card-actions {

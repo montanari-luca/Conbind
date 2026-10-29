@@ -98,6 +98,12 @@
       "results": "Search results",
       "no_results": "No matching settings"
     },
+    "titlebar": {
+      "minimize": "Minimize",
+      "maximize": "Maximize",
+      "restore": "Restore window",
+      "close": "Close"
+    },
     "general": {
       "section_startup": "Startup",
       "section_appearance": "Appearance",

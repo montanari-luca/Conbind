@@ -483,6 +483,12 @@ pub fn init_window_listeners(app: &tauri::AppHandle) -> Result<(), Box<dyn std::
                 crate::platform::macos::sync_activation_policy(sw.app_handle());
             }
         });
+        // The page draws its own titlebar (SettingsTitleBar). macOS keeps the
+        // native traffic lights through `titleBarStyle: Overlay` in
+        // tauri.conf.json; elsewhere the native frame is removed outright and
+        // the page supplies the window controls.
+        #[cfg(not(target_os = "macos"))]
+        let _ = settings_window.set_decorations(false);
         #[cfg(target_os = "macos")]
         {
             crate::platform::macos::track_app_window(&settings_window);

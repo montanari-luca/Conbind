@@ -2,7 +2,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { fly } from 'svelte/transition';
-  import { LoadingState, SettingsPageHeader, SettingsSidebar } from '../../components';
+  import {
+    LoadingState,
+    SettingsPageHeader,
+    SettingsSidebar,
+    SettingsTitleBar,
+  } from '../../components';
   import type { SettingsSidebarGroup } from '../../components/settings/SettingsSidebar.svelte';
   import { SettingsHandler } from './settingsHandlers.svelte';
   import { findNavItem, visibleNavGroups, type SettingsTabId } from './settingsNav';
@@ -156,81 +161,86 @@
 
 <svelte:window onkeydown={onWindowKeydown} />
 
-{#if handler.isLoading}
-  <div class="flex items-center justify-center h-screen">
-    <LoadingState message={t('settings.loading')} />
-  </div>
-{:else}
-  <div class="settings-page">
-    <SettingsSidebar
-      bind:this={sidebar}
-      groups={navGroups}
-      bind:activeTab={handler.activeTab}
-      bind:query
-      {results}
-      onpick={pickResult}
-    />
+<div class="settings-page">
+  <SettingsTitleBar title={t('settings.page_title')} />
 
-    <div class="settings-main" class:full-bleed={fullBleed}>
-      {#if handler.initError}
-        <div class="init-error">⚠️ {handler.initError}</div>
-      {/if}
-
-      {#key handler.activeTab}
-        <div
-          class="settings-scroll custom-scrollbar"
-          class:full-bleed={fullBleed}
-          in:fly={{ y: reducedMotion ? 0 : 8, duration: reducedMotion ? 0 : 220 }}
-        >
-          <div
-            class="settings-content-inner"
-            class:full-bleed-inner={fullBleed}
-            class:wide-inner={handler.activeTab === 'applications'}
-          >
-            <div class="page-head">
-              <SettingsPageHeader
-                title={activeNav ? t(activeNav.labelKey) : ''}
-                subtitle={activeNav ? t(activeNav.subtitleKey) : ''}
-              />
-            </div>
-
-            {#if handler.activeTab === 'general'}
-              <GeneralTab {handler} />
-            {:else if handler.activeTab === 'appearance'}
-              <AppearanceTab {handler} />
-            {:else if handler.activeTab === 'ai'}
-              <AiTab {handler} />
-            {:else if handler.activeTab === 'extensions'}
-              <ExtensionsTab {handler} />
-            {:else if handler.activeTab === 'browsers'}
-              <BrowsersTab />
-            {:else if handler.activeTab === 'applications'}
-              <ApplicationsTab />
-            {:else if handler.activeTab === 'file-search'}
-              <FileSearchTab />
-            {:else if handler.activeTab === 'scripts'}
-              <ScriptsTab />
-            {:else if handler.activeTab === 'backup'}
-              <BackupTab {handler} />
-            {:else if handler.activeTab === 'privacy'}
-              <PrivacyTab />
-            {:else if handler.activeTab === 'advanced'}
-              <AdvancedTab {handler} />
-            {:else if handler.activeTab === 'developer'}
-              <DeveloperTab {handler} />
-            {:else if handler.activeTab === 'about'}
-              <AboutTab {handler} />
-            {/if}
-          </div>
-        </div>
-      {/key}
+  {#if handler.isLoading}
+    <div class="settings-loading">
+      <LoadingState message={t('settings.loading')} />
     </div>
-  </div>
-{/if}
+  {:else}
+    <div class="settings-body">
+      <SettingsSidebar
+        bind:this={sidebar}
+        groups={navGroups}
+        bind:activeTab={handler.activeTab}
+        bind:query
+        {results}
+        onpick={pickResult}
+      />
+
+      <div class="settings-main" class:full-bleed={fullBleed}>
+        {#if handler.initError}
+          <div class="init-error">⚠️ {handler.initError}</div>
+        {/if}
+
+        {#key handler.activeTab}
+          <div
+            class="settings-scroll custom-scrollbar"
+            class:full-bleed={fullBleed}
+            in:fly={{ y: reducedMotion ? 0 : 8, duration: reducedMotion ? 0 : 220 }}
+          >
+            <div
+              class="settings-content-inner"
+              class:full-bleed-inner={fullBleed}
+              class:wide-inner={handler.activeTab === 'applications'}
+            >
+              <div class="page-head">
+                <SettingsPageHeader
+                  title={activeNav ? t(activeNav.labelKey) : ''}
+                  subtitle={activeNav ? t(activeNav.subtitleKey) : ''}
+                />
+              </div>
+
+              {#if handler.activeTab === 'general'}
+                <GeneralTab {handler} />
+              {:else if handler.activeTab === 'appearance'}
+                <AppearanceTab {handler} />
+              {:else if handler.activeTab === 'ai'}
+                <AiTab {handler} />
+              {:else if handler.activeTab === 'extensions'}
+                <ExtensionsTab {handler} />
+              {:else if handler.activeTab === 'browsers'}
+                <BrowsersTab />
+              {:else if handler.activeTab === 'applications'}
+                <ApplicationsTab />
+              {:else if handler.activeTab === 'file-search'}
+                <FileSearchTab />
+              {:else if handler.activeTab === 'scripts'}
+                <ScriptsTab />
+              {:else if handler.activeTab === 'backup'}
+                <BackupTab {handler} />
+              {:else if handler.activeTab === 'privacy'}
+                <PrivacyTab />
+              {:else if handler.activeTab === 'advanced'}
+                <AdvancedTab {handler} />
+              {:else if handler.activeTab === 'developer'}
+                <DeveloperTab {handler} />
+              {:else if handler.activeTab === 'about'}
+                <AboutTab {handler} />
+              {/if}
+            </div>
+          </div>
+        {/key}
+      </div>
+    </div>
+  {/if}
+</div>
 
 <style>
   .settings-page {
     display: flex;
+    flex-direction: column;
     height: 100vh;
     /* No fill of its own: the window is transparent and the root element's
        tint sits over the native vibrancy, exactly as in the launcher. */
@@ -242,6 +252,19 @@
   :global(html[data-platform='windows']) .settings-page,
   :global(html[data-platform='win32']) .settings-page {
     background: var(--win-acrylic-tint);
+  }
+
+  .settings-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .settings-loading {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
   }
 
   .settings-main {

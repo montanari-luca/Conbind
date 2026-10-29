@@ -66,7 +66,8 @@ pub fn setup_spotlight_window<R: Runtime>(
 
 /// Gives the settings window the launcher's frosted-glass backdrop: the same
 /// vibrancy material, with the window appearance following `theme_pref`.
-/// The window stays a regular titled window; only its backdrop changes.
+/// The window keeps its native frame and traffic lights (the titlebar is
+/// drawn by the page, under an overlay style); only its backdrop changes.
 pub fn setup_settings_vibrancy<R: Runtime>(
     window: &WebviewWindow<R>,
     theme_pref: crate::ThemePreference,

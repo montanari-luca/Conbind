@@ -281,8 +281,9 @@
   --glow-accent: 0 0 0 0 transparent;
   --glow-accent-soft: 0 0 0 0 transparent;
 
-  /* Settings window sidebar column. */
+  /* Settings window chrome: the sidebar column and the page-drawn titlebar. */
   --settings-sidebar-width: 240px;
+  --settings-titlebar-height: 44px;
 
   /* Corner and hairline of those surfaces. The radius matches the launcher
      shell above, so a popup reads as the same material. */

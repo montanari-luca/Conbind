@@ -98,6 +98,12 @@
       "results": "Resultados da busca",
       "no_results": "Nenhuma configuração encontrada"
     },
+    "titlebar": {
+      "minimize": "Minimizar",
+      "maximize": "Maximizar",
+      "restore": "Restaurar janela",
+      "close": "Fechar"
+    },
     "general": {
       "section_startup": "Inicialização",
       "section_appearance": "Aparência",

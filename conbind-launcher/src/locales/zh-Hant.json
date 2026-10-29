@@ -98,6 +98,12 @@
       "results": "搜尋結果",
       "no_results": "找不到符合的設定"
     },
+    "titlebar": {
+      "minimize": "最小化",
+      "maximize": "最大化",
+      "restore": "還原視窗",
+      "close": "關閉"
+    },
     "general": {
       "section_startup": "啟動",
       "section_appearance": "外觀",

@@ -59,6 +59,7 @@ export { default as ExtensionViewContainer } from './extension/ExtensionViewCont
 // Settings
 export { default as SettingsRow } from './settings/SettingsRow.svelte';
 export { default as SettingsSection } from './settings/SettingsSection.svelte';
+export { default as SettingsTitleBar } from './settings/SettingsTitleBar.svelte';
 export { default as SettingsSidebar } from './settings/SettingsSidebar.svelte';
 export { default as SettingsSearch } from './settings/SettingsSearch.svelte';
 export { default as SettingsPageHeader } from './settings/SettingsPageHeader.svelte';
