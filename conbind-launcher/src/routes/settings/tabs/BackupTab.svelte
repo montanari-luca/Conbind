@@ -250,11 +250,26 @@
     scroll-margin-top: var(--space-6);
   }
 
+  /* Rows inset like SettingsRow, so the checkboxes line up with the labels and
+     controls of the rows below. The whole row is the click target. */
+  .category-list {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
   .category-label {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
     cursor: pointer;
+    transition: background-color var(--dur-quick) var(--ease-travel);
+  }
+
+  .category-label:hover {
+    background: var(--bg-hover);
   }
 
   .warning-row {
