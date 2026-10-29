@@ -1,6 +1,6 @@
 [package]
 name = "conbind"
-version = "0.1.0"
+version = "0.1.1"
 description = "A fast, open-source launcher for macOS, Windows, and Linux."
 authors = ["MintFlow Technologies, Luca Montanari"]
 license = "GPL-3.0-only"
