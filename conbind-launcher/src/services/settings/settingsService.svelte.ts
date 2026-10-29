@@ -24,7 +24,7 @@ const DEFAULT_UPDATE_SETTINGS: NonNullable<AppSettings['updates']> = {
 
 const DEFAULT_SETTINGS: AppSettings = {
   general: {
-    startAtLogin: false,
+    startAtLogin: true,
     showDockIcon: false,
     showTrayIcon: true,
     escapeInViewBehavior: 'go-back',

@@ -42,6 +42,7 @@ cd conbind-sdk && pnpm exec vitest run               # SDK tests
 - User-visible strings go through `t()` and must be added to all four files in `conbind-launcher/src/locales/`.
 - Do not add network calls that send user data off-device, and do not reintroduce accounts, sync or telemetry.
 - The extension store catalog still lives at `asyar.org`; that host is intentionally left as-is.
+- Suggest a commit message when done
 
 ## Documentation
 

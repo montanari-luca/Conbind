@@ -25,7 +25,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undef
 
 const DEFAULT: AppSettings = {
   general: {
-    startAtLogin: false,
+    startAtLogin: true,
     showDockIcon: false,
     showTrayIcon: true,
     escapeInViewBehavior: 'go-back',
@@ -104,7 +104,7 @@ describe('mergeWithDefaults', () => {
 
   it('returns a copy of defaults for null', () => {
     const result = merge(null);
-    expect(result.general.startAtLogin).toBe(false);
+    expect(result.general.startAtLogin).toBe(true);
     expect(result.shortcut.key).toBe('Space');
   });
 

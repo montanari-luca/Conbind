@@ -44,7 +44,7 @@ export interface ExtensionItem {
 // Initialize with default settings first
 export const DEFAULT_SETTINGS: AppSettings = {
   general: {
-    startAtLogin: false,
+    startAtLogin: true,
     showDockIcon: false,
     showTrayIcon: true,
     escapeInViewBehavior: 'go-back',
