@@ -33,7 +33,7 @@ fn platform_err(context: &str, e: windows::core::Error) -> AppError {
 /// The OS's current media session, if any player has registered one.
 fn current_session() -> Result<Option<Session>, AppError> {
     let manager = Manager::RequestAsync()
-        .and_then(|op| op.get())
+        .and_then(|op| op.join())
         .map_err(|e| platform_err("SMTC session manager", e))?;
     Ok(manager.GetCurrentSession().ok())
 }
@@ -54,7 +54,7 @@ impl MediaBackend for WindowsMediaBackend {
             MediaCommand::Previous => session.TrySkipPreviousAsync(),
             MediaCommand::Stop => session.TryStopAsync(),
         }
-        .and_then(|op| op.get())
+        .and_then(|op| op.join())
         .map_err(|e| platform_err(command.label(), e))?;
         if accepted {
             Ok(())
@@ -73,7 +73,7 @@ impl MediaBackend for WindowsMediaBackend {
         };
         let properties = session
             .TryGetMediaPropertiesAsync()
-            .and_then(|op| op.get())
+            .and_then(|op| op.join())
             .map_err(|e| platform_err("media properties", e))?;
         let is_playing = session
             .GetPlaybackInfo()

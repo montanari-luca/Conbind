@@ -3,39 +3,17 @@
 
 export const DIAGNOSTIC_KINDS = [
   "action_failed",
-  "database_failure",
-  "encryption_failure",
   "extension_crash",
-  "extension_failure",
   "extension_proxy_error",
   "iframe_uncaught",
   "iframe_unhandled_rejection",
   "invoke_unknown",
-  "io_failure",
-  "json_failure",
-  "lock_poisoned",
   "manual",
-  "mcp_permission_required",
-  "network_failure",
-  "not_found",
-  "oauth_failure",
   "panic",
-  "permission_denied",
-  "platform_failure",
-  "power_failure",
   "render_error",
   "rpc_timeout",
-  "run_failed",
-  "search_io_failure",
-  "search_json_failure",
-  "search_lock_poisoned",
-  "search_not_found",
-  "search_other",
-  "shortcut_failure",
   "uncaught_exception",
-  "unhandled_rejection",
-  "unknown",
-  "validation_failure"
+  "unhandled_rejection"
 ] as const;
 
 export type DiagnosticKind = typeof DIAGNOSTIC_KINDS[number];
