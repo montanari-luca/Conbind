@@ -106,6 +106,24 @@ fn main() {
     copy_capability_spec(&cap_spec_source_dir, &cap_spec_staging_dir);
     println!("Staged capabilitySpec resource");
 
+    // The macOS MediaRemote adapter is built into resources/mediaremote-adapter by
+    // scripts/build-mediaremote-adapter.sh, so (unlike the staging above) it is
+    // never wiped here. tauri.conf.json bundles the directory on every platform,
+    // so keep it non-empty where the script does not run.
+    let adapter_dir = base_dir.join("resources/mediaremote-adapter");
+    let adapter_staged = std::fs::read_dir(&adapter_dir)
+        .map(|mut entries| entries.next().is_some())
+        .unwrap_or(false);
+    if !adapter_staged {
+        std::fs::create_dir_all(&adapter_dir)
+            .expect("Failed to create mediaremote-adapter resource directory");
+        std::fs::write(
+            adapter_dir.join("README.txt"),
+            "Placeholder. The macOS MediaRemote adapter is built by scripts/build-mediaremote-adapter.sh.\n",
+        )
+        .expect("Failed to create mediaremote-adapter placeholder");
+    }
+
     // Inject the SDK version from conbind-sdk/package.json so the Rust-side
     // compatibility check cannot drift from the real SDK version. A stale
     // hardcoded constant silently rejected every third-party extension whose

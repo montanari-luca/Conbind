@@ -276,6 +276,29 @@ export const ICON_DATA: Record<string, string> = {
     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
     <circle cx="12" cy="13" r="3" />
   `,
+  play: `
+    <polygon points="6 4 20 12 6 20 6 4" />
+  `,
+  pause: `
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  `,
+  'skip-forward': `
+    <polygon points="5 4 15 12 5 20 5 4" />
+    <line x1="19" y1="5" x2="19" y2="19" />
+  `,
+  'skip-back': `
+    <polygon points="19 20 9 12 19 4 19 20" />
+    <line x1="5" y1="19" x2="5" y2="5" />
+  `,
+  stop: `
+    <rect x="5" y="5" width="14" height="14" rx="2" />
+  `,
+  music: `
+    <path d="M9 18V5l12-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="18" cy="16" r="3" />
+  `,
 };
 
 export const ICON_NAMES: readonly string[] = Object.keys(ICON_DATA);

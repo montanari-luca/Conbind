@@ -1377,6 +1377,22 @@
         "error": "Não foi possível ler a bateria"
       }
     },
+    "media": {
+      "hud": {
+        "play_pause": "Reproduzir / Pausar",
+        "play": "Reproduzir",
+        "pause": "Pausado",
+        "next": "Próxima faixa",
+        "previous": "Faixa anterior",
+        "stop": "Parado"
+      },
+      "row": {
+        "play": "Reproduzir",
+        "pause": "Pausar",
+        "next": "Próxima faixa",
+        "previous": "Faixa anterior"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "Uso de recursos",

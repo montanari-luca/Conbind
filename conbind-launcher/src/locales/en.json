@@ -1377,6 +1377,22 @@
         "error": "Couldn't read the battery"
       }
     },
+    "media": {
+      "hud": {
+        "play_pause": "Play / Pause",
+        "play": "Play",
+        "pause": "Paused",
+        "next": "Next track",
+        "previous": "Previous track",
+        "stop": "Stopped"
+      },
+      "row": {
+        "play": "Play",
+        "pause": "Pause",
+        "next": "Next track",
+        "previous": "Previous track"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "Resource Usage",

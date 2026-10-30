@@ -367,6 +367,8 @@ export type LauncherPlacement = {
 	snapEnabled: boolean,
 };
 
+export type MediaCommand = "playPause" | "play" | "pause" | "next" | "previous" | "stop";
+
 export type MergedSearchResponse = {
 	results: SearchResult[],
 	aliasMatch?: AliasMatch | null,
@@ -376,6 +378,15 @@ export type ModelInfo = {
 	id: string,
 	label: string,
 	reasoningEfforts: string[] | null,
+};
+
+export type NowPlaying = {
+	title: string,
+	artist: string | null,
+	album: string | null,
+	// Display name of the player app, when the platform reports one.
+	appName: string | null,
+	isPlaying: boolean,
 };
 
 // Which convention a number is written in.

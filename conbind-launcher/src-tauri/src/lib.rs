@@ -205,6 +205,7 @@ mod launcher;
 pub mod launcher_placement;
 pub mod locale;
 pub mod mcp;
+pub mod media;
 pub mod network;
 mod notes_export;
 pub mod notifications;
@@ -437,6 +438,9 @@ pub fn run() {
         .manage(std::sync::Arc::new(
             system_actions::SystemActionsState::new(system_actions::default_backend()),
         ))
+        .manage(std::sync::Arc::new(media::MediaState::new(
+            media::default_backend(),
+        )))
         .manage(std::sync::Arc::new(cleanup::ScanRegistry::new()))
         .manage(std::sync::Arc::new(resource_usage::ResourceSampler::new()))
         .manage(std::sync::Arc::new(system_events::SystemEventsHub::new()))

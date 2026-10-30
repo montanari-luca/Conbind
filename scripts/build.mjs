@@ -100,7 +100,18 @@ try {
   process.exit(1);
 }
 
-// 4. Tauri build (Rust + frontend)
+// 4. macOS only: the MediaRemote adapter bundled as a resource for media controls.
+if (process.platform === 'darwin') {
+  step('Building MediaRemote adapter');
+  try {
+    run('bash scripts/build-mediaremote-adapter.sh');
+  } catch {
+    console.error('✗ MediaRemote adapter build failed');
+    process.exit(1);
+  }
+}
+
+// 5. Tauri build (Rust + frontend)
 step('Building conbind-launcher (pnpm tauri build)');
 try {
   // Local benchmark builds use the isolated dev bundle ID and keychain entry,

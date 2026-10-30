@@ -20,6 +20,16 @@ try {
   process.exit(1);
 }
 
+// Best effort: without the adapter, media controls fall back to media keys and
+// AppleScript, so a missing cmake must not block development.
+if (process.platform === 'darwin') {
+  try {
+    execSync('bash scripts/build-mediaremote-adapter.sh', { cwd: root, stdio: 'inherit' });
+  } catch {
+    console.warn('MediaRemote adapter not built; media controls will use fallbacks.');
+  }
+}
+
 console.log('Starting development mode (SDK Watch + Launcher)...');
 
 const sdkWatch = spawn('pnpm', ['run', 'watch'], {

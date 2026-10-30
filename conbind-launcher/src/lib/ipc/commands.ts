@@ -42,6 +42,7 @@ export * from './scriptCommands';
 export * from './agentCommands';
 export * from './usageCommands';
 export * from './systemActionCommands';
+export * from './mediaCommands';
 export * from './ocrCommands';
 export * from './calculatorCommands';
 export * from './cleanupCommands';

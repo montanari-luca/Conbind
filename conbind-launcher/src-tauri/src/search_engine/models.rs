@@ -522,6 +522,8 @@ mod bindings_export {
             .register::<crate::agents::runner::AgentRunConfig>()
             .register::<crate::agents::runner::AgentStreamEvent>()
             .register::<crate::system_actions::SystemAction>()
+            .register::<crate::media::MediaCommand>()
+            .register::<crate::media::NowPlaying>()
             .register::<crate::launcher_placement::LauncherPlacement>()
             .register::<crate::launcher_placement::LauncherMonitorChoice>()
             .register::<crate::launcher_placement::LauncherAnchor>()

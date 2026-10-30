@@ -16,6 +16,7 @@ export const BUILT_IN_FEATURE_IDS = new Set<string>([
   'file-search',
   'help',
   'mcp',
+  'media',
   'notes',
   'portals',
   'quit',

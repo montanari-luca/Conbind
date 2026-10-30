@@ -1,0 +1,47 @@
+{
+  "id": "media",
+  "name": "Media Controls",
+  "version": "1.0.0",
+  "lifecycle": {
+    "disableable": true
+  },
+  "description": "Play, pause and skip whatever is playing, and see the current track",
+  "type": "extension",
+  "searchable": true,
+  "icon": "icon:music",
+  "permissions": [],
+  "commands": [
+    {
+      "id": "play-pause",
+      "name": "Play / Pause",
+      "description": "Toggle playback in the active media player",
+      "trigger": "play pause toggle resume music media",
+      "icon": "icon:play",
+      "mode": "background"
+    },
+    {
+      "id": "next-track",
+      "name": "Next Track",
+      "description": "Skip to the next track",
+      "trigger": "next track skip song forward music media",
+      "icon": "icon:skip-forward",
+      "mode": "background"
+    },
+    {
+      "id": "previous-track",
+      "name": "Previous Track",
+      "description": "Go back to the previous track",
+      "trigger": "previous track back song rewind music media",
+      "icon": "icon:skip-back",
+      "mode": "background"
+    },
+    {
+      "id": "stop",
+      "name": "Stop Playback",
+      "description": "Stop the active media player",
+      "trigger": "stop playback music media",
+      "icon": "icon:stop",
+      "mode": "background"
+    }
+  ]
+}

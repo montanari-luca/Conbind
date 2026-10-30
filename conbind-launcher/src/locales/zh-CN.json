@@ -1377,6 +1377,22 @@
         "error": "无法读取电池信息"
       }
     },
+    "media": {
+      "hud": {
+        "play_pause": "播放 / 暂停",
+        "play": "播放",
+        "pause": "已暂停",
+        "next": "下一曲",
+        "previous": "上一曲",
+        "stop": "已停止"
+      },
+      "row": {
+        "play": "播放",
+        "pause": "暂停",
+        "next": "下一曲",
+        "previous": "上一曲"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "资源使用情况",

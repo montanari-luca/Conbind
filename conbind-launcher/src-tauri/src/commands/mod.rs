@@ -30,6 +30,7 @@ pub mod hud;
 pub mod input;
 pub mod locale;
 pub mod mcp;
+pub mod media;
 pub mod oauth;
 pub mod ocr;
 pub mod opener;

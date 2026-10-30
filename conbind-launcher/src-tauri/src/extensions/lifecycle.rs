@@ -1114,6 +1114,7 @@ mod tests {
             ("raycast-import", "Raycast Import"),
             ("resource-usage", "Resource Usage"),
             ("battery", "Battery"),
+            ("media", "Media Controls"),
             ("terminal", "Terminal"),
             ("web-search", "Web Search"),
         ] {
@@ -1164,6 +1165,7 @@ mod tests {
             "raycast-import",
             "resource-usage",
             "battery",
+            "media",
             "terminal",
             "web-search",
         ];
