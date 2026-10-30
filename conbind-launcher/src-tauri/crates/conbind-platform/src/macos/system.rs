@@ -5,13 +5,35 @@ use objc2::{msg_send, msg_send_id};
 use objc2_foundation::NSString;
 use std::path::Path;
 
+use core_foundation::base::TCFType;
+use core_foundation::boolean::CFBoolean;
+use core_foundation::dictionary::CFDictionary;
+use core_foundation::string::CFString;
+use core_foundation_sys::dictionary::CFDictionaryRef;
+use core_foundation_sys::string::CFStringRef;
+
 #[link(name = "ApplicationServices", kind = "framework")]
 extern "C" {
     fn AXIsProcessTrusted() -> bool;
+    fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> bool;
+    static kAXTrustedCheckOptionPrompt: CFStringRef;
 }
 
 pub fn is_accessibility_trusted() -> bool {
     unsafe { AXIsProcessTrusted() }
+}
+
+/// Like [`is_accessibility_trusted`], but when permission is missing it shows the system
+/// dialog that lists the app under Privacy & Security > Accessibility and offers to open
+/// System Settings. Returns the trust state at the time of the call, not after the user answers.
+pub fn request_accessibility_trust() -> bool {
+    // SAFETY: the key is a constant CFString owned by ApplicationServices (get rule), and
+    // `options` outlives the call.
+    unsafe {
+        let key = CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt);
+        let options = CFDictionary::from_CFType_pairs(&[(key, CFBoolean::true_value())]);
+        AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef())
+    }
 }
 
 pub fn open_accessibility_prefs() {

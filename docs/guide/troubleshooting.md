@@ -37,7 +37,7 @@ If pressing your global hotkey does nothing:
 
 > **Windows and Linux users:** Accessibility permission is a macOS-only requirement. If you are on Windows or Linux and text expansion is not working, skip this section and check that **Settings → Advanced → Text Expansion** is enabled.
 
-On macOS, Conbind needs Accessibility access to paste text snippets and capture selected text. Without it, text expansion and selection-aware AI commands will not work.
+On macOS, Conbind needs Accessibility access to paste text snippets, capture selected text and move or resize other apps' windows. Without it, text expansion, selection-aware AI commands and window management commands (Center, Left Half and so on) will not work. The first time you run a window command without the permission, macOS shows a prompt that adds Conbind to the list and offers to open System Settings.
 
 1. Open **System Settings → Privacy & Security → Accessibility**.
 2. Find Conbind in the list. If it is not there, drag the Conbind app from your Applications folder into the list.

@@ -225,20 +225,34 @@ unsafe fn window_element(id: &WindowId) -> Result<CfOwned, AppError> {
     find_window_element(pid, wid)
 }
 
+fn ax_denied() -> AppError {
+    AppError::Permission(
+        "Accessibility permission required for WindowManagementService. \
+         Enable it in System Settings > Privacy & Security > Accessibility."
+            .to_string(),
+    )
+}
+
 pub fn check_ax_permission() -> Result<(), AppError> {
     if !crate::platform::macos::is_accessibility_trusted() {
-        return Err(AppError::Permission(
-            "Accessibility permission required for WindowManagementService. \
-             Enable it in System Settings > Privacy & Security > Accessibility."
-                .to_string(),
-        ));
+        return Err(ax_denied());
+    }
+    Ok(())
+}
+
+/// Like [`check_ax_permission`], but when permission is missing it also raises the system
+/// Accessibility prompt so the user can grant it. For user-initiated actions only; background
+/// observers keep using the silent check.
+fn require_ax_permission() -> Result<(), AppError> {
+    if !crate::platform::macos::request_accessibility_trust() {
+        return Err(ax_denied());
     }
     Ok(())
 }
 
 /// Id of the frontmost app's focused window: the target of keyboard-driven actions.
 pub fn focused_window_id() -> Result<WindowId, AppError> {
-    check_ax_permission()?;
+    require_ax_permission()?;
     unsafe {
         let pid = crate::platform::macos::get_frontmost_app_pid()
             .ok_or_else(|| AppError::NotFound("frontmost app pid".to_string()))?;
@@ -479,7 +493,7 @@ pub fn watch_window(id: &WindowId, sink: EventSink) -> Result<WatchGuard, AppErr
 
 /// Visible windows with their app identity, for workspaces. Skips minimized windows.
 pub fn windows() -> Result<Vec<WindowInfo>, AppError> {
-    check_ax_permission()?;
+    require_ax_permission()?;
     Ok(collect_windows(None)?
         .into_iter()
         .filter(|(info, _)| !info.is_minimized)
@@ -812,8 +826,8 @@ fn collect_windows(
 
 /// Brings a specific window to the foreground and focuses it.
 pub fn focus_window(id: &str) -> Result<(), AppError> {
-    check_ax_permission()?;
     let (pid, wid) = parse_window_id(&WindowId::new(id))?;
+    require_ax_permission()?;
 
     unsafe {
         if let Some(cls) = AnyClass::get("NSRunningApplication") {
@@ -842,8 +856,8 @@ pub fn focus_window(id: &str) -> Result<(), AppError> {
 
 /// Closes a specific window using the Accessibility API close action.
 pub fn close_window(id: &str) -> Result<(), AppError> {
-    check_ax_permission()?;
     let (pid, wid) = parse_window_id(&WindowId::new(id))?;
+    require_ax_permission()?;
 
     unsafe {
         let window = find_window_element(pid, wid)?;
