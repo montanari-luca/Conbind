@@ -65,6 +65,7 @@ serde_json = "1"
 [dependencies]
 percent-encoding = "2.3"
 base64 = "0.22"
+drag = "2.1"            # native drag-out of files from a window
 dirs = "5.0"
 url = "2"
 tauri = { version = "2.12.4", features = ["macos-private-api", "tray-icon", "image-png", "image-ico", "test"] }

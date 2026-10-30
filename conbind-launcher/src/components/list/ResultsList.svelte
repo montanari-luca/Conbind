@@ -3,6 +3,7 @@
   import LauncherListRow from './LauncherListRow.svelte';
   import { statusForRow } from '../../services/launcher/itemStatusLogic';
 
+  import { draggablePath } from '../../services/launcher/fileDragAction';
   import type { MappedSearchItem } from '../../services/search/types/MappedSearchItem';
 
   type Item = MappedSearchItem;
@@ -40,6 +41,7 @@
         shortcut={item.shortcut}
         typeLabel={item.kindLabel}
         sourceLabel={item.sourceLabel}
+        dragPath={draggablePath(item)}
         {status}
       />
     {/if}

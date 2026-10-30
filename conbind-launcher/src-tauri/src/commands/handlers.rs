@@ -362,6 +362,7 @@ macro_rules! system_commands {
                 $crate::commands::files_thumbnail,
                 $crate::commands::mkdir_absolute,
                 $crate::commands::show_in_file_manager,
+                $crate::commands::start_file_drag,
                 $crate::commands::trash_path,
                 $crate::commands::open_in_terminal,
                 $crate::commands::quick_look_path,

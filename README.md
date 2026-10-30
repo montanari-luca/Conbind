@@ -390,6 +390,7 @@ A dedicated file search, not a thin wrapper around the OS's own tool — file lo
 - **Bounded per-keystroke cost** — a Rust-native index (arena-based, not a hash map) answers every keystroke in low single-digit milliseconds regardless of how many files are indexed; the query engine's work is capped by construction, not by index size.
 - **Smart defaults** — indexes your whole home folder out of the box, automatically skipping caches, `node_modules`, build output, and VM disk images. Narrow to specific folders or add your own exclude patterns in **Settings → File Search**.
 - **Real previews** — images get real thumbnails, text/code files show their content, and (macOS) other file types get a Quick Look-style preview — all served from a Rust-generated cache, never by loading a whole file into the UI.
+- **Drag out** — drag any app or file result straight out of the launcher into Finder, a chat, a mail draft or any other app that accepts files.
 - **Pin favorites, ask AI about a file** — pin frequently-used files to the top, or send a selected file straight into AI chat with its content pre-filled.
 - **Deep Search escalation** — press `⌘⇧F` to fall back to your OS's native search (Spotlight, Everything, `plocate`) for anything outside your indexed folders — on demand, never running in the background.
 

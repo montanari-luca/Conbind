@@ -258,6 +258,51 @@ pub async fn quick_look_path<R: tauri::Runtime>(
     }
 }
 
+/// Starts a native drag of `path` out of the launcher window, so a result row
+/// can be dropped into Finder, a chat, a mail draft and so on. `preview_png`
+/// is the base64 PNG shown under the cursor while dragging. AppKit and the
+/// Win32 OLE drag loop both require the window's own thread, hence the hop to
+/// the main thread.
+#[tauri::command]
+pub async fn start_file_drag<R: tauri::Runtime>(
+    window: tauri::WebviewWindow<R>,
+    path_str: String,
+    preview_png: String,
+) -> Result<(), AppError> {
+    validate_show_path(&path_str)?;
+    let preview = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, preview_png)
+        .map_err(|e| AppError::Other(format!("Invalid drag preview: {}", e)))?;
+    let path = Path::new(&path_str).to_path_buf();
+
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let handle = window.clone();
+    window
+        .run_on_main_thread(move || {
+            #[cfg(target_os = "linux")]
+            let target = handle.gtk_window().map_err(|e| e.to_string());
+            #[cfg(not(target_os = "linux"))]
+            let target: Result<&tauri::WebviewWindow<R>, String> = Ok(&handle);
+            let result = target.and_then(|target| {
+                drag::start_drag(
+                    #[cfg(target_os = "linux")]
+                    &target,
+                    #[cfg(not(target_os = "linux"))]
+                    target,
+                    drag::DragItem::Files(vec![path]),
+                    drag::Image::Raw(preview),
+                    |_, _| {},
+                    drag::Options::default(),
+                )
+                .map_err(|e| e.to_string())
+            });
+            let _ = tx.send(result);
+        })
+        .map_err(|e| AppError::Other(format!("Failed to schedule drag: {}", e)))?;
+    rx.await
+        .map_err(|e| AppError::Other(format!("Drag thread failed: {}", e)))?
+        .map_err(|e| AppError::Other(format!("Failed to start drag: {}", e)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
