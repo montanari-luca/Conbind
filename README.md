@@ -259,12 +259,12 @@ See [`docs/explanation/clipboard-privacy.md`](docs/explanation/clipboard-privacy
 | MCP Servers           |  ✅   |   ✅    |      ✅      |
 | Scripts               |  ✅   |   ✅    |      ✅      |
 | Calculator            |  ✅   |   ✅    |      ✅      |
-| Cleanup               |  ✅   |   ⚠️    |      ⚠️      |
-| Resource Usage        |  ✅   |   ⚠️    |      ⚠️      |
-| Battery               |  ✅   |   ⚠️    |      ⚠️      |
-| Media Controls        |  ✅   |   ⚠️    |      ⚠️      |
-| Terminal prefix `>`   |  ✅   |   ⚠️    |      ⚠️      |
-| Web Search prefix `$` |  ✅   |   ⚠️    |      ⚠️      |
+| Cleanup               |  ✅   |   ✅    |      ⚠️      |
+| Resource Usage        |  ✅   |   ✅    |      ⚠️      |
+| Battery               |  ✅   |   ✅    |      ⚠️      |
+| Media Controls        |  ✅   |   ✅    |      ⚠️      |
+| Terminal prefix `>`   |  ✅   |   ✅    |      ⚠️      |
+| Web Search prefix `$` |  ✅   |   ✅    |      ⚠️      |
 | Clipboard History     |  ✅   |   ✅    |      ✅      |
 | File Search           |  ✅   |   ✅    |      ✅      |
 | Context Modes         |  ✅   |   ✅    |      ✅      |
