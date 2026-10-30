@@ -18,6 +18,7 @@ _Independent fork of Xoshbin's Asyar. The original core owner is **Khoshbin Ali 
 - Battery estimation
 - `>` terminal and `$` web search prefixes in the search bar
 - Resource usage view
+- Drag results (Apps, files, etc.) as reference (like in Raycast)
 - Full window management suite expanded from [SplitShadow](https://github.com/montanari-luca/SplitShadow)
 
 ## Other changes
