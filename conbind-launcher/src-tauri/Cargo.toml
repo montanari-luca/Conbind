@@ -1,6 +1,6 @@
 [package]
 name = "conbind"
-version = "0.1.0"
+version = "0.1.1"
 description = "A fast, open-source launcher for macOS, Windows, and Linux."
 authors = ["MintFlow Technologies, Luca Montanari"]
 license = "GPL-3.0-only"
@@ -65,6 +65,7 @@ serde_json = "1"
 [dependencies]
 percent-encoding = "2.3"
 base64 = "0.22"
+drag = "2.1"            # native drag-out of files from a window
 dirs = "5.0"
 url = "2"
 tauri = { version = "2.12.4", features = ["macos-private-api", "tray-icon", "image-png", "image-ico", "test"] }
@@ -214,6 +215,9 @@ windows = { version = "0.62", features = [
     "Win32_Security",
     "Win32_System_LibraryLoader",
     "Win32_System_Diagnostics_ToolHelp",
+    "Foundation",
+    "Foundation_Collections",
+    "Media_Control",
 ] }
 wmi = "0.14"
 # Registry access for the uninstall-application flow (scanning

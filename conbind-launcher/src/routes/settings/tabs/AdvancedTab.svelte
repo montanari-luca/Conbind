@@ -1,6 +1,9 @@
 <script lang="ts">
   import { SettingsCard, SettingsRow, Toggle, Select } from '../../../components';
-  import type { PopToRootDelay } from '../../../services/settings/types/AppSettingsType';
+  import type {
+    LauncherSearchEngine,
+    PopToRootDelay,
+  } from '../../../services/settings/types/AppSettingsType';
   import { resolveEscapeBehavior, type EscapeBehavior } from '../../../lib/keyboard/escapeBehavior';
   import type { SettingsHandler } from '../settingsHandlers.svelte';
   import ScheduledTasksSection from '../../../components/settings/ScheduledTasksSection.svelte';
@@ -35,6 +38,13 @@
   const escapeOptions = $derived([
     { value: 'go-back', label: t('settings.advanced.escape_back') },
     { value: 'hide-and-reset', label: t('settings.advanced.escape_reset') },
+  ]);
+
+  const searchEngineOptions = $derived([
+    { value: 'google', label: t('settings.advanced.web_search_engine_google') },
+    { value: 'duckduckgo', label: t('settings.advanced.web_search_engine_duckduckgo') },
+    { value: 'bing', label: t('settings.advanced.web_search_engine_bing') },
+    { value: 'brave', label: t('settings.advanced.web_search_engine_brave') },
   ]);
 
   const popToRootOptions = $derived([
@@ -91,6 +101,16 @@
         value={resolveEscapeBehavior(handler.settings.general?.escapeInViewBehavior)}
         options={escapeOptions}
         onchange={(v) => handler.updateEscapeBehavior(v as EscapeBehavior)}
+      />
+    </SettingsRow>
+    <SettingsRow
+      label={t('settings.advanced.web_search_engine')}
+      description={t('settings.advanced.web_search_engine_description')}
+    >
+      <Select
+        value={handler.settings.search?.webSearchEngine ?? 'google'}
+        options={searchEngineOptions}
+        onchange={(v) => handler.updateWebSearchEngine(v as LauncherSearchEngine)}
       />
     </SettingsRow>
     <SettingsRow

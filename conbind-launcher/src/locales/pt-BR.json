@@ -195,6 +195,12 @@
       "escape_key_description": "O que a tecla Escape faz dentro do launcher.",
       "escape_reset": "Fechar a janela e voltar à busca raiz",
       "escape_back": "Voltar ou fechar a janela",
+      "web_search_engine": "Mecanismo de busca na web",
+      "web_search_engine_description": "Mecanismo usado quando a busca começa com $",
+      "web_search_engine_google": "Google",
+      "web_search_engine_duckduckgo": "DuckDuckGo",
+      "web_search_engine_bing": "Bing",
+      "web_search_engine_brave": "Brave Search",
       "text_expansion": "Expansão de texto",
       "text_expansion_description": "Expandir snippets enquanto você digita. Requer permissão de Acessibilidade no macOS.",
       "developer_mode": "Modo desenvolvedor",
@@ -1371,6 +1377,22 @@
         "error": "Não foi possível ler a bateria"
       }
     },
+    "media": {
+      "hud": {
+        "play_pause": "Reproduzir / Pausar",
+        "play": "Reproduzir",
+        "pause": "Pausado",
+        "next": "Próxima faixa",
+        "previous": "Faixa anterior",
+        "stop": "Parado"
+      },
+      "row": {
+        "play": "Reproduzir",
+        "pause": "Pausar",
+        "next": "Próxima faixa",
+        "previous": "Faixa anterior"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "Uso de recursos",
@@ -1734,6 +1756,26 @@
       "copy_url_desc": "Copiar o endereço para a área de transferência",
       "copied": "URL copiada",
       "open_failed": "Não foi possível abrir {url}"
+    },
+    "web_search": {
+      "search_for": "Pesquisar na web por “{query}”",
+      "search": "Pesquisar",
+      "open_failed": "Não foi possível abrir o navegador"
+    },
+    "terminal": {
+      "run": "Executar “{command}” no terminal",
+      "run_action": "Executar",
+      "ui": {
+        "title": "Terminal",
+        "hint": "Digite um comando e pressione Enter. A pasta e o ambiente continuam entre os comandos até você sair do Conbind.",
+        "placeholder": "Digite um comando",
+        "input_label": "Comando do terminal",
+        "running": "Executando… Ctrl+C para parar",
+        "cancelled": "Interrompido",
+        "failed": "Não foi possível executar o comando",
+        "exit_code": "Encerrou com código {code}",
+        "truncated": "Saída cortada após 5000 linhas"
+      }
     },
     "cleanup": {
       "act": {

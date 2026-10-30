@@ -28,6 +28,11 @@ export async function showInFileManager(pathStr: string): Promise<void> {
   await invokeSafe('show_in_file_manager', { pathStr });
 }
 
+/** Starts a native drag of `pathStr` out of the window; `previewPng` is the base64 PNG under the cursor. */
+export async function startFileDrag(pathStr: string, previewPng: string): Promise<void> {
+  await invokeSafe('start_file_drag', { pathStr, previewPng });
+}
+
 export async function trashPath(pathStr: string): Promise<void> {
   await invokeSafe('trash_path', { pathStr });
 }

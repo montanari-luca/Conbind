@@ -6,6 +6,7 @@
   import KeyboardHint from '../base/KeyboardHint.svelte';
   import StatusDot from '../base/StatusDot.svelte';
   import type { ItemStatus } from '../../services/launcher/itemStatusLogic';
+  import { fileDrag } from '../../services/launcher/fileDragAction';
 
   let {
     selected = false,
@@ -22,6 +23,7 @@
     typeLabel,
     sourceLabel,
     status = null,
+    dragPath,
     leading,
     trailing,
     ...rest
@@ -51,6 +53,8 @@
      * nothing. Derivation lives in services/launcher/itemStatusLogic.ts.
      */
     status?: ItemStatus | null;
+    /** Absolute path of the file or app this row stands for; makes the row draggable out of the window. */
+    dragPath?: string;
     leading?: Snippet;
     trailing?: Snippet;
     [key: string]: any;
@@ -64,6 +68,7 @@
   class:multi-selected-result={multiSelected}
   {onclick}
   {ondblclick}
+  use:fileDrag={dragPath}
   {...rest}
 >
   <div class="row-shell">
@@ -75,7 +80,7 @@
           <Icon name={getBuiltInIconName(icon)} size={14} />
         </div>
       {:else if isIconImage(icon)}
-        <img src={icon} alt={title} class="row-icon-img" />
+        <img src={icon} alt={title} class="row-icon-img" draggable="false" />
       {:else}
         <div class="row-icon-fallback">
           {icon}

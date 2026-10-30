@@ -85,7 +85,8 @@ class CalculatorExtension implements Extension {
   async searchRows(query: string): Promise<BuiltinSearchRow[]> {
     if (!this.enabled) return [];
     const trimmed = query.trim();
-    if (!trimmed) return [];
+    // `>` is the terminal prefix.
+    if (!trimmed || trimmed.startsWith('>')) return [];
 
     const results = await calculatorEvaluate(trimmed);
 

@@ -1,0 +1,12 @@
+{
+  "id": "web-search",
+  "name": "Web Search",
+  "icon": "icon:globe",
+  "version": "1.0.0",
+  "lifecycle": { "disableable": true },
+  "description": "Start a search bar query with $ to search the web in your browser.",
+  "type": "extension",
+  "permissions": [],
+  "commands": [],
+  "searchable": true
+}

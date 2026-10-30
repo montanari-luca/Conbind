@@ -89,7 +89,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["built-in-features", "resources/capabilitySpec", "resources/ext-builder"],
+    "resources": [
+      "built-in-features",
+      "resources/capabilitySpec",
+      "resources/ext-builder",
+      "resources/mediaremote-adapter"
+    ],
     "macOS": {
       "entitlements": "./entitlements.plist",
       "minimumSystemVersion": "13.0"

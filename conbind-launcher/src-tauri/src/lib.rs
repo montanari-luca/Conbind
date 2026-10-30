@@ -205,6 +205,7 @@ mod launcher;
 pub mod launcher_placement;
 pub mod locale;
 pub mod mcp;
+pub mod media;
 pub mod network;
 mod notes_export;
 pub mod notifications;
@@ -235,6 +236,7 @@ pub mod storage;
 pub mod system_actions;
 pub mod system_events;
 pub mod templating;
+pub mod terminal;
 pub mod thumbnail;
 pub mod timers;
 pub mod tray;
@@ -423,6 +425,7 @@ pub fn run() {
         .manage(hud_window::HudState::default())
         .manage(snap_guides::SnapGuidesState::default())
         .manage(shell::ShellProcessRegistry::new())
+        .manage(terminal::TerminalSession::new())
         .manage(extensions::scheduler::SchedulerState::new())
         .manage(scripts::InlineSchedulerState::new())
         .manage(std::sync::Arc::new(ExtensionRuntimeManager::new(
@@ -435,6 +438,9 @@ pub fn run() {
         .manage(std::sync::Arc::new(
             system_actions::SystemActionsState::new(system_actions::default_backend()),
         ))
+        .manage(std::sync::Arc::new(media::MediaState::new(
+            media::default_backend(),
+        )))
         .manage(std::sync::Arc::new(cleanup::ScanRegistry::new()))
         .manage(std::sync::Arc::new(resource_usage::ResourceSampler::new()))
         .manage(std::sync::Arc::new(system_events::SystemEventsHub::new()))

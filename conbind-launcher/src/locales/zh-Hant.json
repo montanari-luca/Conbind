@@ -195,6 +195,12 @@
       "escape_key_description": "在啟動器中按下 Escape 鍵的作用。",
       "escape_reset": "關閉視窗並返回根搜尋",
       "escape_back": "返回上一步或關閉視窗",
+      "web_search_engine": "網頁搜尋引擎",
+      "web_search_engine_description": "以 $ 開頭的搜尋所使用的搜尋引擎",
+      "web_search_engine_google": "Google",
+      "web_search_engine_duckduckgo": "DuckDuckGo",
+      "web_search_engine_bing": "Bing",
+      "web_search_engine_brave": "Brave Search",
       "text_expansion": "文字擴充套件",
       "text_expansion_description": "輸入時自動展開片段。在 macOS 上需要輔助功能權限。",
       "developer_mode": "開發者模式",
@@ -1371,6 +1377,22 @@
         "error": "無法讀取電池資訊"
       }
     },
+    "media": {
+      "hud": {
+        "play_pause": "播放 / 暫停",
+        "play": "播放",
+        "pause": "已暫停",
+        "next": "下一首",
+        "previous": "上一首",
+        "stop": "已停止"
+      },
+      "row": {
+        "play": "播放",
+        "pause": "暫停",
+        "next": "下一首",
+        "previous": "上一首"
+      }
+    },
     "resource_usage": {
       "ui": {
         "title": "資源使用情況",
@@ -1734,6 +1756,26 @@
       "copy_url_desc": "將網址複製到剪貼簿",
       "copied": "已複製網址",
       "open_failed": "無法開啟 {url}"
+    },
+    "web_search": {
+      "search_for": "在網路上搜尋「{query}」",
+      "search": "搜尋",
+      "open_failed": "無法開啟瀏覽器"
+    },
+    "terminal": {
+      "run": "在終端機中執行「{command}」",
+      "run_action": "執行",
+      "ui": {
+        "title": "終端機",
+        "hint": "輸入指令並按 Enter。在結束 Conbind 之前，各指令之間會保留目前資料夾與環境。",
+        "placeholder": "輸入指令",
+        "input_label": "終端機指令",
+        "running": "執行中… 按 Ctrl+C 停止",
+        "cancelled": "已停止",
+        "failed": "無法執行該指令",
+        "exit_code": "已結束，結束碼 {code}",
+        "truncated": "輸出在 5000 行後被截斷"
+      }
     },
     "cleanup": {
       "act": {
