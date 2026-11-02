@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tauri-apps/api/event', () => ({
@@ -11,7 +11,14 @@ vi.mock('../../../built-in-features/shortcuts/shortcutService', () => ({
   shortcutService: { isConflict: vi.fn().mockResolvedValue(null) },
 }));
 
+const { getShortcutBackendInfoMock } = vi.hoisted(() => ({
+  getShortcutBackendInfoMock: vi
+    .fn()
+    .mockResolvedValue({ isWayland: false, compositor: null, isOmarchy: false }),
+}));
+
 vi.mock('../../../lib/ipc/commands', () => ({
+  getShortcutBackendInfo: getShortcutBackendInfoMock,
   onboardingCommands: { reset: vi.fn().mockResolvedValue(undefined) },
 }));
 
@@ -47,5 +54,20 @@ describe('GeneralTab', () => {
     expect(screen.getByText('Onboarding')).toBeTruthy();
     expect(screen.queryByText('Interface Size')).toBeNull();
     expect(screen.queryByText('Theme')).toBeNull();
+  });
+
+  it('renders Wayland compositor hotkey instructions when running on Omarchy Hyprland', async () => {
+    getShortcutBackendInfoMock.mockResolvedValueOnce({
+      isWayland: true,
+      compositor: 'hyprland',
+      isOmarchy: true,
+    });
+
+    render(GeneralTab, { props: { handler: createHandler() } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hyprland \(Omarchy\)/)).toBeTruthy();
+      expect(screen.getByText(/bindd = SUPER, SPACE, Conbind, exec, conbind-summon/)).toBeTruthy();
+    });
   });
 });

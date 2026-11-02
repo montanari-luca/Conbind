@@ -117,7 +117,7 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 # reqwest is host-side Rust HTTP (downloads, the auth/API client, sidecar
 # fetches) that runs in the Rust process with no webview origin.
 reqwest = { version = "0.12", features = ["json", "stream"] } # host-side Rust HTTP
-zip = { version = "2.1", default-features = false, features = ["deflate"] } # For extracting zip files
+zip = { version = "4.6", default-features = false, features = ["deflate"] } # For extracting zip files
 futures-util = "0.3" # For stream handling
 tokio-util = { version = "0.7", features = ["codec"] } # For async file I/O helpers
 tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
@@ -159,6 +159,7 @@ ignore = "0.4"                     # .gitignore-honoring parallel walker for the
 fnv = "1"                          # Stable file_id hash (dev,inode) for the file index
 file-id = "0.2"                    # Cross-platform (dev,inode)/(volume,file_index) lookup on stable Rust — MetadataExt's Windows methods are nightly-only
 bincode = "1"                      # Versioned file-index snapshot serialization
+toml_edit = "0.25"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] } # Cross-platform thumbnail downscaling
 fend-core = "1.5.8"
 chrono-tz = "0.10.4"

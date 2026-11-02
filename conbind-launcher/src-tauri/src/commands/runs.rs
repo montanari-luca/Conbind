@@ -28,6 +28,7 @@ pub fn runs_start_impl(
     extension_id: Option<String>,
     cancellable: bool,
     subject_id: Option<String>,
+    quiet_success: bool,
 ) -> Result<Run, AppError> {
     let run = Run {
         id,
@@ -41,6 +42,7 @@ pub fn runs_start_impl(
         error_message: None,
         subject_id,
         tail_output: None,
+        quiet_success,
     };
     registry.insert(run.clone())?;
     let payload = serde_json::to_value(&run)
@@ -79,10 +81,14 @@ fn finalize_impl(
     let snapshot = buffer.snapshot(id);
     let tail = format_tail_output(&snapshot);
     let run = registry.transition(id, new_status, error_message, tail)?;
-    runs_history::insert(conn, &run)?;
-    // Buffer is kept alive for post-mortem reads by RunView and notification
-    // consumers. It will be dropped by runs_dismiss (on user dismiss) and on
-    // session reset.
+    let evicted = runs_history::insert(conn, &run)?;
+    // The just-finished run's buffer stays alive for post-mortem reads by
+    // RunView and notification consumers. It is dropped by runs_dismiss (on
+    // user dismiss), when its history entry is evicted or cleared (below and
+    // in `runs_history_clear_impl`), and on session reset.
+    for evicted_id in &evicted {
+        buffer.drop_for_run(evicted_id);
+    }
     let payload = serde_json::to_value(&run)
         .map_err(|e| AppError::Validation(format!("serialize Run: {e}")))?;
     let _ = emit("runs:state-changed", &payload);
@@ -167,8 +173,13 @@ pub fn runs_history_list_impl(conn: &Connection, limit: usize) -> Result<Vec<Run
     Ok(runs_history::list_recent(conn, limit)?)
 }
 
-pub fn runs_history_clear_impl(conn: &Connection) -> Result<(), AppError> {
-    Ok(runs_history::delete_all(conn)?)
+/// Clear persisted history and release the output buffers that were only
+/// reachable through those history entries.
+pub fn runs_history_clear_impl(buffer: &OutputBuffer, conn: &Connection) -> Result<(), AppError> {
+    for id in runs_history::delete_all(conn)? {
+        buffer.drop_for_run(&id);
+    }
+    Ok(())
 }
 
 pub fn runs_get_output_impl(buffer: &OutputBuffer, id: &str) -> Vec<String> {
@@ -224,7 +235,7 @@ pub fn build_run_notification(run: &Run) -> Option<NotificationRequest> {
                 extension_id: "runs".to_string(),
             })
         }
-        RunStatus::Succeeded if run.kind == RunKind::ShellScript => {
+        RunStatus::Succeeded if run.kind == RunKind::ShellScript && !run.quiet_success => {
             let tail = run.tail_output.as_deref().unwrap_or("(no output)");
             let body_source = format!("{}\n{}", run.label, tail);
             let body = truncate(&body_source, 120);
@@ -275,6 +286,7 @@ pub async fn runs_start(
     extension_id: Option<String>,
     cancellable: bool,
     subject_id: Option<String>,
+    quiet_success: Option<bool>,
 ) -> Result<Run, AppError> {
     let registry = RunRegistry::instance();
     let buffer = OutputBuffer::instance();
@@ -289,6 +301,7 @@ pub async fn runs_start(
         extension_id,
         cancellable,
         subject_id,
+        quiet_success.unwrap_or(false),
     )
 }
 
@@ -298,6 +311,32 @@ pub async fn runs_write(app: AppHandle, id: String, line: String) -> Result<(), 
     let buffer = OutputBuffer::instance();
     let emit = |event: &str, payload: &serde_json::Value| app.emit(event, payload);
     runs_write_impl(registry, buffer, &emit, id, line)
+}
+
+/// Pure parser for the `settings.scripts.notifyOnSuccess` flag. Defaults to
+/// `true` when the path is absent or not a boolean so a fresh install (or a
+/// settings blob from before this field existed) keeps notifying.
+///
+/// `settings_root` is the value under the `"settings"` key of `settings.dat`,
+/// as written by `settingsService.save()`. Guarded on the TS side by the
+/// `rust runs_done notify-on-success contract` block in
+/// `settingsService.test.ts`.
+pub fn parse_notify_on_script_success(settings_root: Option<&serde_json::Value>) -> bool {
+    settings_root
+        .and_then(|s| s.get("scripts"))
+        .and_then(|s| s.get("notifyOnSuccess"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true)
+}
+
+/// Reads `settings.scripts.notifyOnSuccess` from `settings.dat`, defaulting to
+/// `true` when the store cannot be opened.
+fn read_notify_on_script_success(app: &tauri::AppHandle) -> bool {
+    use tauri_plugin_store::StoreExt;
+    let Ok(store) = app.store("settings.dat") else {
+        return true;
+    };
+    parse_notify_on_script_success(store.get("settings").as_ref())
 }
 
 #[tauri::command]
@@ -314,8 +353,12 @@ pub async fn runs_done(
     let emit = |event: &str, payload: &serde_json::Value| app.emit(event, payload);
     runs_done_impl(run_registry, buffer, &emit, &conn, id.clone())?;
 
-    if let Some(run) = run_registry.get(&id) {
-        let _ = maybe_send_run_notification(registry.inner(), backend.inner().as_ref(), &run);
+    // Success notifications are user-gated; `runs_fail` deliberately has no
+    // such gate so failures always notify.
+    if read_notify_on_script_success(&app) {
+        if let Some(run) = run_registry.get(&id) {
+            let _ = maybe_send_run_notification(registry.inner(), backend.inner().as_ref(), &run);
+        }
     }
     Ok(())
 }
@@ -382,7 +425,7 @@ pub async fn runs_history_list(
 #[tauri::command]
 pub async fn runs_history_clear(db: State<'_, DataStore>) -> Result<(), AppError> {
     let conn = db.conn()?;
-    runs_history_clear_impl(&conn)
+    runs_history_clear_impl(OutputBuffer::instance(), &conn)
 }
 
 /// Return the buffered output lines for an active run.
@@ -420,6 +463,30 @@ pub async fn runs_upsert_bucket(
 mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
+
+    #[test]
+    fn parse_notify_on_script_success_reads_true() {
+        let s = serde_json::json!({ "scripts": { "notifyOnSuccess": true } });
+        assert!(parse_notify_on_script_success(Some(&s)));
+    }
+
+    #[test]
+    fn parse_notify_on_script_success_reads_false() {
+        let s = serde_json::json!({ "scripts": { "notifyOnSuccess": false } });
+        assert!(!parse_notify_on_script_success(Some(&s)));
+    }
+
+    #[test]
+    fn parse_notify_on_script_success_defaults_true_when_scripts_missing() {
+        assert!(parse_notify_on_script_success(Some(&serde_json::json!({}))));
+        let non_bool = serde_json::json!({ "scripts": { "notifyOnSuccess": "no" } });
+        assert!(parse_notify_on_script_success(Some(&non_bool)));
+    }
+
+    #[test]
+    fn parse_notify_on_script_success_defaults_true_when_none() {
+        assert!(parse_notify_on_script_success(None));
+    }
 
     // ── EventCapture ─────────────────────────────────────────────────────────
 
@@ -486,6 +553,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -522,6 +590,7 @@ mod tests {
             Some("org.test.ext".to_string()),
             true,
             None,
+            false,
         )
         .unwrap();
 
@@ -558,6 +627,7 @@ mod tests {
             None,
             false,
             Some("cmd_scripts_dyn_abc".to_string()),
+            false,
         )
         .unwrap();
 
@@ -587,6 +657,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -608,6 +679,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -621,6 +693,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         );
 
         assert!(
@@ -646,6 +719,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -689,6 +763,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -764,6 +839,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -791,6 +867,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -836,6 +913,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -876,6 +954,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -938,6 +1017,7 @@ mod tests {
             None,
             true,
             None,
+            false,
         )
         .unwrap();
 
@@ -993,6 +1073,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -1022,6 +1103,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_start_impl(
@@ -1034,6 +1116,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -1083,6 +1166,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -1114,6 +1198,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_done_impl(&registry, &buffer, &emit, &conn, "r1".to_string()).unwrap();
@@ -1147,6 +1232,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_done_impl(&registry, &buffer, &emit, &conn, "r1".to_string()).unwrap();
@@ -1177,6 +1263,7 @@ mod tests {
                 None,
                 false,
                 None,
+                false,
             )
             .unwrap();
             runs_done_impl(&registry, &buffer, &emit, &conn, id).unwrap();
@@ -1221,18 +1308,83 @@ mod tests {
                 None,
                 false,
                 None,
+                false,
             )
             .unwrap();
             runs_done_impl(&registry, &buffer, &emit, &conn, id).unwrap();
         }
 
-        runs_history_clear_impl(&conn).unwrap();
+        runs_history_clear_impl(&buffer, &conn).unwrap();
 
         let history = runs_history_list_impl(&conn, 50).unwrap();
         assert!(
             history.is_empty(),
             "history must be empty after clear, got {history:?}"
         );
+    }
+
+    #[test]
+    fn history_clear_releases_output_buffers() {
+        let (registry, buffer, conn, events) = make_test_env();
+        let emit = events.as_emit_fn();
+
+        runs_start_impl(
+            &registry,
+            &buffer,
+            &emit,
+            "r1".to_string(),
+            RunKind::Custom,
+            "Job".to_string(),
+            None,
+            false,
+            None,
+            false,
+        )
+        .unwrap();
+        runs_write_impl(
+            &registry,
+            &buffer,
+            &emit,
+            "r1".to_string(),
+            "hi".to_string(),
+        )
+        .unwrap();
+        runs_done_impl(&registry, &buffer, &emit, &conn, "r1".to_string()).unwrap();
+        assert_eq!(buffer.snapshot("r1"), vec!["hi".to_string()]);
+
+        runs_history_clear_impl(&buffer, &conn).unwrap();
+        assert!(buffer.snapshot("r1").is_empty());
+    }
+
+    #[test]
+    fn history_eviction_releases_output_buffers() {
+        let (registry, buffer, conn, events) = make_test_env();
+        let emit = events.as_emit_fn();
+
+        for i in 0..=runs_history::HISTORY_CAP {
+            let id = format!("r{i}");
+            runs_start_impl(
+                &registry,
+                &buffer,
+                &emit,
+                id.clone(),
+                RunKind::Custom,
+                format!("Job {i}"),
+                None,
+                false,
+                None,
+                false,
+            )
+            .unwrap();
+            runs_write_impl(&registry, &buffer, &emit, id.clone(), "out".to_string()).unwrap();
+            runs_done_impl(&registry, &buffer, &emit, &conn, id).unwrap();
+            // History orders by `started_at` (ms); keep it strictly increasing.
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+
+        // Oldest entry fell off the capped history; its buffer must go with it.
+        assert!(buffer.snapshot("r0").is_empty());
+        assert!(!buffer.snapshot("r1").is_empty());
     }
 
     // ── runs_get_output tests ─────────────────────────────────────────────────
@@ -1252,6 +1404,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -1315,6 +1468,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -1365,6 +1519,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -1417,6 +1572,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -1461,6 +1617,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -1497,6 +1654,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -1557,6 +1715,7 @@ mod tests {
             None,
             true,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(
@@ -1601,6 +1760,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
 
@@ -1631,6 +1791,7 @@ mod tests {
             None,
             false,
             None,
+            false,
         )
         .unwrap();
         runs_write_impl(&registry, &buffer, &emit, "r1".to_string(), "".to_string()).unwrap();
@@ -1705,6 +1866,7 @@ mod tests {
             error_message: Some("something went wrong".to_string()),
             subject_id: None,
             tail_output: None,
+            quiet_success: false,
         };
 
         // Failed status
@@ -1774,6 +1936,7 @@ mod tests {
             error_message: Some("failed agent".to_string()),
             subject_id: None,
             tail_output: None,
+            quiet_success: false,
         };
 
         // Failed status should send and register the action
@@ -1805,5 +1968,36 @@ mod tests {
         run.status = RunStatus::Cancelled;
         maybe_send_run_notification(&registry, &backend, &run).unwrap();
         assert_eq!(backend.sent.lock().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn quiet_success_suppresses_success_notification_but_not_failure() {
+        let mut run = Run {
+            id: "q1".to_string(),
+            kind: RunKind::ShellScript,
+            label: "Quiet script".to_string(),
+            status: RunStatus::Succeeded,
+            extension_id: None,
+            started_at: 0,
+            ended_at: None,
+            cancellable: false,
+            error_message: None,
+            subject_id: None,
+            tail_output: Some("ok".to_string()),
+            quiet_success: true,
+        };
+        assert!(
+            build_run_notification(&run).is_none(),
+            "quiet successful run must not notify"
+        );
+
+        run.status = RunStatus::Failed;
+        run.error_message = Some("boom".to_string());
+        let req = build_run_notification(&run).expect("failures always notify");
+        assert_eq!(req.title, "Run failed");
+
+        run.quiet_success = false;
+        run.status = RunStatus::Succeeded;
+        assert!(build_run_notification(&run).is_some());
     }
 }

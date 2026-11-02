@@ -54,6 +54,10 @@ pub struct Run {
     /// Last captured lines from the script's stdout/stderr.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tail_output: Option<String>,
+    /// When `true`, a successful completion is not surfaced (no notification,
+    /// no unacknowledged-result row). Failures always surface regardless.
+    #[serde(default)]
+    pub quiet_success: bool,
 }
 
 pub const HISTORY_CAP: usize = 50;
@@ -75,7 +79,8 @@ pub fn init_table(conn: &Connection) -> Result<(), AppError> {
             cancellable   INTEGER NOT NULL,
             error_message TEXT,
             subject_id    TEXT,
-            tail_output   TEXT
+            tail_output   TEXT,
+            quiet_success INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_runs_history_started_at
             ON runs_history(started_at DESC);",
@@ -100,17 +105,29 @@ pub fn init_table(conn: &Connection) -> Result<(), AppError> {
         conn.execute("ALTER TABLE runs_history ADD COLUMN tail_output TEXT", [])
             .map_err(|e| AppError::Database(e.to_string()))?;
     }
+    // Patch upgrades: pre-quiet_success databases get the column added in place.
+    if !cols.contains(&"quiet_success".to_string()) {
+        conn.execute(
+            "ALTER TABLE runs_history ADD COLUMN quiet_success INTEGER DEFAULT 0",
+            [],
+        )
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    }
     Ok(())
 }
 
 /// Insert a Run into history with INSERT OR REPLACE semantics, then evict over-cap rows.
-pub fn insert(conn: &Connection, run: &Run) -> Result<(), AppError> {
+///
+/// Returns the ids of the rows evicted by the cap so the caller can release
+/// any per-run resources (e.g. output buffers) that were only reachable
+/// through those history entries.
+pub fn insert(conn: &Connection, run: &Run) -> Result<Vec<String>, AppError> {
     let kind = kind_to_db(run.kind)?;
     let status = status_to_db(run.status)?;
     conn.execute(
         "INSERT OR REPLACE INTO runs_history
-         (id, kind, label, status, extension_id, started_at, ended_at, cancellable, error_message, subject_id, tail_output)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+         (id, kind, label, status, extension_id, started_at, ended_at, cancellable, error_message, subject_id, tail_output, quiet_success)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         params![
             run.id,
             kind,
@@ -123,11 +140,11 @@ pub fn insert(conn: &Connection, run: &Run) -> Result<(), AppError> {
             run.error_message,
             run.subject_id,
             run.tail_output,
+            run.quiet_success as i64,
         ],
     )
     .map_err(|e| AppError::Database(e.to_string()))?;
-    evict_over_cap(conn, HISTORY_CAP)?;
-    Ok(())
+    evict_over_cap(conn, HISTORY_CAP)
 }
 
 /// Return up to `limit` runs ordered most-recent first (ORDER BY started_at DESC).
@@ -135,7 +152,8 @@ pub fn list_recent(conn: &Connection, limit: usize) -> Result<Vec<Run>, AppError
     let mut stmt = conn
         .prepare(
             "SELECT id, kind, label, status, extension_id, started_at, ended_at,
-                    cancellable, error_message, subject_id, tail_output
+                    cancellable, error_message, subject_id, tail_output,
+                    COALESCE(quiet_success, 0)
              FROM runs_history
              ORDER BY started_at DESC
              LIMIT ?1",
@@ -158,6 +176,7 @@ pub fn list_recent(conn: &Connection, limit: usize) -> Result<Vec<Run>, AppError
                 row.get::<_, Option<String>>(8)?,  // error_message
                 row.get::<_, Option<String>>(9)?,  // subject_id
                 row.get::<_, Option<String>>(10)?, // tail_output
+                row.get::<_, i64>(11)?,            // quiet_success
             ))
         })
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -176,6 +195,7 @@ pub fn list_recent(conn: &Connection, limit: usize) -> Result<Vec<Run>, AppError
             error_message,
             subject_id,
             tail_output,
+            quiet_success_int,
         ) = row.map_err(|e| AppError::Database(e.to_string()))?;
         let kind = kind_from_db(&kind_str)?;
         let status = status_from_db(&status_str)?;
@@ -191,6 +211,7 @@ pub fn list_recent(conn: &Connection, limit: usize) -> Result<Vec<Run>, AppError
             error_message,
             subject_id,
             tail_output,
+            quiet_success: quiet_success_int != 0,
         });
     }
     Ok(runs)
@@ -203,24 +224,43 @@ pub fn delete_one(conn: &Connection, id: &str) -> Result<(), AppError> {
     Ok(())
 }
 
-/// Delete all rows from runs_history.
-pub fn delete_all(conn: &Connection) -> Result<(), AppError> {
+/// Delete all rows from runs_history, returning the ids that were removed.
+pub fn delete_all(conn: &Connection) -> Result<Vec<String>, AppError> {
+    let ids = select_ids(conn, "SELECT id FROM runs_history", params![])?;
     conn.execute("DELETE FROM runs_history", [])
         .map_err(|e| AppError::Database(e.to_string()))?;
-    Ok(())
+    Ok(ids)
 }
 
-/// Drop rows with the oldest started_at until the total count is at most `cap`.
-fn evict_over_cap(conn: &Connection, cap: usize) -> Result<(), AppError> {
-    conn.execute(
-        "DELETE FROM runs_history
+/// Drop rows with the oldest started_at until the total count is at most `cap`,
+/// returning the ids that were evicted.
+fn evict_over_cap(conn: &Connection, cap: usize) -> Result<Vec<String>, AppError> {
+    const OVER_CAP: &str = "FROM runs_history
          WHERE id NOT IN (
              SELECT id FROM runs_history ORDER BY started_at DESC LIMIT ?1
-         )",
-        params![cap as i64],
-    )
-    .map_err(|e| AppError::Database(e.to_string()))?;
-    Ok(())
+         )";
+    let ids = select_ids(conn, &format!("SELECT id {OVER_CAP}"), params![cap as i64])?;
+    if !ids.is_empty() {
+        conn.execute(&format!("DELETE {OVER_CAP}"), params![cap as i64])
+            .map_err(|e| AppError::Database(e.to_string()))?;
+    }
+    Ok(ids)
+}
+
+fn select_ids(
+    conn: &Connection,
+    sql: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<String>, AppError> {
+    let mut stmt = conn
+        .prepare(sql)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let ids = stmt
+        .query_map(params, |row| row.get::<_, String>(0))
+        .map_err(|e| AppError::Database(e.to_string()))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    Ok(ids)
 }
 
 /// Serialize a RunKind to its DB string via serde_json round-trip (no manual match to maintain).
@@ -274,6 +314,7 @@ mod tests {
             error_message: None,
             subject_id: None,
             tail_output: None,
+            quiet_success: false,
         }
     }
 
@@ -364,6 +405,29 @@ mod tests {
             min_started_at > 5,
             "expected oldest 5 evicted, but min started_at={min_started_at}"
         );
+    }
+
+    #[test]
+    fn insert_returns_evicted_ids() {
+        let conn = make_conn();
+        for i in 0..HISTORY_CAP {
+            let evicted = insert(&conn, &make_run(&format!("r{i}"), i as i64 + 1)).unwrap();
+            assert!(evicted.is_empty());
+        }
+        let evicted = insert(&conn, &make_run("newest", HISTORY_CAP as i64 + 1)).unwrap();
+        assert_eq!(evicted, vec!["r0".to_string()]);
+    }
+
+    #[test]
+    fn delete_all_returns_removed_ids() {
+        let conn = make_conn();
+        insert(&conn, &make_run("a", 1)).unwrap();
+        insert(&conn, &make_run("b", 2)).unwrap();
+
+        let mut ids = delete_all(&conn).unwrap();
+        ids.sort();
+        assert_eq!(ids, vec!["a".to_string(), "b".to_string()]);
+        assert!(delete_all(&conn).unwrap().is_empty());
     }
 
     #[test]
@@ -634,5 +698,45 @@ mod tests {
         assert!(found_succeeded, "Succeeded status did not round-trip");
         assert!(found_failed, "Failed status did not round-trip");
         assert!(found_cancelled, "Cancelled status did not round-trip");
+    }
+
+    #[test]
+    fn quiet_success_round_trips_through_sqlite() {
+        let conn = make_conn();
+        let mut quiet = make_run("q", 2);
+        quiet.quiet_success = true;
+        insert(&conn, &quiet).unwrap();
+        insert(&conn, &make_run("loud", 1)).unwrap();
+
+        let rows = list_recent(&conn, 10).unwrap();
+        assert!(rows.iter().find(|r| r.id == "q").unwrap().quiet_success);
+        assert!(!rows.iter().find(|r| r.id == "loud").unwrap().quiet_success);
+    }
+
+    #[test]
+    fn init_table_adds_quiet_success_column_to_legacy_db() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE runs_history (
+                id TEXT PRIMARY KEY,
+                kind TEXT NOT NULL,
+                label TEXT NOT NULL,
+                status TEXT NOT NULL,
+                extension_id TEXT,
+                started_at INTEGER NOT NULL,
+                ended_at INTEGER,
+                cancellable INTEGER NOT NULL,
+                error_message TEXT,
+                subject_id TEXT,
+                tail_output TEXT
+            );
+            INSERT INTO runs_history (id, kind, label, status, started_at, cancellable)
+            VALUES ('old', 'shell-script', 'Old', 'succeeded', 1, 0);",
+        )
+        .unwrap();
+        init_table(&conn).unwrap();
+        let rows = list_recent(&conn, 10).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert!(!rows[0].quiet_success, "legacy rows default to loud");
     }
 }

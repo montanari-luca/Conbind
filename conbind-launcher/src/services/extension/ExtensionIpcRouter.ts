@@ -42,6 +42,9 @@ export const INJECTS_EXTENSION_ID = new Set<Namespace>([
   'cache',
   'preferences',
   'power',
+  'media',
+  'calendar',
+  'shortcuts',
   'screen',
   'process',
   'systemEvents',
@@ -137,7 +140,7 @@ export const METHOD_PARAM_SCHEMAS: Record<string, string[]> = {
   'oauth:revokeToken': ['providerId'],
 
   // shell
-  'shell:spawn': ['program', 'args', 'spawnId', 'stdin'],
+  'shell:spawn': ['program', 'args', 'spawnId', 'stdin', 'background'],
   'shell:list': [],
   'shell:attach': ['spawnId'],
   'shell:writeStdin': ['spawnId', 'data'],
@@ -152,6 +155,24 @@ export const METHOD_PARAM_SCHEMAS: Record<string, string[]> = {
   'power:keepAwake': ['options'],
   'power:release': ['token'],
   'power:list': [],
+
+  // media
+  'media:getNowPlaying': ['playerId'],
+  'media:listSessions': [],
+  'media:control': ['action', 'playerId'],
+
+  // calendar
+  'calendar:listCalendars': [],
+  'calendar:listEvents': ['startAt', 'endAt', 'calendarIds'],
+  'calendar:createEvent': ['input'],
+  'calendar:listReminderLists': [],
+  'calendar:listReminders': ['listIds', 'includeCompleted'],
+  'calendar:createReminder': ['input'],
+  'calendar:setReminderCompleted': ['id', 'completed'],
+
+  // shortcuts
+  'shortcuts:list': [],
+  'shortcuts:run': ['idOrName', 'input'],
 
   // screen
   'screen:pickColor': [],
@@ -577,6 +598,13 @@ export class ExtensionIpcRouter {
         (ns === 'ai' && methodName === 'streamChat')) &&
       originRole
     ) {
+      if (ns === 'shell' && methodName === 'spawn') {
+        // Pad omitted optional params so originRole always lands in the last slot
+        // instead of shifting with whichever optionals the SDK happened to send.
+        const lead = extensionId ? 1 : 0;
+        const slots = lead + METHOD_PARAM_SCHEMAS['shell:spawn'].length;
+        while (args.length < slots) args.push(undefined);
+      }
       args = [...args, originRole];
     }
     if (

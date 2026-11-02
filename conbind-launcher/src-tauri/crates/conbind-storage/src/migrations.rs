@@ -60,6 +60,21 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "lan_allowed_hosts",
         up: |conn| super::lan_allowed_hosts::init_table(conn),
     },
+    Migration {
+        version: 8,
+        name: "ai_credentials",
+        up: migration_8_ai_credentials,
+    },
+    Migration {
+        version: 9,
+        name: "threads_provider_override",
+        up: migration_9_threads_provider_override,
+    },
+    Migration {
+        version: 10,
+        name: "e2ee_local_v2",
+        up: migration_10_e2ee_local_v2,
+    },
 ];
 
 /// Bring `conn` up to the newest ledger version. Idempotent.
@@ -253,6 +268,80 @@ fn migration_6_threads_is_pinned(conn: &Connection) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Per-thread provider/model override. Both columns are nullable: `NULL`
+/// means the thread follows its agent, which is every existing thread.
+fn migration_9_threads_provider_override(conn: &Connection) -> Result<(), AppError> {
+    for column in ["provider_id", "model_id"] {
+        let exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('threads') WHERE name = ?1",
+                [column],
+                |row| row.get::<_, i32>(0),
+            )
+            .map(|c| c > 0)
+            .unwrap_or(false);
+        if !exists {
+            conn.execute(&format!("ALTER TABLE threads ADD COLUMN {column} TEXT"), [])
+                .map_err(|e| AppError::Database(format!("Failed to add {column} column: {e}")))?;
+        }
+    }
+    Ok(())
+}
+
+/// Extends `cloud_sync_e2ee_local` mirror with:
+/// - `mode` ("passphrase" default for existing rows, "device-key" for new)
+/// - `kcv` (BLOB nullable for device-key HMAC-SHA256 check value)
+/// - `finalize_pending` (INTEGER boolean flag for deferred plaintext purging)
+/// - wrapped-seed and KDF fields become optional (NULL) for device-key rows.
+fn migration_10_e2ee_local_v2(conn: &Connection) -> Result<(), AppError> {
+    let has_mode: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('cloud_sync_e2ee_local') WHERE name = 'mode'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if !has_mode {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS cloud_sync_e2ee_local_v2 (
+                scope                 TEXT PRIMARY KEY CHECK (scope = 'global'),
+                enrolled              INTEGER NOT NULL,
+                key_version           INTEGER NOT NULL,
+                wrapped_master_seed   TEXT,
+                kdf_salt              BLOB,
+                kdf_m_cost            INTEGER,
+                kdf_t_cost            INTEGER,
+                kdf_p_cost            INTEGER,
+                updated_at_ms         INTEGER NOT NULL,
+                mode                  TEXT NOT NULL DEFAULT 'passphrase',
+                kcv                   BLOB,
+                finalize_pending      INTEGER NOT NULL DEFAULT 0
+            );
+
+            INSERT INTO cloud_sync_e2ee_local_v2 (
+                scope, enrolled, key_version, wrapped_master_seed,
+                kdf_salt, kdf_m_cost, kdf_t_cost, kdf_p_cost, updated_at_ms,
+                mode, kcv, finalize_pending
+            )
+            SELECT
+                scope, enrolled, key_version, wrapped_master_seed,
+                kdf_salt, kdf_m_cost, kdf_t_cost, kdf_p_cost, updated_at_ms,
+                'passphrase', NULL, 0
+            FROM cloud_sync_e2ee_local;
+
+            DROP TABLE cloud_sync_e2ee_local;
+
+            ALTER TABLE cloud_sync_e2ee_local_v2 RENAME TO cloud_sync_e2ee_local;
+            "#,
+        )
+        .map_err(|e| AppError::Database(format!("migration 10 failed: {e}")))?;
+    }
+    Ok(())
+}
+
 fn migration_5_search_engine_tables(conn: &Connection) -> Result<(), AppError> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS search_items (
@@ -269,6 +358,19 @@ fn migration_5_search_engine_tables(conn: &Connection) -> Result<(), AppError> {
     Ok(())
 }
 
+fn migration_8_ai_credentials(conn: &Connection) -> Result<(), AppError> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS ai_credentials (
+            credential_id TEXT PRIMARY KEY,
+            ciphertext    TEXT NOT NULL,
+            updated_at    INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| AppError::Database(format!("Failed to create ai_credentials table: {e}")))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -277,6 +379,7 @@ mod tests {
     /// Sorted; compared as a whole so an accidental add or drop fails loudly.
     const EXPECTED_TABLES: &[&str] = &[
         "agents",
+        "ai_credentials",
         "clipboard_items",
         "cloud_sync_cursor",
         "cloud_sync_e2ee_local",
@@ -485,6 +588,44 @@ mod tests {
     }
 
     #[test]
+    fn version_eight_db_adds_thread_provider_override_as_null_for_existing_threads() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_ledger(&conn, &MIGRATIONS[..8]).unwrap();
+        assert_eq!(user_version(&conn), 8);
+        // Simulate a stamped install whose threads table predates the override.
+        conn.execute_batch(
+            "ALTER TABLE threads DROP COLUMN provider_id;
+             ALTER TABLE threads DROP COLUMN model_id;
+             INSERT INTO agents (id, name, system_prompt, provider_id, model_id, created_at, updated_at)
+                 VALUES ('a1', 'Agent', 'prompt', 'p', 'm', 1, 1);
+             INSERT INTO threads (id, agent_id, title, created_at, updated_at)
+                 VALUES ('t1', 'a1', 'kept', 1, 1);",
+        )
+        .unwrap();
+        assert!(!column_names(&conn, "threads").contains(&"provider_id".to_string()));
+
+        run(&conn).unwrap();
+
+        assert_eq!(user_version(&conn), MIGRATIONS.last().unwrap().version);
+        let columns = column_names(&conn, "threads");
+        assert!(columns.contains(&"provider_id".to_string()));
+        assert!(columns.contains(&"model_id".to_string()));
+        let (title, provider, model): (String, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT title, provider_id, model_id FROM threads WHERE id = 't1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(title, "kept");
+        assert_eq!(
+            provider, None,
+            "existing threads must keep following their agent"
+        );
+        assert_eq!(model, None);
+    }
+
+    #[test]
     fn version_four_db_adds_search_engine_tables_without_losing_existing_rows() {
         let conn = Connection::open_in_memory().unwrap();
         run_ledger(&conn, &MIGRATIONS[..4]).unwrap();
@@ -497,6 +638,52 @@ mod tests {
         assert_eq!(user_version(&conn), MIGRATIONS.last().unwrap().version);
         assert!(names_of(&conn, "table").contains(&"search_items".to_string()));
         assert!(names_of(&conn, "table").contains(&"search_favorites".to_string()));
+    }
+
+    #[test]
+    fn version_seven_db_adds_ai_credentials_without_losing_existing_rows() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_ledger(&conn, &MIGRATIONS[..7]).unwrap();
+        assert_eq!(user_version(&conn), 7);
+        assert!(!names_of(&conn, "table").contains(&"ai_credentials".to_string()));
+
+        conn.execute(
+            "INSERT INTO snippets (id, expansion, name, created_at) VALUES ('s1', 'exp', 'Name', 1.0)",
+            [],
+        )
+        .unwrap();
+
+        run(&conn).unwrap();
+
+        assert_eq!(user_version(&conn), MIGRATIONS.last().unwrap().version);
+        assert!(names_of(&conn, "table").contains(&"ai_credentials".to_string()));
+        let count: i64 = conn
+            .query_row("SELECT count(*) FROM snippets WHERE id = 's1'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 1, "existing snippet row must be preserved");
+    }
+
+    #[test]
+    fn version_seven_db_reaches_nine_with_credentials_table_and_thread_override_columns() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_ledger(&conn, &MIGRATIONS[..7]).unwrap();
+        assert_eq!(user_version(&conn), 7);
+        // Simulate a stamped install whose threads table predates the override.
+        conn.execute_batch(
+            "ALTER TABLE threads DROP COLUMN provider_id;
+             ALTER TABLE threads DROP COLUMN model_id;",
+        )
+        .unwrap();
+
+        run(&conn).unwrap();
+
+        assert_eq!(user_version(&conn), MIGRATIONS.last().unwrap().version);
+        assert!(names_of(&conn, "table").contains(&"ai_credentials".to_string()));
+        let columns = column_names(&conn, "threads");
+        assert!(columns.contains(&"provider_id".to_string()));
+        assert!(columns.contains(&"model_id".to_string()));
     }
 
     #[test]
@@ -647,5 +834,64 @@ mod tests {
             "create_test_store() and the production bootstrap must build the same schema"
         );
         assert_eq!(user_version(&guard), user_version(&production));
+    }
+
+    #[test]
+    fn migration_10_preserves_existing_passphrase_row_and_allows_null_kdf() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Migrate through version 9
+        run_ledger(&conn, &MIGRATIONS[..9]).unwrap();
+        assert_eq!(user_version(&conn), 9);
+
+        // Insert a v1 passphrase row with NOT NULL constraints:
+        conn.execute(
+            r#"
+            INSERT INTO cloud_sync_e2ee_local
+              (scope, enrolled, key_version, wrapped_master_seed,
+               kdf_salt, kdf_m_cost, kdf_t_cost, kdf_p_cost, updated_at_ms)
+            VALUES ('global', 1, 3, 'enc:v1:testpass', X'01020304', 65536, 3, 1, 1700000000000)
+            "#,
+            [],
+        )
+        .unwrap();
+
+        // Run remaining migrations (which applies migration 10):
+        run(&conn).unwrap();
+        assert_eq!(user_version(&conn), 10);
+
+        // Verify the existing row survived untouched:
+        let state = crate::cloud_sync_e2ee_local::get(&conn).unwrap().unwrap();
+        assert!(state.enrolled);
+        assert_eq!(state.key_version, 3);
+        assert_eq!(
+            state.wrapped_master_seed.as_deref(),
+            Some("enc:v1:testpass")
+        );
+        assert_eq!(state.kdf_salt.as_deref(), Some(&[1, 2, 3, 4][..]));
+        assert_eq!(state.kdf_m_cost, Some(65536));
+        assert_eq!(state.kdf_t_cost, Some(3));
+        assert_eq!(state.kdf_p_cost, Some(1));
+        assert_eq!(state.updated_at_ms, 1700000000000);
+        assert_eq!(state.mode, "passphrase");
+        assert_eq!(state.kcv, None);
+        assert!(!state.finalize_pending);
+
+        // Test device-key row insertion with NULL wrapped-seed/KDF fields:
+        let device_key_state = crate::cloud_sync_e2ee_local::E2eeLocalState {
+            enrolled: true,
+            key_version: 4,
+            wrapped_master_seed: None,
+            kdf_salt: None,
+            kdf_m_cost: None,
+            kdf_t_cost: None,
+            kdf_p_cost: None,
+            updated_at_ms: 1700000001000,
+            mode: "device-key".into(),
+            kcv: Some(vec![0xAA; 32]),
+            finalize_pending: true,
+        };
+        crate::cloud_sync_e2ee_local::upsert(&conn, &device_key_state).unwrap();
+        let fetched = crate::cloud_sync_e2ee_local::get(&conn).unwrap().unwrap();
+        assert_eq!(fetched, device_key_state);
     }
 }

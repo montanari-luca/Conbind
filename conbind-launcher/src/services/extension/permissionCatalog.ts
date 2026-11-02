@@ -164,6 +164,36 @@ export const PERMISSION_CATALOG: Record<string, PermissionInfo> = {
     title: 'Keep system awake',
     description: 'Prevent the OS from sleeping while extension logic is running.',
   },
+  'media:control': {
+    title: 'Control media playback',
+    description:
+      'Read what is playing in media players and apps (such as Music, TV, Spotify, VLC, or a browser) and send play, pause, and skip commands.',
+  },
+  'calendar:read': {
+    title: 'Read calendars and events',
+    description: 'List your calendars and read the events in them.',
+  },
+  'calendar:write': {
+    title: 'Create calendar events',
+    description: 'Add new events to your calendars.',
+  },
+  'reminders:read': {
+    title: 'Read reminders',
+    description: 'List your reminder lists and the reminders in them.',
+  },
+  'reminders:write': {
+    title: 'Create and complete reminders',
+    description: 'Add new reminders and mark existing ones as done or not done.',
+  },
+  'shortcuts:read': {
+    title: 'List Apple Shortcuts',
+    description: 'See the names of the shortcuts in your Apple Shortcuts library.',
+  },
+  'shortcuts:run': {
+    title: 'Run Apple Shortcuts',
+    description:
+      'Run any of your Apple Shortcuts, optionally passing it text. A shortcut can do anything it is built to do.',
+  },
   'process:read': {
     title: 'List processes',
     description: 'List running processes with CPU and memory usage.',

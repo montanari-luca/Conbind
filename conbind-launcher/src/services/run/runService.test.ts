@@ -11,6 +11,11 @@ vi.mock('../../lib/ipc/invokeSafe', () => ({ invokeSafe: vi.fn() }));
 vi.mock('../feedback/feedbackService.svelte', () => ({
   feedbackService: { report: vi.fn() },
 }));
+vi.mock('../settings/settingsService.svelte', () => ({
+  settingsService: {
+    currentSettings: { scripts: { notifyOnSuccess: true, keepSuccessfulInLauncher: true } },
+  },
+}));
 vi.mock('../extension/extensionIframeSelector', () => ({
   pickExtensionIframe: vi.fn(),
 }));
@@ -19,6 +24,7 @@ import { runService } from './runService.svelte';
 import { invokeSafe } from '../../lib/ipc/invokeSafe';
 import { listen } from '@tauri-apps/api/event';
 import { feedbackService } from '../feedback/feedbackService.svelte';
+import { settingsService } from '../settings/settingsService.svelte';
 import { pickExtensionIframe } from '../extension/extensionIframeSelector';
 import type { Run } from 'conbind-sdk/contracts';
 
@@ -57,6 +63,10 @@ function mockBucketUpsertDefault() {
 }
 
 beforeEach(() => {
+  (settingsService.currentSettings as any).scripts = {
+    notifyOnSuccess: true,
+    keepSuccessfulInLauncher: true,
+  };
   runService.reset();
   vi.clearAllMocks();
   mockBucketUpsertDefault();
@@ -75,6 +85,7 @@ describe('start', () => {
       extensionId: 'ext.foo',
       cancellable: true,
       subjectId: null,
+      quietSuccess: false,
     });
   });
 
@@ -112,6 +123,20 @@ describe('startLocal', () => {
       expect.objectContaining({
         subjectId: 'cmd_scripts_dyn_abc',
       }),
+    );
+  });
+
+  it('forwards quietSuccess to runs_start and defaults to false', async () => {
+    vi.mocked(invokeSafe).mockResolvedValue(makeRun());
+    await runService.startLocal({ label: 'x', kind: 'shell-script', quietSuccess: true });
+    expect(invokeSafe).toHaveBeenLastCalledWith(
+      'runs_start',
+      expect.objectContaining({ quietSuccess: true }),
+    );
+    await runService.startLocal({ label: 'y', kind: 'shell-script' });
+    expect(invokeSafe).toHaveBeenLastCalledWith(
+      'runs_start',
+      expect.objectContaining({ quietSuccess: false }),
     );
   });
 
@@ -266,6 +291,32 @@ describe('onStateChanged', () => {
     await runService['onStateChanged'](run);
     expect(runService.keptAgents).toHaveLength(1);
     expect(runService.keptAgents[0].id).toBe('r1');
+  });
+
+  it('quiet_succeeded_script_is_not_added_to_scriptResults_but_quiet_failure_still_surfaces', async () => {
+    await runService['onStateChanged'](
+      makeRun({ id: 'q1', status: 'succeeded', kind: 'shell-script', quietSuccess: true }),
+    );
+    expect(runService.unacknowledgedScriptResults).toHaveLength(0);
+
+    await runService['onStateChanged'](
+      makeRun({ id: 'q2', status: 'failed', kind: 'shell-script', quietSuccess: true }),
+    );
+    expect(runService.unacknowledgedFailures).toHaveLength(1);
+  });
+
+  it('keepSuccessfulInLauncher_false_skips_scriptResults_but_failures_still_surface', async () => {
+    (settingsService.currentSettings as any).scripts.keepSuccessfulInLauncher = false;
+
+    await runService['onStateChanged'](
+      makeRun({ id: 's1', status: 'succeeded', kind: 'shell-script' }),
+    );
+    expect(runService.unacknowledgedScriptResults).toHaveLength(0);
+
+    await runService['onStateChanged'](
+      makeRun({ id: 's2', status: 'failed', kind: 'shell-script' }),
+    );
+    expect(runService.unacknowledgedFailures).toHaveLength(1);
   });
 
   it('succeeded_shell_script_does_NOT_populate_keptAgents_but_does_populate_scriptResults', async () => {

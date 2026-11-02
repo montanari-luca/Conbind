@@ -2,7 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Conbind reads what is playing and controls playback in media apps such as Music and Spotify when an extension you approve asks it to.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Conbind reads and updates your calendar events when an extension you approve asks it to.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Conbind reads and updates your calendar events when an extension you approve asks it to.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Conbind finds devices on your local network, such as speakers and smart home hubs, and lets extensions you approve connect to them.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Conbind reads and updates your reminders when an extension you approve asks it to.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Conbind reads and updates your reminders when an extension you approve asks it to.</string>
 </dict>
 </plist>

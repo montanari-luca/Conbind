@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { normalizeShortcut } from '../../../built-in-features/shortcuts/shortcutFormatter';
   import { shortcutService } from '../../../built-in-features/shortcuts/shortcutService';
   import {
@@ -8,10 +9,15 @@
     SettingsRow,
     ShortcutRecorder,
   } from '../../../components';
-  import { onboardingCommands } from '../../../lib/ipc/commands';
+  import {
+    getShortcutBackendInfo,
+    onboardingCommands,
+    type ShortcutBackendInfo,
+  } from '../../../lib/ipc/commands';
   import { feedbackService } from '../../../services/feedback/feedbackService.svelte';
   import { t } from '../../../services/i18n';
   import { logService } from '../../../services/log/logService';
+  import { getWaylandBindingGuide } from '../../onboarding/steps/summonSearchSetup';
   import type { SettingsHandler } from '../settingsHandlers.svelte';
 
   let {
@@ -19,6 +25,28 @@
   }: {
     handler: SettingsHandler;
   } = $props();
+
+  let shortcutBackendInfo = $state<ShortcutBackendInfo | null>(null);
+  let waylandCopied = $state(false);
+  const waylandGuide = $derived(getWaylandBindingGuide(shortcutBackendInfo));
+
+  async function copyWaylandCommand() {
+    if (!waylandGuide) return;
+    try {
+      await navigator.clipboard.writeText(waylandGuide.command);
+      waylandCopied = true;
+    } catch {
+      // Clipboard write may fail in restricted environments; ignore.
+    }
+  }
+
+  onMount(async () => {
+    try {
+      shortcutBackendInfo = await getShortcutBackendInfo();
+    } catch {
+      shortcutBackendInfo = { isWayland: false, compositor: null, isOmarchy: false };
+    }
+  });
 
   async function conflictChecker(shortcut: string): Promise<{ name: string } | null> {
     const conflict = await shortcutService.isConflict(normalizeShortcut(shortcut), 'launcher');
@@ -86,6 +114,21 @@
         {conflictChecker}
       />
     </SettingsRow>
+    {#if waylandGuide}
+      <div class="wayland-hotkey-hint">
+        <p class="wayland-hotkey-text">
+          {t('settings.general.wayland_hotkey_hint', { compositor: waylandGuide.compositorLabel })}
+        </p>
+        <div class="wayland-hotkey-row">
+          <pre class="wayland-hotkey-code"><code>{waylandGuide.command}</code></pre>
+          <Button variant="secondary" size="sm" onclick={copyWaylandCommand}>
+            {waylandCopied
+              ? t('settings.general.wayland_copied')
+              : t('settings.general.wayland_copy_cmd')}
+          </Button>
+        </div>
+      </div>
+    {/if}
     <SettingsRow
       label={t('settings.general.show_tray_icon')}
       description={handler.settings.general.showTrayIcon
@@ -121,3 +164,39 @@
     </SettingsRow>
   </div>
 </SettingsCard>
+
+<style>
+  .wayland-hotkey-hint {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--separator);
+  }
+
+  .wayland-hotkey-text {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+  }
+
+  .wayland-hotkey-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .wayland-hotkey-code {
+    flex: 1;
+    margin: 0;
+    padding: var(--space-2);
+    background: var(--bg-secondary);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    overflow-x: auto;
+  }
+</style>

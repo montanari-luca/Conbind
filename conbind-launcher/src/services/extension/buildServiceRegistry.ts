@@ -33,6 +33,9 @@ import { windowManagementService } from '../windowManagement/windowManagementSer
 import { openerService } from '../opener/openerService';
 import { networkService } from '../network/networkService';
 import { powerService } from '../power/powerService';
+import { mediaService } from '../media/mediaService';
+import { calendarService } from '../calendar/calendarService';
+import { shortcutsService } from '../shortcuts/shortcutsService';
 import { screenService } from '../screen/screenService';
 import { processService } from '../process/processService';
 import { systemEventsService } from '../systemEvents/systemEventsService';
@@ -147,6 +150,7 @@ export function buildServiceRegistry(deps: {
         args: string[] = [],
         spawnId: string,
         stdin?: string,
+        background?: boolean,
         originRole?: 'view' | 'worker',
       ) =>
         shellService.spawn(
@@ -158,6 +162,7 @@ export function buildServiceRegistry(deps: {
           undefined,
           undefined,
           stdin,
+          background === true,
         ),
       list: (extensionId: string) => shellService.list(extensionId),
       attach: (extensionId: string, spawnId: string, originRole?: 'view' | 'worker') =>
@@ -183,6 +188,9 @@ export function buildServiceRegistry(deps: {
     opener: openerService,
     network: networkService,
     power: powerService,
+    media: mediaService,
+    calendar: calendarService,
+    shortcuts: shortcutsService,
     screen: screenService,
     process: processService,
     systemEvents: systemEventsService,

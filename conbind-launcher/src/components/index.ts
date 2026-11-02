@@ -76,6 +76,7 @@ export { default as ExtensionPreferencesForm } from './settings/ExtensionPrefere
 export { default as LanHostList } from './settings/LanHostList.svelte';
 export { default as LanDeviceBrowser } from './settings/LanDeviceBrowser.svelte';
 export { default as LanScanSheet } from './settings/LanScanSheet.svelte';
+export { default as CredentialField } from './settings/CredentialField.svelte';
 
 // Form
 export { default as FormField } from './form/FormField.svelte';
@@ -124,6 +125,8 @@ export { default as EncryptionStatusSection } from './settings/EncryptionStatusS
 export { default as RuntimesSection } from './settings/RuntimesSection.svelte';
 export { default as ScheduledTasksSection } from './settings/ScheduledTasksSection.svelte';
 export { default as SecretRedactionSection } from './settings/SecretRedactionSection.svelte';
+export { default as CalendarAccessRows } from './settings/CalendarAccessRows.svelte';
+export { default as SystemAccessSection } from './settings/SystemAccessSection.svelte';
 
 // Settings — controls and lists
 export { default as PermissionList } from './settings/PermissionList.svelte';

@@ -3,10 +3,14 @@
 //! Provides isolated, safe wrappers around platform-specific OS APIs for macOS,
 //! Windows, and Linux without dependencies on the desktop framework.
 
+pub mod calendar;
 pub mod error;
+pub(crate) mod ics;
 pub mod input;
 pub mod keyboard;
 pub mod locale;
+pub mod media;
+pub mod shortcuts;
 pub mod window;
 
 #[cfg(target_os = "linux")]
@@ -24,10 +28,13 @@ pub mod windows;
 #[cfg(target_os = "windows")]
 pub mod windows_key_resolver;
 
+pub use calendar::*;
 pub use error::PlatformError;
 pub use input::*;
 pub use keyboard::*;
 pub use locale::*;
+pub use media::*;
+pub use shortcuts::*;
 pub use window::{ThemePreference, WindowStyling};
 
 #[cfg(target_os = "linux")]

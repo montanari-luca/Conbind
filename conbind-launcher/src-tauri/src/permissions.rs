@@ -292,6 +292,21 @@ fn get_required_permission(call_type: &str) -> Option<&'static str> {
         "conbind:api:power:keepAwake" => Some("power:inhibit"),
         "conbind:api:power:release" => Some("power:inhibit"),
         "conbind:api:power:list" => Some("power:inhibit"),
+        // Media control (now-playing + transport)
+        "conbind:api:media:getNowPlaying" => Some("media:control"),
+        "conbind:api:media:listSessions" => Some("media:control"),
+        "conbind:api:media:control" => Some("media:control"),
+        // Calendar & reminders (EventKit)
+        "conbind:api:calendar:listCalendars" => Some("calendar:read"),
+        "conbind:api:calendar:listEvents" => Some("calendar:read"),
+        "conbind:api:calendar:createEvent" => Some("calendar:write"),
+        "conbind:api:calendar:listReminderLists" => Some("reminders:read"),
+        "conbind:api:calendar:listReminders" => Some("reminders:read"),
+        "conbind:api:calendar:createReminder" => Some("reminders:write"),
+        "conbind:api:calendar:setReminderCompleted" => Some("reminders:write"),
+        // Apple Shortcuts (`shortcuts` CLI)
+        "conbind:api:shortcuts:list" => Some("shortcuts:read"),
+        "conbind:api:shortcuts:run" => Some("shortcuts:run"),
         // Process service (list/kill)
         "conbind:api:process:list" => Some("process:read"),
         "conbind:api:process:kill" => Some("process:kill"),

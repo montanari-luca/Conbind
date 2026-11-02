@@ -138,12 +138,22 @@ pub struct AliasMatch {
     pub auto_execute: bool,
 }
 
+/// The one extension a query names, offered as a "Search only in Coffee" row.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ScopeHint {
+    pub extension_id: String,
+    pub extension_name: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MergedSearchResponse {
     pub results: Vec<SearchResult>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alias_match: Option<AliasMatch>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope_hint: Option<ScopeHint>,
 }
 
 // Helper to get the name for sorting/searching
@@ -511,6 +521,9 @@ mod bindings_export {
             .register::<crate::ai::types::ChatMessage>()
             .register::<crate::ai::types::GeminiGrounding>()
             .register::<crate::ai::types::ProviderConfig>()
+            .register::<crate::storage::ai_credentials::CredentialState>()
+            .register::<crate::storage::ai_credentials::CredentialTarget>()
+            .register::<crate::storage::ai_credentials::AiCredentialStatus>()
             .register::<crate::ai::types::CliStatus>()
             .register::<crate::ai::types::CliAccountInfo>()
             .register::<crate::ai::types::ModelInfo>()
@@ -519,6 +532,7 @@ mod bindings_export {
             .register::<crate::ai::types::StreamEventPayload>()
             .register::<crate::ai::types::ChatStreamEventPayload>()
             .register::<crate::agents::editor::AgentProviderDescriptor>()
+            .register::<crate::agents::editor::AgentEditorDroppedTools>()
             .register::<crate::agents::runner::AgentRunConfig>()
             .register::<crate::agents::runner::AgentStreamEvent>()
             .register::<crate::system_actions::SystemAction>()

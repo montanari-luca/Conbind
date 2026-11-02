@@ -60,6 +60,14 @@ export interface AppSettings {
   developer?: DeveloperSettings;
   fileSearch: FileSearchSettings;
   clipboardHistory?: ClipboardHistorySettings;
+  scripts: ScriptsSettings;
+}
+
+export interface ScriptsSettings {
+  /** Show a system notification when a script finishes successfully. Failures always notify. */
+  notifyOnSuccess: boolean;
+  /** Keep a "Done" row in the launcher after a successful script. Failures are always kept. */
+  keepSuccessfulInLauncher: boolean;
 }
 
 export interface ClipboardHistorySettings {
@@ -107,7 +115,6 @@ export type WebSearchEngine = 'duckduckgo' | 'brave' | 'tavily' | 'serply' | 'se
 
 export interface WebSearchSettings {
   engine: WebSearchEngine;
-  apiKey?: string;
   baseUrl?: string;
 }
 

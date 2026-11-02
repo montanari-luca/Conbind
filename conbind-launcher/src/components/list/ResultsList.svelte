@@ -42,6 +42,7 @@
         typeLabel={item.kindLabel}
         sourceLabel={item.sourceLabel}
         dragPath={draggablePath(item)}
+        variant={item.variant === 'hint' ? 'hint' : 'default'}
         {status}
       />
     {/if}

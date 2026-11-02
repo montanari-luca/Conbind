@@ -79,6 +79,28 @@ export type { IWindowManagementService, WindowBounds } from './WindowManagementS
 export { WindowManagementServiceProxy } from './WindowManagementService';
 
 export type {
+  IMediaService,
+  MediaSessionInfo,
+  MediaTransportAction,
+  PlaybackStatus,
+} from './IMediaService';
+export { MediaServiceProxy } from './MediaServiceProxy';
+
+export type {
+  ICalendarService,
+  CalendarSource,
+  CalendarEvent,
+  CreateEventInput,
+  ReminderList,
+  ReminderItem,
+  CreateReminderInput,
+} from './ICalendarService';
+export { CalendarServiceProxy } from './CalendarServiceProxy';
+
+export type { IShortcutsService, ShortcutInfo } from './IShortcutsService';
+export { ShortcutsServiceProxy } from './ShortcutsServiceProxy';
+
+export type {
   IPowerService,
   KeepAwakeOptions,
   ResolvedKeepAwakeOptions,

@@ -7,6 +7,9 @@
 //! - `haptics` — trackpad haptic feedback (drag-to-snap)
 //! - `input` — global key monitors (Cmd-Q, snippet expansion) + press-and-hold
 //! - `system` — accessibility, frontmost app, and the native Show-More bar
+//! - `calendar` — EventKit calendars and reminders
+//! - `media` — media-key transport + Music/Spotify now-playing (no MediaRemote)
+//! - `shortcuts` — Apple Shortcuts via the `shortcuts` CLI
 //! - `quicklook` — native QLPreviewPanel hosting (file preview)
 
 /// The resolved (OS-actual) appearance at window creation time.
@@ -17,12 +20,15 @@ pub enum ResolvedTheme {
 }
 
 pub mod appearance;
+pub mod calendar;
 pub mod display_name;
 pub mod haptics;
 pub mod icon;
 pub mod input;
 pub mod launcher_resize;
+pub mod media;
 pub mod quicklook;
+pub mod shortcuts;
 pub mod system;
 pub mod window;
 

@@ -30,7 +30,7 @@ const tsOnlyKinds = [
 ];
 
 for (const path of sources) {
-  const text = readFileSync(path, 'utf8');
+  const text = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
   const blockMatch = text.match(/fn kind\(&self\) -> &'static str \{[\s\S]*?\n\s*\}\n\s*\}/);
   if (!blockMatch) continue;
   for (const m of blockMatch[0].matchAll(kindRegex)) {
